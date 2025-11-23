@@ -1,0 +1,23 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LuigiVanin/my-auth-service.git"
+  },
+
+  
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/LuigiVanin/my-auth-service/issues"
+  },
+  "homepage": "https://github.com/LuigiVanin/my-auth-service#readme"
+}

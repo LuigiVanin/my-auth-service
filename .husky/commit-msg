@@ -1,0 +1,50 @@
+commit_message=$(cat "$1")
+
+case "$commit_message" in
+  docs:*)
+    tag="Docs"
+    emoji="📝"
+    message="${commit_message#docs:}"
+    fixed_message="${tag} ${emoji}:${message}"
+    ;;
+  feat:*)
+    tag="Feat"
+    emoji="✨"
+    message="${commit_message#feat:}"
+    fixed_message="${tag} ${emoji}:${message}"
+    ;;
+  test:*)
+    tag="Test"
+    emoji="🧪"
+    message="${commit_message#test:}"
+    fixed_message="${tag} ${emoji}:${message}"
+    ;;
+  refactor:*)
+    tag="Refactor"
+    emoji="♻️"
+    message="${commit_message#refactor:}"
+    fixed_message="${tag} ${emoji}:${message}"
+    ;;
+  fix:*)
+    tag="Fix"
+    emoji="🐛"
+    message="${commit_message#fix:}"
+    fixed_message="${tag} ${emoji}:${message}"
+    ;;
+  hotfix:*)
+    tag="Hotfix"
+    emoji="🔥"
+    message="${commit_message#hotfix:}"
+    fixed_message="${tag} ${emoji}:${message}"
+    ;;
+  *)
+    fixed_message="$commit_message"
+    ;;
+esac
+
+
+if [ "$fixed_message" != "$commit_message" ]; then
+  echo "$fixed_message" > "$1"
+fi
+
+exit 0

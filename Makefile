@@ -7,4 +7,4 @@ dev:
 	air
 
 build:
-	go build -o ./bin/auth_service $(CMD_MAIN)
+	go build -o ./build/auth_service $(CMD_MAIN)

@@ -4,14 +4,12 @@ import (
 	"auth_service/infra/bootstrap"
 	"auth_service/infra/config"
 	"context"
-	"fmt"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
 func main() {
-	fmt.Println("Hello, World!!")
 
 	fx.New(
 		fx.Provide(config.NewConfigFromEnv),

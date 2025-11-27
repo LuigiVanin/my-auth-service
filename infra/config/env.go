@@ -15,17 +15,25 @@ type AppConfig struct {
 	Name string
 }
 
-type Config struct {
-	Env string
-	App AppConfig
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Name     string
+	Sslmode  string
+}
 
-	Server ServerConfig
+type Config struct {
+	Env      string
+	App      AppConfig
+	Database DatabaseConfig
+	Server   ServerConfig
 }
 
 func LoadEnv() error {
 	if err := godotenv.Load(); err != nil {
-		fmt.Println("No .env file found or error loading .env file")
-		return err
+		fmt.Println("No .env file found or error loading .env file. Using system environment variables.")
 	}
 	return nil
 }
@@ -42,6 +50,30 @@ func NewConfigFromEnv() *Config {
 		env = "dev"
 	}
 
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	name := os.Getenv("DB_NAME")
+	sllmode := os.Getenv("DB_SSLMODE")
+
+	if host == "" {
+		host = "localhost"
+	}
+	if port == "" {
+		port = "5432"
+	}
+	if user == "" {
+		user = "postgres"
+	}
+	if sllmode == "" {
+		sllmode = "disable"
+	}
+
+	if name == "" || password == "" {
+		panic("DATABASE_NAME and DATABASE_PASSWORD are required - Cannot define database")
+	}
+
 	return &Config{
 
 		Env: env,
@@ -52,5 +84,26 @@ func NewConfigFromEnv() *Config {
 		App: AppConfig{
 			Name: os.Getenv("APP_NAME"),
 		},
+
+		Database: DatabaseConfig{
+			Host:     host,
+			Port:     port,
+			User:     user,
+			Password: password,
+			Name:     name,
+			Sslmode:  sllmode,
+		},
 	}
+}
+
+func (cfg *Config) FormatDatabaseUrl() string {
+	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.Host,
+		cfg.Database.Port,
+		cfg.Database.Name,
+		cfg.Database.Sslmode,
+	)
+
 }

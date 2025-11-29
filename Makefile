@@ -13,7 +13,7 @@ build:
 	go build -o ./build/auth_service $(CMD_MAIN)
 
 migrate:
-	go run $(CMD_MIGRATE)
+	go run $(CMD_MIGRATE) $(filter-out $@,$(MAKECMDGOALS))
 
 create-migration:
 	@if [ -z "$(filter-out $@,$(MAKECMDGOALS))" ]; then \

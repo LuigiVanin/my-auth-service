@@ -7,4 +7,3 @@ CREATE TABLE user_pools (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-

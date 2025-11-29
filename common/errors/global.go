@@ -54,7 +54,7 @@ func ThrowNotFound(detail string) *GlobalError {
 	}
 }
 
-func ThorwUnauthorizedError(detail string) *GlobalError {
+func ThrowUnauthorizedError(detail string) *GlobalError {
 	return &GlobalError{
 		Title:  "Unauthorized",
 		Code:   UnauthorizedErrorCode,

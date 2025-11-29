@@ -5,10 +5,12 @@ CREATE TABLE apps (
   id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_pools_id UUID NOT NULL REFERENCES user_pools(id),
 
-  code TEXT NOT NULL,
   name TEXT NOT NULL,
+  public_key TEXT NOT NULL,
   secret_key TEXT NOT NULL,
+
   private BOOLEAN NOT NULL DEFAULT FALSE,
+  verified_email_date TIMESTAMP DEFAULT NULL,
 
   login_types AUTH_METHOD[] NOT NULL,
   token_type TOKEN_TYPE NOT NULL,
@@ -32,6 +34,8 @@ CREATE TABLE users (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT,
+
+  verify_email BOOLEAN NOT NULL DEFAULT FALSE,
 
   password_hash TEXT NOT NULL,
 

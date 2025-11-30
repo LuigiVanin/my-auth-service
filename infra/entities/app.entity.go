@@ -26,3 +26,8 @@ type App struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
+
+type AppWithPool struct {
+	App  `db:"app"`
+	Pool UserPool `db:"users_pool"`
+}

@@ -9,8 +9,3 @@ type UserPool struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
-
-type UserPoolWithApps struct {
-	UserPool
-	Apps []App `db:"apps"`
-}

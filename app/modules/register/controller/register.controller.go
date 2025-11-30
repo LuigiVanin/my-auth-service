@@ -5,28 +5,30 @@ import (
 	"auth_service/app/middlewares/validators"
 	"auth_service/app/modules/register/services"
 	"auth_service/common/interfaces"
-	"fmt"
 
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
 )
 
 type RegisterController struct {
 	service  services.IRegisterService
+	logger   *zap.Logger
 	appGuard *guards.AppGuard
 }
 
 var _ interfaces.IController = &RegisterController{}
 
-func NewRegisterController(service services.IRegisterService, appGuard *guards.AppGuard) *RegisterController {
+func NewRegisterController(service services.IRegisterService, appGuard *guards.AppGuard, logger *zap.Logger) *RegisterController {
 	return &RegisterController{
 		service:  service,
 		appGuard: appGuard,
+		logger:   logger,
 	}
 }
 
 func (controller *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 
-	fmt.Println("Register Controller Triggered")
+	controller.logger.Info("Register Controller Triggered")
 	controller.service.Register()
 
 	return ctx.SendString("Register Controller Triggered")

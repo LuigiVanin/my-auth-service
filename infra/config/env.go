@@ -12,7 +12,8 @@ type ServerConfig struct {
 }
 
 type AppConfig struct {
-	Name string
+	Name          string
+	EncryptionKey string
 }
 
 type DatabaseConfig struct {
@@ -82,7 +83,8 @@ func NewConfigFromEnv() *Config {
 			Port: os.Getenv("SERVER_PORT"),
 		},
 		App: AppConfig{
-			Name: os.Getenv("APP_NAME"),
+			Name:          os.Getenv("APP_NAME"),
+			EncryptionKey: os.Getenv("APP_ENCRYPTION_KEY"),
 		},
 
 		Database: DatabaseConfig{

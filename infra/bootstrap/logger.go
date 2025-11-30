@@ -14,10 +14,13 @@ func NewZapLogger(cfg *config.Config) *zap.Logger {
 	if cfg.Env == "dev" {
 		loggerConfig = zap.NewDevelopmentConfig()
 		loggerConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		loggerConfig.EncoderConfig.ConsoleSeparator = " "
+		loggerConfig.EncoderConfig.ConsoleSeparator = "\n\t| "
+		loggerConfig.EncoderConfig.MessageKey = "message"
+
+		loggerConfig.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
 
 		loggerConfig.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-			enc.AppendString(t.Format("[15:04:05]:"))
+			enc.AppendString(t.Format("[15:04:05]"))
 		}
 
 		// Disable stack traces in development for cleaner logs

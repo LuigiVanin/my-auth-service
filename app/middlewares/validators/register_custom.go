@@ -3,15 +3,24 @@ package validators
 import (
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/models/dto"
-	"fmt"
+	e "auth_service/common/errors"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func RegisterValidator(ctx *fiber.Ctx) error {
 	registerMethod := ctx.Queries()["method"]
+	validatorMiddleware := middleware.BodyValidator[dto.RegisterRequestWithPassoword]()
 
-	fmt.Println(registerMethod)
+	switch registerMethod {
+	case "password":
+	case "":
+		validatorMiddleware = middleware.BodyValidator[dto.RegisterRequestWithPassoword]()
+	case "otp":
+		validatorMiddleware = middleware.BodyValidator[dto.RegisterRequestWithOtp]()
+	default:
+		return e.ThrowUnprocessableEntity("Invalid register method")
+	}
 
-	return (middleware.BodyValidator[dto.RegisterRequestWithPassoword]())(ctx)
+	return validatorMiddleware(ctx)
 }

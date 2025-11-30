@@ -7,14 +7,14 @@ import (
 )
 
 type UserPoolRepository struct {
-	db *sqlx.DB
+	client *sqlx.DB
 }
 
 var _ IUserPoolRepository = &UserPoolRepository{}
 
-func NewUserPoolRepository(db *sqlx.DB) IUserPoolRepository {
+func NewUserPoolRepository(client *sqlx.DB) IUserPoolRepository {
 	return &UserPoolRepository{
-		db: db,
+		client: client,
 	}
 }
 

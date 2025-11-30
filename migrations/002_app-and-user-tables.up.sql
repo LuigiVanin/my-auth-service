@@ -3,7 +3,7 @@ CREATE TYPE TOKEN_TYPE AS ENUM ('JWT', 'FAST_JWT', 'SESSION_UUID');
 
 CREATE TABLE apps (
   id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_pools_id UUID NOT NULL REFERENCES user_pools(id),
+  users_pool_id UUID NOT NULL REFERENCES users_pool(id),
 
   name TEXT NOT NULL,
   public_key TEXT NOT NULL,
@@ -24,12 +24,14 @@ CREATE TABLE apps (
   CONSTRAINT apps_login_types_check CHECK (array_length(login_types, 1) > 0)
 );
 
+
+
 CREATE TABLE users (
   -- this should behave as a user public id, exposed to the client and used to identify the user
   id SERIAL NOT NULL PRIMARY KEY,
   -- this should behave as a user private id, only exposed internally and used to sign JWT and Sessions
   uuid UUID NOT NULL UNIQUE DEFAULT uuid_generate_v4(),
-  user_pools_id UUID NOT NULL REFERENCES user_pools(id),
+  users_pool_id UUID NOT NULL REFERENCES users_pool(id),
   
   name TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -44,7 +46,7 @@ CREATE TABLE users (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-  CONSTRAINT users_email_user_pools_unique UNIQUE (email, user_pools_id)
+  CONSTRAINT users_email_users_pool_unique UNIQUE (email, users_pool_id)
 );
 
 CREATE INDEX users_email_idx ON users(email);

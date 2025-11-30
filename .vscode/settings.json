@@ -1,5 +1,6 @@
 {
   "editor.tabSize": 2,
 
-  "workbench.iconTheme": "material-icon-theme"
+  "workbench.iconTheme": "material-icon-theme",
+  "makefile.configureOnOpen": true
 }

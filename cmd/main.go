@@ -2,6 +2,8 @@ package main
 
 import (
 	"auth_service/app/middlewares/guards"
+	"auth_service/app/modules/app"
+	"auth_service/app/modules/cipher"
 	"auth_service/app/modules/register"
 	"auth_service/app/modules/user_pool"
 	"auth_service/infra/bootstrap"
@@ -21,6 +23,9 @@ func main() {
 		fx.Provide(bootstrap.NewHttpServer),
 
 		fx.Provide(guards.NewAppGuard),
+
+		cipher.Module,
+		app.Module,
 		user_pool.Module,
 		register.Module,
 

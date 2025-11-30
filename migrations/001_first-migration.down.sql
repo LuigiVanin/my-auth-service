@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS user_pools;
+DROP TABLE IF EXISTS users_pool;

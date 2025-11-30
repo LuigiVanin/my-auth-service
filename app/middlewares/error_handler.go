@@ -2,6 +2,7 @@ package middleware
 
 import (
 	e "auth_service/common/errors"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -25,7 +26,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 		if appErr, ok := err.(*e.GlobalError); ok {
 			problemDetail := appErr.IntoProblemDetail(instance)
 
-			logError(logger, ctx, "Request error",
+			logError(logger, ctx, fmt.Sprintf("Request error: %s", problemDetail.Detail),
 				zap.String("code", string(appErr.Code)),
 				zap.Int("status", problemDetail.Status),
 				zap.String("detail", appErr.Detail),

@@ -6,15 +6,24 @@ import (
 )
 
 type User struct {
-	ID           string          `db:"id"`
-	Uuid         string          `db:"uuid"`
-	UsersPoolId  string          `db:"users_pool_id"`
-	Name         string          `db:"name"`
-	Email        string          `db:"email"`
-	Phone        string          `db:"phone"`
-	VerifyEmail  bool            `db:"verify_email"`
-	PasswordHash string          `db:"password_hash"`
-	Metadata     json.RawMessage `db:"metadata"`
-	CreatedAt    time.Time       `db:"created_at"`
-	UpdatedAt    time.Time       `db:"updated_at"`
+	ID               uint            `gorm:"primaryKey;autoIncrement"`
+	Uuid             string          `gorm:"type:uuid;default:uuid_generate_v4();unique;not null"`
+	UsersPoolId      string          `gorm:"type:uuid;not null;uniqueIndex:users_email_users_pool_unique,priority:2"`
+	ProfileId        string          `gorm:"type:uuid;not null"`
+	Name             string          `gorm:"not null"`
+	Email            string          `gorm:"not null;uniqueIndex:users_email_users_pool_unique,priority:1"`
+	Phone            string          `gorm:"default:null"`
+	VerifyEmail      bool            `gorm:"not null;default:false"`
+	TwoFactorEnabled bool            `gorm:"not null;default:false"`
+	PasswordHash     string          `gorm:"not null"`
+	Metadata         json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`
+	CreatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null"`
+	UpdatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null"`
+
+	UsersPool *UsersPool `gorm:"foreignKey:UsersPoolId"`
+	Profile   *Profile   `gorm:"foreignKey:ProfileId"`
+}
+
+func (User) TableName() string {
+	return "users"
 }

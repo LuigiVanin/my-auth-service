@@ -3,31 +3,37 @@ package entity
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type App struct {
-	ID          string `db:"id"`
-	UsersPoolId string `db:"users_pool_id"`
+	ID          string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	UsersPoolId string `gorm:"type:uuid;not null"`
 
-	PublicKey string `db:"public_key"`
-	SecretKey string `db:"secret_key"`
+	PublicKey string `gorm:"not null"`
+	SecretKey string `gorm:"not null"`
 
-	Name string `db:"name"`
+	Name string `gorm:"not null"`
 
-	LoginTypes          []string `db:"login_types"`
-	TokenType           string   `db:"token_type"`
-	TokenExpirationTime int64    `db:"token_expiration_time"`
+	Role string `gorm:"type:APP_ROLE;default:'USER';not null"`
 
-	Private     bool `db:"private"`
-	VerifyEmail bool `db:"verify_email"`
+	LoginTypes          pq.StringArray `gorm:"type:AUTH_METHOD[];not null"`
+	TokenType           string         `gorm:"type:TOKEN_TYPE;not null"`
+	TokenExpirationTime int64          `gorm:"not null"`
 
-	Metadata json.RawMessage `db:"metadata"`
+	Private           bool       `gorm:"default:false;not null"`
+	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date"`
+	VerifyEmail       bool       `gorm:"-"`
 
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	Metadata json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`
+
+	UsersPool UsersPool `gorm:"foreignKey:UsersPoolId"`
+
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
 }
 
-type AppWithPool struct {
-	App  `db:"app"`
-	Pool UserPool `db:"users_pool"`
+func (App) TableName() string {
+	return "apps"
 }

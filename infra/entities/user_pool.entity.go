@@ -2,10 +2,14 @@ package entity
 
 import "time"
 
-type UserPool struct {
-	ID   string `db:"id"`
-	Name string `db:"name"`
+type UsersPool struct {
+	ID   string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Name string `gorm:"not null"`
 
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
+}
+
+func (UsersPool) TableName() string {
+	return "users_pool"
 }

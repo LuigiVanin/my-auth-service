@@ -10,14 +10,14 @@ import (
 
 func RegisterValidator(ctx *fiber.Ctx) error {
 	registerMethod := ctx.Queries()["method"]
-	validatorMiddleware := middleware.BodyValidator[dto.RegisterRequestWithPassoword]()
+	validatorMiddleware := middleware.BodyValidator[dto.RegisterPayloadWithPassoword]()
 
 	switch registerMethod {
 	case "password":
 	case "":
-		validatorMiddleware = middleware.BodyValidator[dto.RegisterRequestWithPassoword]()
+		validatorMiddleware = middleware.BodyValidator[dto.RegisterPayloadWithPassoword]()
 	case "otp":
-		validatorMiddleware = middleware.BodyValidator[dto.RegisterRequestWithOtp]()
+		validatorMiddleware = middleware.BodyValidator[dto.RegisterPayloadWithOtp]()
 	default:
 		return e.ThrowUnprocessableEntity("Invalid register method")
 	}

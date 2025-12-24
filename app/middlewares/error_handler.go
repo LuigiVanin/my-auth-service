@@ -27,7 +27,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 			problemDetail := appErr.IntoProblemDetail(instance)
 
 			logError(logger, ctx, fmt.Sprintf("Request error: %s", problemDetail.Detail),
-				zap.String("code", string(appErr.Code)),
+				zap.String("code", string(appErr.Code.First)),
 				zap.Int("status", problemDetail.Status),
 				zap.String("detail", appErr.Detail),
 			)
@@ -49,7 +49,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 					"detail":   validationErr.Error(),
 					"instance": instance,
 					"errors":   validationErr.List,
-					"code":     string(e.UnprocessableEntityErrorCode),
+					"code":     e.UnprocessableEntityErrorCode.First,
 				},
 			)
 		}

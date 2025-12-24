@@ -1,18 +1,57 @@
 package errors
 
-const (
-	InternalServerErrorCode GlobalErrorCode = "INTERNAL_SERVER_ERROR"
+import (
+	"auth_service/common/utils"
 
-	BadRequestCode GlobalErrorCode = "BAD_REQUEST"
+	"github.com/gofiber/fiber/v2"
+)
 
-	UnauthorizedErrorCode GlobalErrorCode = "UNAUTHORIZED"
-	TokenExpiredErrorCode GlobalErrorCode = "TOKEN_EXPIRED"
+type ErrorCodePair = utils.Pair[GlobalErrorCode, int]
 
-	ConflictErrorCode     GlobalErrorCode = "CONFLICT"
-	UserAlreadyExistsCode GlobalErrorCode = "USER_ALREADY_EXISTS"
+var (
+	InternalServerErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "INTERNAL_SERVER_ERROR",
+		Second: fiber.StatusInternalServerError,
+	}
+	NotImplementedErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "NOT_IMPLEMENTED",
+		Second: fiber.StatusNotImplemented,
+	}
 
-	UnprocessableEntityErrorCode GlobalErrorCode = "UNPROCESSABLE_ENTITY"
-	ValidationErrorCode          GlobalErrorCode = "VALIDATION_ERROR"
+	BadRequestCode ErrorCodePair = ErrorCodePair{
+		First:  "BAD_REQUEST",
+		Second: fiber.StatusBadRequest,
+	}
 
-	NotFoundErrorCode GlobalErrorCode = "NOT_FOUND"
+	UnauthorizedErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "UNAUTHORIZED",
+		Second: fiber.StatusUnauthorized,
+	}
+	TokenExpiredErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "TOKEN_EXPIRED",
+		Second: fiber.StatusUnauthorized,
+	}
+
+	ConflictErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "CONFLICT",
+		Second: fiber.StatusConflict,
+	}
+	UserAlreadyExistsCode ErrorCodePair = ErrorCodePair{
+		First:  "USER_ALREADY_EXISTS",
+		Second: fiber.StatusConflict,
+	}
+
+	UnprocessableEntityErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "UNPROCESSABLE_ENTITY",
+		Second: fiber.StatusUnprocessableEntity,
+	}
+	ValidationErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "VALIDATION_ERROR",
+		Second: fiber.StatusUnprocessableEntity,
+	}
+
+	NotFoundErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "NOT_FOUND",
+		Second: fiber.StatusNotFound,
+	}
 )

@@ -61,30 +61,34 @@ func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
 		return e.ThrowUnauthorizedError("Invalid X-Pool-Key")
 	}
 
-	appWithPool, err := guard.appRepository.FindAppbyIdWithPool(appUuid)
+	app, err := guard.appRepository.FindAppbyIdWithPool(appUuid)
 
-	if err != nil || appWithPool == nil {
+	fmt.Println(app)
+
+	if err != nil || app == nil {
 		return e.ThrowNotFound(fmt.Sprintf("Error Searching for App: `%s`", err.Error()))
 	}
 
-	if appWithPool.Pool.ID != poolUuid {
+	if app.UsersPoolId != poolUuid {
 		return e.ThrowUnauthorizedError("Invalid X-Pool-Key: `Mismatching pool key and app public key`")
 	}
 
-	if appWithPool.App.Private {
+	if app.Private {
 		if secretKey == "" {
 			return e.ThrowUnauthorizedError("X-Secret-Key is required for private apps")
 		}
 
-		if appWithPool.App.SecretKey != secretKey {
+		if app.SecretKey != secretKey {
 			return e.ThrowUnauthorizedError("Invalid X-Secret-Key")
 		}
 
 		ctx.Locals("secretKey", secretKey)
 	}
 
-	ctx.Locals("app", appWithPool.App)
-	ctx.Locals("pool", appWithPool.Pool)
+	fmt.Println("\npool: ", app.UsersPool.ID)
+
+	ctx.Locals("app", app)
+	ctx.Locals("pool", &app.UsersPool)
 
 	return ctx.Next()
 }

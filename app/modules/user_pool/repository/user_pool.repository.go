@@ -18,7 +18,7 @@ func NewUserPoolRepository(client *gorm.DB) IUserPoolRepository {
 	}
 }
 
-func (r *UserPoolRepository) FindByAppIdAndPoolId(id string, appId string) (*entity.UserPool, error) {
+func (r *UserPoolRepository) FindByAppIdAndPoolId(id string, appId string) (*entity.UsersPool, error) {
 	// Implementation was empty in original code.
 	// Preserving empty implementation but complying with GORM structure.
 	return nil, nil

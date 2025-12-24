@@ -28,7 +28,7 @@ type App struct {
 
 	Metadata json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`
 
-	UsersPool UserPool `gorm:"foreignKey:UsersPoolId"`
+	UsersPool UsersPool `gorm:"foreignKey:UsersPoolId"`
 
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
 	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`

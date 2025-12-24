@@ -2,7 +2,7 @@ package entity
 
 import "time"
 
-type UserPool struct {
+type UsersPool struct {
 	ID   string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
 	Name string `gorm:"not null"`
 
@@ -10,6 +10,6 @@ type UserPool struct {
 	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
 }
 
-func (UserPool) TableName() string {
+func (UsersPool) TableName() string {
 	return "users_pool"
 }

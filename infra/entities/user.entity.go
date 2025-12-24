@@ -20,8 +20,8 @@ type User struct {
 	CreatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null"`
 	UpdatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null"`
 
-	UsersPool *UserPool `gorm:"foreignKey:UsersPoolId"`
-	Profile   *Profile  `gorm:"foreignKey:ProfileId"`
+	UsersPool *UsersPool `gorm:"foreignKey:UsersPoolId"`
+	Profile   *Profile   `gorm:"foreignKey:ProfileId"`
 }
 
 func (User) TableName() string {

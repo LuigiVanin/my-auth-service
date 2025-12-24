@@ -85,8 +85,10 @@ func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
 		ctx.Locals("secretKey", secretKey)
 	}
 
+	fmt.Println("\npool: ", app.UsersPool.ID)
+
 	ctx.Locals("app", app)
-	ctx.Locals("pool", app.UsersPool)
+	ctx.Locals("pool", &app.UsersPool)
 
 	return ctx.Next()
 }

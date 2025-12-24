@@ -43,7 +43,7 @@ func main() {
 
 	// 3. AutoMigrate
 	err = db.AutoMigrate(
-		&entity.UserPool{},
+		&entity.UsersPool{},
 		&entity.Profile{},
 		&entity.App{},
 		&entity.User{},

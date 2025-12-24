@@ -1,7 +1,9 @@
 package repository
 
-import entity "auth_service/infra/entities"
+import (
+	entity "auth_service/infra/entities"
+)
 
 type IAppRepository interface {
-	FindAppbyIdWithPool(id string) (*entity.AppWithPool, error)
+	FindAppbyIdWithPool(id string) (*entity.App, error)
 }

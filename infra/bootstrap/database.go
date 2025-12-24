@@ -3,13 +3,13 @@ package bootstrap
 import (
 	"auth_service/infra/config"
 
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	"go.uber.org/zap"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-func NewDatabase(cfg *config.Config, logger *zap.Logger) *sqlx.DB {
-	db, err := sqlx.Connect("postgres", cfg.FormatDatabaseUrl())
+func NewDatabase(cfg *config.Config, logger *zap.Logger) *gorm.DB {
+	db, err := gorm.Open(postgres.Open(cfg.FormatDatabaseUrl()), &gorm.Config{})
 
 	if err != nil {
 		logger.Error("failed to connect to database", zap.Error(err))

@@ -2,81 +2,66 @@ package main
 
 import (
 	"auth_service/infra/config"
-	"database/sql"
+	entity "auth_service/infra/entities"
 	"fmt"
-	"os"
+	"log"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-func RunMigrations(db *sql.DB, url string, command string) error {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-
-	if err != nil {
-		fmt.Println("Failed to create driver: ", err.Error())
-		return err
-	}
-
-	fmt.Print("Created Driver Successfully(postgres)!\n\n")
-
-	fmt.Println("Running migrations...")
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		"postgres",
-		driver,
-	)
-
-	if err != nil {
-		fmt.Println("Failed to create migration instance: ", err.Error())
-		return err
-	}
-
-	switch command {
-	case "up":
-		fmt.Println("Migration type is UP ⬆️")
-		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-			fmt.Println("Failed to run migrations: ", err.Error())
-			return err
-		}
-	case "down":
-		fmt.Println("Migration type is DOWN ⬇️")
-		if err := m.Down(); err != nil && err != migrate.ErrNoChange {
-			fmt.Println("Failed to run migrations: ", err.Error())
-			return err
-		}
-	}
-
-	fmt.Print("Created Migration Instance Successfully!\n\n")
-	return nil
-}
-
 func main() {
-	fmt.Println("Running migrations...")
-
-	// the first arg refers to the execution location
-	userArgs := os.Args[1:]
-	command := "up"
-
-	fmt.Println("User arg: ", userArgs)
-	if len(userArgs) != 0 {
-		command = userArgs[0]
-	}
-
 	cfg := config.NewConfigFromEnv()
-	url := cfg.FormatDatabaseUrl()
+	dsn := cfg.FormatDatabaseUrl()
 
-	db, err := sql.Open("postgres", url)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(fmt.Sprintf("Failed to open database: %s", err.Error()))
+		log.Fatal("Failed to connect to database:", err)
 	}
-	defer db.Close()
 
-	if err := RunMigrations(db, url, command); err != nil {
-		panic(fmt.Sprintf("Failed to run migrations: %s", err.Error()))
+	fmt.Println("Running migrations with GORM...")
+
+	// 1. Create Extensions
+	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";").Error; err != nil {
+		log.Printf("Failed to create extension: %v", err)
+	}
+
+	// 2. Create Enums
+	createEnum(db, "auth_method", "'WITH_LOGIN', 'WITH_OTP'")
+	createEnum(db, "token_type", "'JWT', 'FAST_JWT', 'SESSION_UUID'")
+	createEnum(db, "app_role", "'ADMIN', 'USER'")
+	// Postgres types are case-insensitive usually, but typically lowercase in pg_type.
+	// The previous migration used caps: CREATE TYPE AUTH_METHOD ...
+	// Postgres will store it as `auth_method` usually unless quoted.
+	// I'll stick to what the SQL used: caps in creation query if unquoted -> lowercase in DB?
+	// SQL: CREATE TYPE AUTH_METHOD ... -> creates auth_method.
+	// My createEnum uses name as provided.
+	// I will use lowercase names in createEnum to match Postgres behavior and avoid issues?
+	// Wait, the original migration used `AUTH_METHOD` (unquoted).
+	// `SELECT typname FROM pg_type` returns lowercase.
+	// So I should check for lowercase.
+
+	// 3. AutoMigrate
+	err = db.AutoMigrate(
+		&entity.UserPool{},
+		&entity.Profile{},
+		&entity.App{},
+		&entity.User{},
+	)
+	if err != nil {
+		log.Fatal("Migration failed:", err)
 	}
 
 	fmt.Println("Migrations Finished ✅")
+}
+
+func createEnum(db *gorm.DB, name string, values string) {
+	var exists bool
+	// Check for lower case version of name as Postgres normalizes unquoted identifiers
+	db.Raw("SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = lower(?))", name).Scan(&exists)
+	if !exists {
+		if err := db.Exec(fmt.Sprintf("CREATE TYPE %s AS ENUM (%s);", name, values)).Error; err != nil {
+			log.Printf("Failed to create enum %s: %v", name, err)
+		}
+	}
 }

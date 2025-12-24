@@ -45,13 +45,11 @@ func (r *AppRepository) FindAppbyIdWithPool(id string) (*entity.AppWithPool, err
 		a.created_at AS apps_created_at,
 		a.updated_at AS apps_updated_at
 		
-	FROM users_pool AS up
-		JOIN apps AS a
+	FROM users_pool AS up JOIN apps AS a
 		ON a.users_pool_id = up.id
 	WHERE a.id = $1
 	`
 
-	// Helper struct to scan the flat result
 	var dest struct {
 		PoolName      string    `db:"users_pool_name"`
 		PoolID        string    `db:"users_pool_id"`
@@ -78,7 +76,6 @@ func (r *AppRepository) FindAppbyIdWithPool(id string) (*entity.AppWithPool, err
 		return nil, err
 	}
 
-	// Map to domain entity
 	appWithPool := &entity.AppWithPool{
 		Pool: entity.UserPool{
 			ID:        dest.PoolID,

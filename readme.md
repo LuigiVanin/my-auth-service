@@ -13,4 +13,7 @@ make migrate up
 
 # Run the DOWN command of the migration
 make migrate down
+
+# Start database with ADMIN app and ADMIN user
+make init
 ```

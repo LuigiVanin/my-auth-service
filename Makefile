@@ -1,7 +1,10 @@
 CMD_MAIN := ./cmd/main.go
-CMD_MIGRATE := ./cmd/database/migrate.go
+CMD_MIGRATE := ./cmd/database/migration/main.go
+CMD_START_UP := ./cmd/database/init/main.go
 CMD_CIPHER := ./cmd/helpers/chipher.go
-.PHONY: run dev build migrate create-migration
+
+.PHONY: run dev build migrate create-migration init
+
 
 run:
 	go run $(CMD_MAIN)
@@ -21,6 +24,9 @@ create-migration:
 		exit 1; \
 	fi
 	./migrate create -ext sql -dir ./migrations -digits 3 -seq $(filter-out $@,$(MAKECMDGOALS))
+
+init:
+	go run $(CMD_START_UP)
 
 cipher:
 	go run $(CMD_CIPHER) $(filter-out $@,$(MAKECMDGOALS))

@@ -3,5 +3,6 @@ tmp/
 bin/
 build/
 node_modules/
+credentials.txt
 
 migrate

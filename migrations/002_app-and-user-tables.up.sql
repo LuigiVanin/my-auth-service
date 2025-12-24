@@ -1,13 +1,18 @@
 CREATE TYPE AUTH_METHOD AS ENUM ('WITH_LOGIN', 'WITH_OTP');
 CREATE TYPE TOKEN_TYPE AS ENUM ('JWT', 'FAST_JWT', 'SESSION_UUID');
 
+CREATE TYPE APP_ROLE AS ENUM ('ADMIN', 'USER');
+
 CREATE TABLE apps (
   id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
   users_pool_id UUID NOT NULL REFERENCES users_pool(id),
 
   name TEXT NOT NULL,
+
   public_key TEXT NOT NULL,
   secret_key TEXT NOT NULL,
+
+  role APP_ROLE NOT NULL DEFAULT 'USER',
 
   private BOOLEAN NOT NULL DEFAULT FALSE,
   verified_email_date TIMESTAMP DEFAULT NULL,
@@ -24,6 +29,20 @@ CREATE TABLE apps (
   CONSTRAINT apps_login_types_check CHECK (array_length(login_types, 1) > 0)
 );
 
+CREATE TABLE profiles (
+  id UUID NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
+  parent_profile_id UUID REFERENCES profiles(id),
+
+  name TEXT NOT NULL,
+  key TEXT NOT NULL UNIQUE,
+  
+  permissions JSONB NOT NULL DEFAULT '{}',
+  metadata JSONB NOT NULL DEFAULT '{}',
+
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+);
 
 
 CREATE TABLE users (
@@ -32,12 +51,14 @@ CREATE TABLE users (
   -- this should behave as a user private id, only exposed internally and used to sign JWT and Sessions
   uuid UUID NOT NULL UNIQUE DEFAULT uuid_generate_v4(),
   users_pool_id UUID NOT NULL REFERENCES users_pool(id),
+  profile_id UUID NOT NULL REFERENCES profiles(id),
   
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT,
 
   verify_email BOOLEAN NOT NULL DEFAULT FALSE,
+  two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
 
   password_hash TEXT NOT NULL,
 
@@ -48,5 +69,7 @@ CREATE TABLE users (
 
   CONSTRAINT users_email_users_pool_unique UNIQUE (email, users_pool_id)
 );
+
+
 
 CREATE INDEX users_email_idx ON users(email);

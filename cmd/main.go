@@ -5,6 +5,7 @@ import (
 	"auth_service/app/modules/app"
 	"auth_service/app/modules/cipher"
 	"auth_service/app/modules/hash"
+	"auth_service/app/modules/login"
 	"auth_service/app/modules/register"
 	"auth_service/app/modules/user_pool"
 	"auth_service/infra/bootstrap"
@@ -30,6 +31,7 @@ func main() {
 		app.Module,
 		user_pool.Module,
 		register.Module,
+		login.Module,
 
 		fx.Invoke(bootstrap.StartServer),
 

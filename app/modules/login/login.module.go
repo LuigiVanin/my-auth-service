@@ -1,8 +1,8 @@
-package register
+package login
 
 import (
-	"auth_service/app/modules/register/controller"
-	"auth_service/app/modules/register/services"
+	"auth_service/app/modules/login/controller"
+	"auth_service/app/modules/login/services"
 	ur "auth_service/app/modules/user/repository"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,7 +10,7 @@ import (
 )
 
 var Module = fx.Module(
-	"register",
+	"login",
 
 	fx.Provide(
 		fx.Private,
@@ -23,14 +23,14 @@ var Module = fx.Module(
 	fx.Provide(
 		fx.Private,
 		fx.Annotate(
-			services.NewRegisterService,
-			fx.As(new(services.IRegisterService)),
+			services.NewLoginService,
+			fx.As(new(services.ILoginService)),
 		),
 	),
 
-	fx.Provide(controller.NewRegisterController),
+	fx.Provide(controller.NewLoginController),
 
-	fx.Invoke(func(server *fiber.App, controller *controller.RegisterController) {
+	fx.Invoke(func(server *fiber.App, controller *controller.LoginController) {
 		controller.Register(server)
 	}),
 )

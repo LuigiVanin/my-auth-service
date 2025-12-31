@@ -54,4 +54,9 @@ var (
 		First:  "NOT_FOUND",
 		Second: fiber.StatusNotFound,
 	}
+
+	NotAllowedErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "NOT_ALLOWED",
+		Second: fiber.StatusMethodNotAllowed,
+	}
 )

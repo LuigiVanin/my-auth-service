@@ -20,10 +20,10 @@ func logError(logger *zap.Logger, ctx *fiber.Ctx, message string, fields ...zap.
 }
 
 func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
-	return func(ctx *fiber.Ctx, err error) error {
+	return func(ctx *fiber.Ctx, requestError error) error {
 		instance := ctx.OriginalURL()
 
-		if appErr, ok := err.(*e.GlobalError); ok {
+		if appErr, ok := requestError.(*e.GlobalError); ok {
 			problemDetail := appErr.IntoProblemDetail(instance)
 
 			logError(logger, ctx, fmt.Sprintf("Request error: %s", problemDetail.Detail),
@@ -37,7 +37,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 				JSON(problemDetail)
 		}
 
-		if validationErr, ok := err.(ValidationError); ok {
+		if validationErr, ok := requestError.(ValidationError); ok {
 			logError(logger, ctx, "Validation error",
 				zap.String("detail", validationErr.Error()),
 			)
@@ -55,7 +55,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 		}
 
 		logError(logger, ctx, "Unexpected error",
-			zap.Error(err),
+			zap.Error(requestError),
 		)
 
 		return ctx.Status(fiber.StatusInternalServerError).JSON(
@@ -63,7 +63,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 				"about:blank",
 				"Unexpected Internal Error",
 				fiber.StatusInternalServerError,
-				err.Error(),
+				requestError.Error(),
 				instance,
 				"",
 			),

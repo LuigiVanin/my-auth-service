@@ -49,3 +49,8 @@ func (r *UserRepository) FindManyWhere(where entity.User, with ...string) (*[]en
 
 	return &result, err
 }
+
+func (r *UserRepository) Create(user entity.User) (*entity.User, error) {
+	err := r.client.Create(&user).Error
+	return &user, err
+}

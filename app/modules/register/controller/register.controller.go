@@ -8,7 +8,6 @@ import (
 	e "auth_service/common/errors"
 	"auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
-	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -36,18 +35,13 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 
 	app := ctx.Locals("app").(*entity.App)
 
-	appId := app.ID
-	usersPoolId := app.UsersPool.ID
-
 	method := ctx.Queries()["method"]
 
 	var payload dto.RegisterPayloadWithPassoword
 
-	ctx.BodyParser(&payload)
-
-	fmt.Println("Payload: ", payload)
-	fmt.Println("AppId: ", appId)
-	fmt.Println("UsersPoolId: ", usersPoolId)
+	if err := ctx.BodyParser(&payload); err != nil {
+		return e.ThrowBadRequest(err.Error())
+	}
 
 	if method == "otp" {
 		return this.service.RegisterWithOtp()
@@ -55,7 +49,7 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 
 	if method == "password" || method == "" {
 
-		user, err := this.service.RegisterWithPassword(appId, usersPoolId, payload)
+		user, err := this.service.RegisterWithPassword(app, payload)
 
 		if err != nil {
 			return err

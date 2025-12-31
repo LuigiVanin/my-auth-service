@@ -24,6 +24,16 @@ func NewGlobalError(title string, code ErrorCodePair, detail string) *GlobalErro
 	}
 }
 
+func ThrowNotAllowed(detail string) *GlobalError {
+
+	return &GlobalError{
+		Title:  "Not Allowed",
+		Code:   NotAllowedErrorCode,
+		Detail: detail,
+		Type:   "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/405",
+	}
+}
+
 func ThrowBadRequest(detail string) *GlobalError {
 	return &GlobalError{
 		Title:  "Bad Request",

@@ -7,6 +7,8 @@ import (
 	"auth_service/app/modules/hash"
 	"auth_service/app/modules/login"
 	"auth_service/app/modules/register"
+	"auth_service/app/modules/session"
+	"auth_service/app/modules/tokenizer"
 	"auth_service/app/modules/user_pool"
 	"auth_service/infra/bootstrap"
 	"auth_service/infra/config"
@@ -30,6 +32,8 @@ func main() {
 		hash.Module,
 		app.Module,
 		user_pool.Module,
+		session.Module,
+		tokenizer.Module,
 		register.Module,
 		login.Module,
 

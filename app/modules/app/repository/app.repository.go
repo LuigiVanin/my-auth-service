@@ -12,7 +12,7 @@ type AppRepository struct {
 
 var _ IAppRepository = &AppRepository{}
 
-func NewAppRepository(client *gorm.DB) IAppRepository {
+func NewAppRepository(client *gorm.DB) *AppRepository {
 	return &AppRepository{
 		client: client,
 	}

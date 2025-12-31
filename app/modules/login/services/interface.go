@@ -9,10 +9,12 @@ type ILoginService interface {
 	LoginWithPassword(
 		app *entity.App,
 		userData dto.LoginPayloadWithPassoword,
-	) (*entity.User, error)
+		request dto.RequestInfo,
+	) (*dto.LoginResponse, error)
 
 	LoginWithOtp(
 		app *entity.App,
 		userData dto.LoginPayloadWithOtp,
-	) (*entity.User, error)
+		request dto.RequestInfo,
+	) (*dto.LoginResponse, error)
 }

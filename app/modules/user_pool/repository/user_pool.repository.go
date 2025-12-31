@@ -12,7 +12,7 @@ type UserPoolRepository struct {
 
 var _ IUserPoolRepository = &UserPoolRepository{}
 
-func NewUserPoolRepository(client *gorm.DB) IUserPoolRepository {
+func NewUserPoolRepository(client *gorm.DB) *UserPoolRepository {
 	return &UserPoolRepository{
 		client: client,
 	}

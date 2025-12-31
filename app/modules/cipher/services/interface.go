@@ -1,6 +1,6 @@
 package services
 
 type ICipherService interface {
-	EncryptUuidIntoToken(uuid string) (string, error)
-	DecryptUuidToken(token string) (string, error)
+	EncryptUuidIntoToken(uuid string, options ...CipherServiceOptions) (string, error)
+	DecryptUuidToken(token string, options ...CipherServiceOptions) (string, error)
 }

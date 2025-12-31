@@ -16,6 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var _ IRegisterService = &RegisterService{}
+
 type RegisterService struct {
 	userPoolRepository upr.IUserPoolRepository
 	userRepository     ur.IUserRepository
@@ -23,7 +25,8 @@ type RegisterService struct {
 	hashService        hs.IHashService
 }
 
-func NewRegisterService(userPoolRepository upr.IUserPoolRepository, userRepository ur.IUserRepository, logger *zap.Logger, hashService hs.IHashService) IRegisterService {
+func NewRegisterService(userPoolRepository upr.IUserPoolRepository, userRepository ur.IUserRepository, logger *zap.Logger, hashService hs.IHashService) *RegisterService {
+
 	return &RegisterService{
 		userPoolRepository: userPoolRepository,
 		userRepository:     userRepository,

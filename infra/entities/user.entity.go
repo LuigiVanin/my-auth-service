@@ -21,7 +21,7 @@ type User struct {
 	UpdatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updatedAt"`
 
 	UsersPool *UsersPool `gorm:"foreignKey:UsersPoolId" json:"-"`
-	Profile   *Profile   `gorm:"foreignKey:ProfileId" json:"profile"`
+	Profile   *Profile   `gorm:"foreignKey:ProfileId" json:"profile,omitempty"`
 }
 
 func (User) TableName() string {

@@ -36,8 +36,12 @@ func (this *LoginController) LoginUser(ctx *fiber.Ctx) error {
 
 	method := ctx.Queries()["method"]
 
-	var user *entity.User
+	var response *dto.LoginResponse
 	var err error
+	requestInfo := dto.RequestInfo{
+		IpAddress: ctx.IP(),
+		UserAgent: ctx.Get("User-Agent"),
+	}
 
 	if method == "otp" {
 		payload, reqErr := parseLoginBody[dto.LoginPayloadWithOtp](ctx)
@@ -45,7 +49,7 @@ func (this *LoginController) LoginUser(ctx *fiber.Ctx) error {
 			return reqErr
 		}
 
-		user, err = this.service.LoginWithOtp(app, payload)
+		response, err = this.service.LoginWithOtp(app, payload, requestInfo)
 	}
 
 	if method == "password" || method == "" {
@@ -54,14 +58,14 @@ func (this *LoginController) LoginUser(ctx *fiber.Ctx) error {
 			return reqErr
 		}
 
-		user, err = this.service.LoginWithPassword(app, payload)
+		response, err = this.service.LoginWithPassword(app, payload, requestInfo)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(user)
+	return ctx.Status(fiber.StatusOK).JSON(response)
 }
 
 func (this *LoginController) Register(server *fiber.App) {

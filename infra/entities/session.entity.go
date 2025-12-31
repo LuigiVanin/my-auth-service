@@ -7,7 +7,7 @@ import (
 
 type Session struct {
 	ID           string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	UserId       string `gorm:"type:uuid;not null"`
+	UserId       uint   `gorm:"not null"`
 	AppId        string `gorm:"type:uuid;not null"`
 	Token        string `gorm:"not null;type:uuid;default:uuid_generate_v4()" json:"-"`
 	RefreshToken string `gorm:"not null;type:uuid;default:uuid_generate_v4()" json:"-"`

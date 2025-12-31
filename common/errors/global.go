@@ -13,14 +13,24 @@ type GlobalError struct {
 	Code   ErrorCodePair
 	Detail string
 	Type   string
+	Extra  map[string]any
 }
 
-func NewGlobalError(title string, code ErrorCodePair, detail string) *GlobalError {
+func NewGlobalError(title string, code ErrorCodePair, detail string, extra ...map[string]any) *GlobalError {
+
+	extraInfo := make(map[string]any)
+
+	for _, extra := range extra {
+		for key, value := range extra {
+			extraInfo[key] = value
+		}
+	}
 
 	return &GlobalError{
 		Title:  title,
 		Code:   code,
 		Detail: detail,
+		Extra:  extraInfo,
 	}
 }
 

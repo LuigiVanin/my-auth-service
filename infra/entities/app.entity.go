@@ -18,9 +18,10 @@ type App struct {
 
 	Role string `gorm:"type:APP_ROLE;default:'USER';not null"`
 
-	LoginTypes          pq.StringArray `gorm:"type:AUTH_METHOD[];not null"`
-	TokenType           string         `gorm:"type:TOKEN_TYPE;not null"`
-	TokenExpirationTime int64          `gorm:"not null"`
+	LoginTypes                 pq.StringArray `gorm:"type:AUTH_METHOD[];not null"`
+	TokenType                  string         `gorm:"type:TOKEN_TYPE;not null"`
+	TokenExpirationTime        int64          `gorm:"not null"`
+	RefreshTokenExpirationTime int64          `gorm:"not null;default:1296000"` // 15 days
 
 	Private           bool       `gorm:"default:false;not null"`
 	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date"`

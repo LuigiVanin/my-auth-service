@@ -6,17 +6,24 @@ import (
 	"regexp"
 )
 
+var _ ICipherService = &CipherService{}
+
 type CipherService struct {
 	cfg *config.Config
 }
 
-func NewCipherService(cfg *config.Config) ICipherService {
+type CipherServiceOptions struct {
+	Prefix      string
+	OverrideKey string
+}
+
+func NewCipherService(cfg *config.Config) *CipherService {
 	return &CipherService{
 		cfg: cfg,
 	}
 }
 
-func (service *CipherService) EncryptUuidIntoToken(uuid string) (string, error) {
+func (service *CipherService) EncryptUuidIntoToken(uuid string, options ...CipherServiceOptions) (string, error) {
 	cipher := utils.NewCipher(service.cfg.App.EncryptionKey)
 
 	token, err := cipher.EncryptUuid(uuid)
@@ -30,7 +37,7 @@ func (service *CipherService) EncryptUuidIntoToken(uuid string) (string, error) 
 	return formattedToken, nil
 }
 
-func (service *CipherService) DecryptUuidToken(token string) (string, error) {
+func (service *CipherService) DecryptUuidToken(token string, options ...CipherServiceOptions) (string, error) {
 	token = regexp.MustCompile("^as_").ReplaceAllString(token, "")
 
 	cipher := utils.NewCipher(service.cfg.App.EncryptionKey)

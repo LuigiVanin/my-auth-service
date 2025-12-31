@@ -2,5 +2,7 @@
   "editor.tabSize": 2,
 
   "workbench.iconTheme": "material-icon-theme",
-  "makefile.configureOnOpen": true
+  "makefile.configureOnOpen": true,
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--fast"]
 }

@@ -9,8 +9,7 @@ type IRegisterService interface {
 	Register() error
 
 	RegisterWithPassword(
-		appId string,
-		usersPoolId string,
+		app *entity.App,
 		userData dto.RegisterPayloadWithPassoword,
 	) (*entity.User, error)
 

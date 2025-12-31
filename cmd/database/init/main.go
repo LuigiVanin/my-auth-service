@@ -43,10 +43,10 @@ func main() {
 	// Defer rollback in case of panic or error (if not committed)
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			panic(p) // re-panic after rollback
 		} else if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 		}
 	}()
 

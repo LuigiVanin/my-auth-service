@@ -4,7 +4,6 @@ import (
 	"auth_service/app/models/dto"
 	hs "auth_service/app/modules/hash/services"
 	ss "auth_service/app/modules/session/services"
-	ts "auth_service/app/modules/tokenizer/services"
 	ur "auth_service/app/modules/user/repository"
 	"strconv"
 
@@ -20,25 +19,24 @@ import (
 var _ ILoginService = &LoginService{}
 
 type LoginService struct {
-	userRepository   ur.IUserRepository
-	hashService      hs.IHashService
-	sessionService   ss.ISessionService
-	tokenizerService ts.ITokenizerService
-	logger           *zap.Logger
+	userRepository ur.IUserRepository
+	hashService    hs.IHashService
+	sessionService ss.ISessionService
+	logger         *zap.Logger
 }
 
-func NewLoginService(userRepository ur.IUserRepository, hashService hs.IHashService, sessionService ss.ISessionService, tokenizerService ts.ITokenizerService, logger *zap.Logger) *LoginService {
+func NewLoginService(userRepository ur.IUserRepository, hashService hs.IHashService, sessionService ss.ISessionService, logger *zap.Logger) *LoginService {
 
 	return &LoginService{
-		userRepository:   userRepository,
-		hashService:      hashService,
-		sessionService:   sessionService,
-		tokenizerService: tokenizerService,
-		logger:           logger,
+		userRepository: userRepository,
+		hashService:    hashService,
+		sessionService: sessionService,
+		logger:         logger,
 	}
 }
 
 func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginPayloadWithPassoword, request dto.RequestInfo) (*dto.LoginResponse, error) {
+	// TODO: move this logic to a permission guard or something like that
 	if !slices.Contains(app.LoginTypes, "WITH_LOGIN") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
 	}
@@ -78,13 +76,21 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 
 	this.logger.Info("Session created successfully", zap.Any("session", session))
 
-	token, err := this.tokenizerService.CreateToken(session.ID, session.Token, strconv.Itoa(int(user.ID)))
+	encryptedToken, err := this.sessionService.EncryptSessionToken(
+		session.ID,
+		session.Token,
+		strconv.Itoa(int(user.ID)),
+	)
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to create token")
 	}
 
-	refreshToken, err := this.tokenizerService.CreateToken(session.ID, session.RefreshToken, strconv.Itoa(int(user.ID)))
+	encryptedRefreshToken, err := this.sessionService.EncryptSessionToken(
+		session.ID,
+		session.RefreshToken,
+		strconv.Itoa(int(user.ID)),
+	)
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to create refresh token")
@@ -93,8 +99,8 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	if app.TokenType == "SESSION_UUID" {
 		return &dto.LoginResponse{
 			SessionId:        session.ID,
-			Token:            token,
-			RefreshToken:     refreshToken,
+			Token:            encryptedToken,
+			RefreshToken:     encryptedRefreshToken,
 			ExpiresAt:        session.ExpiresAt,
 			RefreshExpiresAt: session.RefreshExpiresAt,
 

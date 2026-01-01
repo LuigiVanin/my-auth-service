@@ -2,10 +2,14 @@ package services
 
 import (
 	"auth_service/app/models/dto"
+	cs "auth_service/app/modules/cipher/services"
 	sr "auth_service/app/modules/session/repository"
 	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -14,14 +18,16 @@ import (
 var _ ISessionService = &SessionService{}
 
 type SessionService struct {
-	repository sr.ISessionRepository
-	logger     *zap.Logger
+	repository    sr.ISessionRepository
+	cipherService cs.ICipherService
+	logger        *zap.Logger
 }
 
-func NewSessionService(repository sr.ISessionRepository, logger *zap.Logger) *SessionService {
+func NewSessionService(repository sr.ISessionRepository, cipherService cs.ICipherService, logger *zap.Logger) *SessionService {
 	return &SessionService{
-		repository: repository,
-		logger:     logger,
+		repository:    repository,
+		cipherService: cipherService,
+		logger:        logger,
 	}
 }
 
@@ -55,7 +61,6 @@ func (this *SessionService) CreateNew(app *entity.App, user *entity.User, reques
 		return nil, e.ThrowInternalServerError("Failed to find the new session")
 	}
 
-	// NOTE: This is a background process to invalidate all sessions except the current one
 	go func() {
 		err = this.repository.BatchInvalidateAll(user.ID, app.ID, session.ID)
 
@@ -71,4 +76,35 @@ func (this *SessionService) CreateNew(app *entity.App, user *entity.User, reques
 	}()
 
 	return session, nil
+}
+
+func (this *SessionService) EncryptSessionToken(sessionId string, token string, secretKey string) (string, error) {
+	rawData := fmt.Sprintf("%s|%s", sessionId, token)
+
+	return this.cipherService.EncryptTextIntoToken(
+		rawData,
+		cs.CipherOptions{
+			OverrideKey: secretKey,
+		},
+	)
+}
+
+func (this *SessionService) DecryptSessionToken(tokenString string, secretKey string) (string, string, error) {
+	plaintext, err := this.cipherService.DecryptTokenIntoText(
+		tokenString,
+		cs.CipherOptions{
+			OverrideKey: secretKey,
+		},
+	)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	parts := strings.Split(plaintext, "|")
+	if len(parts) != 2 {
+		return "", "", errors.New("invalid token format")
+	}
+
+	return parts[0], parts[1], nil
 }

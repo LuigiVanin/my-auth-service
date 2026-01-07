@@ -3,9 +3,10 @@ package services
 import (
 	"auth_service/app/models/dto"
 	hs "auth_service/app/modules/hash/services"
+	jwt "auth_service/app/modules/jwt"
 	ss "auth_service/app/modules/session/services"
 	ur "auth_service/app/modules/user/repository"
-	"strconv"
+	"fmt"
 
 	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
@@ -22,15 +23,17 @@ type LoginService struct {
 	userRepository ur.IUserRepository
 	hashService    hs.IHashService
 	sessionService ss.ISessionService
+	jwtService     jwt.IJwtService
 	logger         *zap.Logger
 }
 
-func NewLoginService(userRepository ur.IUserRepository, hashService hs.IHashService, sessionService ss.ISessionService, logger *zap.Logger) *LoginService {
+func NewLoginService(userRepository ur.IUserRepository, hashService hs.IHashService, jwtService jwt.IJwtService, sessionService ss.ISessionService, logger *zap.Logger) *LoginService {
 
 	return &LoginService{
 		userRepository: userRepository,
 		hashService:    hashService,
 		sessionService: sessionService,
+		jwtService:     jwtService,
 		logger:         logger,
 	}
 }
@@ -76,27 +79,27 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 
 	this.logger.Info("Session created successfully", zap.Any("session", session))
 
-	encryptedToken, err := this.sessionService.EncryptSessionToken(
+	encryptedRefreshToken, err := this.sessionService.EncryptSessionToken(
 		session.ID,
-		session.Token,
-		strconv.Itoa(int(user.ID)),
+		session.RefreshToken,
+		app.SecretKey,
 	)
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to create token")
 	}
 
-	encryptedRefreshToken, err := this.sessionService.EncryptSessionToken(
-		session.ID,
-		session.RefreshToken,
-		strconv.Itoa(int(user.ID)),
-	)
-
-	if err != nil {
-		return nil, e.ThrowInternalServerError("Failed to create refresh token")
-	}
-
 	if app.TokenType == "SESSION_UUID" {
+		encryptedToken, err := this.sessionService.EncryptSessionToken(
+			session.ID,
+			session.Token,
+			app.SecretKey,
+		)
+
+		if err != nil {
+			return nil, e.ThrowInternalServerError("Failed to create token")
+		}
+
 		return &dto.LoginResponse{
 			SessionId:        session.ID,
 			Token:            encryptedToken,
@@ -109,7 +112,39 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	}
 
 	if app.TokenType == "JWT" {
-		return nil, e.ThrowNotImplementedError("JWT Token is not implemented")
+		token, err := this.jwtService.CreateAuthToken(
+			dto.AuthPayload{
+				User: dto.JwtUser{
+					Email: user.Email,
+					Name:  user.Name,
+					Id:    user.ID,
+				},
+				AppId:      app.ID,
+				UserPoolId: app.UsersPoolId,
+				SessionId:  session.ID,
+				Token:      session.Token,
+				Time:       session.CreatedAt,
+				ExpireTime: uint(app.TokenExpirationTime),
+			},
+			app.SecretKey,
+		)
+
+		if err != nil {
+			this.logger.Error("Error: ", zap.Error(err))
+
+			fmt.Println("RAW ERROR: ", err.Error())
+			return nil, e.ThrowInternalServerError("Failed to create token")
+		}
+
+		return &dto.LoginResponse{
+			SessionId:        session.ID,
+			Token:            token,
+			RefreshToken:     encryptedRefreshToken,
+			ExpiresAt:        session.ExpiresAt,
+			RefreshExpiresAt: session.RefreshExpiresAt,
+
+			User: *user,
+		}, nil
 	}
 
 	if app.TokenType == "FAST_JWT" {

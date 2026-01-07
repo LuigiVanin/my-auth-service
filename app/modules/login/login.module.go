@@ -1,6 +1,7 @@
 package login
 
 import (
+	"auth_service/app/modules/jwt"
 	"auth_service/app/modules/login/controller"
 	"auth_service/app/modules/login/services"
 	ur "auth_service/app/modules/user/repository"
@@ -11,6 +12,8 @@ import (
 
 var Module = fx.Module(
 	"login",
+
+	jwt.Module,
 
 	fx.Provide(
 		fx.Private,

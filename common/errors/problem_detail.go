@@ -1,6 +1,10 @@
 package errors
 
-import "fmt"
+import (
+	"auth_service/common/utils"
+	"fmt"
+	"maps"
+)
 
 // Problem Detail
 
@@ -11,6 +15,8 @@ type ProblemDetail struct {
 	Detail   string `json:"detail"`
 	Instance string `json:"instance"`
 	Code     string `json:"code"`
+
+	Data utils.JSON `json:"data,omitempty"`
 }
 
 func (e *ProblemDetail) Error() string {
@@ -24,7 +30,14 @@ func NewProblemDetail(
 	detail string,
 	instance string,
 	code string,
+	data ...utils.JSON,
 ) *ProblemDetail {
+	dataInfo := utils.JSON{}
+
+	for _, data := range data {
+		maps.Copy(dataInfo, data)
+	}
+
 	return &ProblemDetail{
 		Type:     type_,
 		Title:    title,
@@ -32,5 +45,6 @@ func NewProblemDetail(
 		Detail:   detail,
 		Instance: instance,
 		Code:     code,
+		Data:     dataInfo,
 	}
 }

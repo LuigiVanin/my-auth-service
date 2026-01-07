@@ -11,7 +11,8 @@ import (
 func logError(logger *zap.Logger, ctx *fiber.Ctx, message string, fields ...zap.Field) {
 	defaultFields := []zap.Field{
 		zap.String("method", ctx.Method()),
-		zap.String("path", ctx.Path()),
+		zap.String("path", ctx.OriginalURL()),
+		zap.String("host", ctx.Hostname()),
 		zap.String("ip", ctx.IP()),
 	}
 
@@ -42,14 +43,16 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 				zap.String("detail", validationErr.Error()),
 			)
 
-			return ctx.Status(fiber.StatusBadRequest).JSON(
+			return ctx.Status(fiber.StatusUnprocessableEntity).JSON(
 				fiber.Map{
 					"title":    "Validation error",
 					"status":   fiber.StatusUnprocessableEntity,
 					"detail":   validationErr.Error(),
 					"instance": instance,
-					"errors":   validationErr.List,
 					"code":     e.UnprocessableEntityErrorCode.First,
+					"data": fiber.Map{
+						"errors": validationErr.List,
+					},
 				},
 			)
 		}

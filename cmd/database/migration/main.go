@@ -48,6 +48,7 @@ func main() {
 		&entity.App{},
 		&entity.User{},
 		&entity.Session{},
+		&entity.AppRoleProfile{},
 	)
 	if err != nil {
 		log.Fatal("Migration failed:", err)

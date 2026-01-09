@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"auth_service/common/global"
 	"auth_service/infra/config"
 	"time"
 
@@ -43,6 +44,9 @@ func NewZapLogger(cfg *config.Config) *zap.Logger {
 	loggerConfig.EncoderConfig.LineEnding = "\n"
 
 	logger := zap.Must(loggerConfig.Build())
+
+	// Assign to global variable
+	global.Logger = logger
 
 	return logger
 }

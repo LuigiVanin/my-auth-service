@@ -3,6 +3,9 @@ package services
 import (
 	"auth_service/app/models/dto"
 	hs "auth_service/app/modules/hash/services"
+	"auth_service/app/modules/profile/services"
+	"fmt"
+
 	ur "auth_service/app/modules/user/repository"
 	upr "auth_service/app/modules/user_pool/repository"
 	e "auth_service/common/errors"
@@ -23,13 +26,15 @@ type RegisterService struct {
 	userRepository     ur.IUserRepository
 	logger             *zap.Logger
 	hashService        hs.IHashService
+	profileService     services.IProfileService
 }
 
-func NewRegisterService(userPoolRepository upr.IUserPoolRepository, userRepository ur.IUserRepository, logger *zap.Logger, hashService hs.IHashService) *RegisterService {
+func NewRegisterService(userPoolRepository upr.IUserPoolRepository, userRepository ur.IUserRepository, profileService services.IProfileService, logger *zap.Logger, hashService hs.IHashService) *RegisterService {
 
 	return &RegisterService{
 		userPoolRepository: userPoolRepository,
 		userRepository:     userRepository,
+		profileService:     profileService,
 		logger:             logger,
 		hashService:        hashService,
 	}
@@ -63,16 +68,14 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return nil, e.ThrowInternalServerError("Failed to hash password")
 	}
 
-	var profileId string = "f11796ff-cdc1-405d-93aa-e3b5919c92c9"
+	profile, err := this.profileService.GetProfileByAppRole(app.Role)
 
-	// TODO: This should be moved to a profile repository
-	switch app.Role {
-	case "ADMIN":
-		// MANAGER user profile | ADMIN apps always create MANAGER users
-		profileId = "6ac35160-764b-42e9-bd1e-2e837384f73f"
-	case "USER":
-		// CONSUMER user profile | USER apps always create CONSUMER users
-		profileId = "f11796ff-cdc1-405d-93aa-e3b5919c92c9"
+	if err != nil || profile == nil {
+		return nil, e.ThrowInternalServerError("Failed to find profile")
+	}
+
+	if profile.ID == "" {
+		return nil, e.ThrowBadRequest(fmt.Sprintf("No profile found for this Role and App. (ROLE: %s)", app.Role))
 	}
 
 	var phone string
@@ -88,7 +91,7 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		Phone:        phone,
 		Metadata:     userData.Metadata,
 		UsersPoolId:  app.UsersPool.ID,
-		ProfileId:    profileId,
+		ProfileId:    profile.ID,
 	})
 
 	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))

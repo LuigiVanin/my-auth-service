@@ -4,7 +4,9 @@ import (
 	"auth_service/app/modules/cipher/services"
 	"auth_service/infra/config"
 	"fmt"
+	"net"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -86,6 +88,7 @@ func main() {
 	// 3. Create Profiles
 	var adminProfileId string
 	var managerProfileId string
+	var consumerProfileId string
 
 	// Admin Profile
 	err = tx.QueryRow(`
@@ -114,7 +117,6 @@ func main() {
 	printSuccess("Manager Profile created/retrieved")
 
 	// Consumer Profile
-	var consumerProfileId string
 	err = tx.QueryRow(`
 		INSERT INTO profiles (key, name, parent_profile_id)
 		VALUES ('CONSUMER', 'Consumer Profile', $1)
@@ -127,7 +129,49 @@ func main() {
 	}
 	printSuccess("Consumer Profile created/retrieved")
 
-	// 4. Create Admin User
+	// 4. Create App Role Profiles
+	// NOTE: Here I will create the relation between the app types and the user roles
+	//       Where I will define what kind of users each app will have.
+	// Example:
+	//  - The Admin app will have admin users and managers users - those users will have the profile associated with the
+	//    app via database APP_ROLE -> PROFILES.
+	//  - The User app will have consumer users - those users will have the profile associated with the
+	//    app via database APP_ROLE -> PROFILES.
+	_, err = tx.Exec(`
+		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
+		SELECT $1, 'ADMIN', 999, '{}', '{}', '{}'
+		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'ADMIN')
+	`, adminProfileId)
+
+	if err != nil {
+		printError("failed to insert admin app role profile", err)
+		return
+	}
+	printSuccess("Admin App Role Profile created")
+
+	_, err = tx.Exec(`
+		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
+		SELECT $1, 'ADMIN', 999, '{}', '{}', '{}'
+		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'ADMIN')
+	`, managerProfileId)
+	if err != nil {
+		printError("failed to insert manager app role profile", err)
+		return
+	}
+	printSuccess("Manager App Role Profile created")
+
+	_, err = tx.Exec(`
+		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
+		SELECT $1, 'USER', 999, '{}', '{}', '{}'
+		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'USER')
+	`, consumerProfileId)
+	if err != nil {
+		printError("failed to insert consumer app role profile", err)
+		return
+	}
+	printSuccess("Consumer App Role Profile created")
+
+	// 5. Create Admin User
 	adminPassword := uuid.New().String()
 	var adminUserId int // ID is SERIAL
 	var adminUserUuid string
@@ -162,7 +206,27 @@ func main() {
 	}
 
 	// Prepare Output Content
-	outputContent := fmt.Sprintf(`
+	// Get System Info
+	hostname, _ := os.Hostname()
+	addrs, _ := net.InterfaceAddrs()
+	var ip string
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				ip = ipnet.IP.String()
+				break
+			}
+		}
+	}
+	timestamp := time.Now().Format(time.RFC1123)
+
+	separator := fmt.Sprintf("\n\n------------------------------------------------------------"+
+		"Generated on: %s\n"+
+		"Device: %s\n"+
+		"IP: %s\n"+
+		"------------------------------------------------------------\n\n\n", timestamp, hostname, ip)
+
+	newCredentials := fmt.Sprintf(`
 Initialization Complete & Credentials
 =====================================
 
@@ -183,8 +247,21 @@ Encrypted App ID    : %s
 Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)
 `, adminPassword, usersPoolId, encryptedPoolId, appId, encryptedAppId)
 
+	// Check if file exists and read content
+	var finalContent []byte
+
+	existingContent, err := os.ReadFile("credentials.txt")
+	if err == nil && len(existingContent) > 0 {
+		// File exists, prepend new content with separator
+		finalContent = append([]byte(newCredentials), []byte(separator)...)
+		finalContent = append(finalContent, existingContent...)
+	} else {
+		// New file
+		finalContent = []byte(newCredentials)
+	}
+
 	// Write to credentials.txt
-	err = os.WriteFile("credentials.txt", []byte(outputContent), 0644)
+	err = os.WriteFile("credentials.txt", finalContent, 0644)
 	if err != nil {
 		fmt.Printf("%s✘ Failed to write credentials.txt: %v%s\n", ColorRed, err, ColorReset)
 	} else {

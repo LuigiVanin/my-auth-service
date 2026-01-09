@@ -53,31 +53,13 @@ func BodyValidator[T any]() func(ctx *fiber.Ctx) error {
 
 		var payload T
 		if err := ctx.BodyParser(&payload); err != nil {
-			return ctx.
-				Status(fiber.StatusBadRequest).
-				JSON(
-					fiber.Map{
-						"message": "Invalid request body",
-						"error":   err.Error(),
-					})
+			return err
 		}
 
 		err := validate(payload)
 
-		if validationErr, ok := err.(ValidationError); ok {
-			return ctx.Status(fiber.StatusBadRequest).JSON(
-				fiber.Map{
-					"message": "Validation error",
-					"list":    validationErr.List,
-					"error":   validationErr.Error(),
-				},
-			)
-		} else if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(
-				fiber.Map{
-					"message": "Invalid request body",
-					"error":   err.Error(),
-				})
+		if err != nil {
+			return err
 		}
 
 		return ctx.Next()

@@ -7,6 +7,7 @@ import (
 	"auth_service/app/modules/hash"
 	"auth_service/app/modules/jwt"
 	"auth_service/app/modules/login"
+	"auth_service/app/modules/profile"
 	"auth_service/app/modules/register"
 	"auth_service/app/modules/session"
 	"auth_service/app/modules/user_pool"
@@ -37,6 +38,7 @@ func main() {
 		app.Module,
 		user_pool.Module,
 		session.Module,
+		profile.Module,
 
 		// API
 		register.Module,

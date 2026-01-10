@@ -13,8 +13,9 @@ type Otp struct {
 	Code  string `gorm:"not null" json:"-"`
 	Token string `gorm:"not null;type:uuid;default:uuid_generate_v4()" json:"-"`
 
-	Action string `gorm:"type:ACTION"`
-	Method string `gorm:"type:OTP_METHOD;not null;default:'EMAIL'"`
+	Action string `gorm:"type:auth_action"`
+	// NOTE: In he future add column to chose the sender
+	// Method string `gorm:"type:OTP_METHOD;not null;default:'EMAIL'"`
 
 	Invalidated bool            `gorm:"not null;default:false"`
 	Metadata    json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`

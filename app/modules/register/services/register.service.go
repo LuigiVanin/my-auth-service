@@ -43,7 +43,7 @@ func NewRegisterService(userPoolRepository upr.IUserPoolRepository, userReposito
 func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword) (*entity.User, error) {
 
 	// TODO: move this logic to a permission guard or something like that
-	if !slices.Contains(app.LoginTypes, "WITH_LOGIN") {
+	if !slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
 	}
 

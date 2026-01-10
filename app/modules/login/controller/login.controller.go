@@ -71,7 +71,6 @@ func (this *LoginController) LoginUser(ctx *fiber.Ctx) error {
 func (this *LoginController) Register(server *fiber.App) {
 	group := server.Group(
 		"/auth",
-		this.appGuard.Act,
 	)
 
 	group.Post(

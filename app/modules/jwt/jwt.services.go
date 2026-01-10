@@ -18,6 +18,8 @@ func NewJwtService() *JwtService {
 }
 
 func (this *JwtService) CreateAuthToken(payload dto.AuthPayload, key string) (string, error) {
+	expireTime := time.Now().Add(time.Duration(payload.ExpireTime) * time.Second)
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, dto.AuthPayload{
 		User: payload.User,
 
@@ -32,7 +34,7 @@ func (this *JwtService) CreateAuthToken(payload dto.AuthPayload, key string) (st
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    payload.AppId,
 			IssuedAt:  jwt.NewNumericDate(payload.Time),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(payload.ExpireTime))),
+			ExpiresAt: jwt.NewNumericDate(expireTime),
 		},
 	})
 

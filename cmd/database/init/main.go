@@ -76,7 +76,7 @@ func main() {
 			login_types, token_type, token_expiration_time
 		) VALUES (
 			$1, 'main_app', 'ADMIN', uuid_generate_v4()::text, uuid_generate_v4()::text,
-			ARRAY['WITH_LOGIN']::AUTH_METHOD[], 'JWT', 3600
+			ARRAY['WITH_PASSWORD']::AUTH_METHOD[], 'JWT', 3600
 		) RETURNING id
 	`, usersPoolId).Scan(&appId)
 	if err != nil {

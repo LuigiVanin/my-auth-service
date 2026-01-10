@@ -40,7 +40,7 @@ func NewLoginService(userRepository ur.IUserRepository, hashService hs.IHashServ
 
 func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginPayloadWithPassoword, request dto.RequestInfo) (*dto.LoginResponse, error) {
 	// TODO: move this logic to a permission guard or something like that
-	if !slices.Contains(app.LoginTypes, "WITH_LOGIN") {
+	if !slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
 	}
 
@@ -72,7 +72,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	}
 
 	// NOTE: Here we are creating a new session for the user and invalidating all the other for this user and app
-	session, err := this.sessionService.CreateNew(app, user, request, "WITH_LOGIN")
+	session, err := this.sessionService.CreateNew(app, user, request, "WITH_PASSWORD")
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +110,8 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 			User: *user,
 		}, nil
 	}
+
+	fmt.Println("token exp: ", app.TokenExpirationTime)
 
 	if app.TokenType == "JWT" {
 		token, err := this.jwtService.CreateAuthToken(

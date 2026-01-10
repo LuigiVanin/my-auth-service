@@ -3,6 +3,7 @@ package services
 import (
 	"auth_service/common/utils"
 	"auth_service/infra/config"
+
 	"regexp"
 )
 

@@ -27,7 +27,8 @@ func main() {
 	}
 
 	// 2. Create Enums
-	createEnum(db, "auth_method", "'WITH_LOGIN', 'WITH_OTP'")
+	createEnum(db, "auth_method", "'WITH_LOGIN', 'WITH_OTP', 'WITH_PASSWORD'")
+	createEnum(db, "auth_action", "'LOGIN', 'REGISTER', 'VERIFY_EMAIL', 'TWO_FA', 'FORGOT_PASSWORD', 'CHANGE_EMAIL', 'REGEN_APP_SECRET_KEY'")
 	createEnum(db, "token_type", "'JWT', 'FAST_JWT', 'SESSION_UUID'")
 	createEnum(db, "app_role", "'ADMIN', 'USER'")
 	// Postgres types are case-insensitive usually, but typically lowercase in pg_type.
@@ -49,6 +50,7 @@ func main() {
 		&entity.User{},
 		&entity.Session{},
 		&entity.AppRoleProfile{},
+		&entity.Otp{},
 	)
 	if err != nil {
 		log.Fatal("Migration failed:", err)

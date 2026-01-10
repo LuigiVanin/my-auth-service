@@ -3,12 +3,15 @@ package main
 import (
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/modules/app"
+	"auth_service/app/modules/authorize"
 	"auth_service/app/modules/cipher"
 	"auth_service/app/modules/hash"
 	"auth_service/app/modules/jwt"
 	"auth_service/app/modules/login"
-	"auth_service/app/modules/profile"
 	"auth_service/app/modules/register"
+	"auth_service/app/modules/router"
+
+	"auth_service/app/modules/profile"
 	"auth_service/app/modules/session"
 	"auth_service/app/modules/user_pool"
 	"auth_service/infra/bootstrap"
@@ -41,8 +44,10 @@ func main() {
 		profile.Module,
 
 		// API
+		router.Module,
 		register.Module,
 		login.Module,
+		authorize.Module,
 
 		fx.Invoke(bootstrap.StartServer),
 

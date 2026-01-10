@@ -4,22 +4,26 @@ import (
 	ar "auth_service/app/modules/app/repository"
 	cs "auth_service/app/modules/cipher/services"
 	e "auth_service/common/errors"
+	"auth_service/common/global"
 	"errors"
 	"fmt"
 	"regexp"
 
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
 )
 
 type AppGuard struct {
 	appRepository ar.IAppRepository
 	cipherService cs.ICipherService
+	logger        *zap.Logger
 }
 
-func NewAppGuard(appRepository ar.IAppRepository, cipherService cs.ICipherService) *AppGuard {
+func NewAppGuard(appRepository ar.IAppRepository, cipherService cs.ICipherService, logger *zap.Logger) *AppGuard {
 	return &AppGuard{
 		appRepository: appRepository,
 		cipherService: cipherService,
+		logger:        logger,
 	}
 }
 
@@ -33,6 +37,7 @@ func validateKeyFormat(key string) error {
 }
 
 func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
+	global.Logger.Info("App Guard Triggered")
 	appKey := ctx.Get("X-Public-Key")
 	poolKey := ctx.Get("X-Pool-Key")
 	secretKey := ctx.Get("X-Secret-Key")
@@ -63,8 +68,6 @@ func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
 
 	app, err := guard.appRepository.FindAppbyIdWithPool(appUuid)
 
-	fmt.Println(app)
-
 	if err != nil || app == nil {
 		return e.ThrowNotFound(fmt.Sprintf("Error Searching for App: `%s`", err.Error()))
 	}
@@ -85,10 +88,16 @@ func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
 		ctx.Locals("secretKey", secretKey)
 	}
 
-	fmt.Println("\npool: ", app.UsersPool.ID)
+	global.Logger.Info(
+		"App found and User Pool found",
+		zap.Any("app_id", app.ID),
+		zap.Any("pool_id", app.UsersPool.ID),
+	)
 
 	ctx.Locals("app", app)
 	ctx.Locals("pool", &app.UsersPool)
+
+	fmt.Println("Finished middleware app and pool")
 
 	return ctx.Next()
 }

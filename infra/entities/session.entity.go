@@ -14,7 +14,7 @@ type Session struct {
 	Invalidated  bool   `gorm:"not null;default:false" json:"-"`
 
 	IpAddress string `gorm:"not null"`
-	LoginType string `gorm:"type:AUTH_METHOD;not null;default:'WITH_LOGIN'"`
+	LoginType string `gorm:"type:AUTH_METHOD;not null;default:'WITH_PASSWORD'"`
 	UserAgent string
 
 	ExpiresAt        time.Time `gorm:"not null"`

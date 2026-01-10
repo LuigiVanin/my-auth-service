@@ -64,7 +64,6 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 func (this *RegisterController) Register(server *fiber.App) {
 	group := server.Group(
 		"/auth",
-		this.appGuard.Act,
 	)
 
 	group.Post(

@@ -26,10 +26,7 @@ func NewAuthorizeController(authorizeService services.IAuthorizeService, appGuar
 }
 
 func (this *AuthorizeController) AuthorizeRequest(ctx *fiber.Ctx) error {
-	fmt.Println("Authorize Controller Triggered")
-
 	app := ctx.Locals("app").(*entity.App)
-
 	authorization := ctx.Get("Authorization")
 
 	if authorization == "" {
@@ -37,17 +34,24 @@ func (this *AuthorizeController) AuthorizeRequest(ctx *fiber.Ctx) error {
 	}
 
 	fmt.Println("Token: ", authorization)
-	_, err := this.authService.Authorize(app, authorization)
+	res, err := this.authService.Authorize(app, authorization, ctx.IP())
 
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return ctx.Status(fiber.StatusOK).JSON(res)
+}
+
+func (this *AuthorizeController) RefreshAuthorization(ctx *fiber.Ctx) error {
+	fmt.Println("Refresh Authorization Controller Triggered")
+
+	return e.ThrowNotImplementedError("Refresh Authorization Yet")
 }
 
 func (this *AuthorizeController) Register(server *fiber.App) {
 	group := server.Group("/auth")
 
 	group.Post("/authorize", this.AuthorizeRequest)
+	group.Post("/refresh", this.RefreshAuthorization)
 }

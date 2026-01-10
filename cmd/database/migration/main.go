@@ -5,6 +5,7 @@ import (
 	entity "auth_service/infra/entities"
 	"fmt"
 	"log"
+	"strings"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,10 +28,10 @@ func main() {
 	}
 
 	// 2. Create Enums
-	createEnum(db, "auth_method", "'WITH_LOGIN', 'WITH_OTP', 'WITH_PASSWORD'")
-	createEnum(db, "auth_action", "'LOGIN', 'REGISTER', 'VERIFY_EMAIL', 'TWO_FA', 'FORGOT_PASSWORD', 'CHANGE_EMAIL', 'REGEN_APP_SECRET_KEY'")
-	createEnum(db, "token_type", "'JWT', 'FAST_JWT', 'SESSION_UUID'")
-	createEnum(db, "app_role", "'ADMIN', 'USER'")
+	createEnum(db, "auth_method", "WITH_LOGIN", "WITH_OTP", "WITH_PASSWORD")
+	createEnum(db, "auth_action", "LOGIN", "REGISTER", "VERIFY_EMAIL", "TWO_FA", "FORGOT_PASSWORD", "CHANGE_EMAIL", "REGEN_APP_SECRET_KEY")
+	createEnum(db, "token_type", "JWT", "FAST_JWT", "SESSION_UUID")
+	createEnum(db, "app_role", "ADMIN", "USER")
 	// Postgres types are case-insensitive usually, but typically lowercase in pg_type.
 	// The previous migration used caps: CREATE TYPE AUTH_METHOD ...
 	// Postgres will store it as `auth_method` usually unless quoted.
@@ -59,8 +60,15 @@ func main() {
 	fmt.Println("Migrations Finished ✅")
 }
 
-func createEnum(db *gorm.DB, name string, values string) {
+func createEnum(db *gorm.DB, name string, enums ...string) {
 	var exists bool
+
+	for idx, e := range enums {
+		enums[idx] = fmt.Sprintf("'%s'", e)
+	}
+
+	values := strings.Join(enums, ", ")
+
 	// Check for lower case version of name as Postgres normalizes unquoted identifiers
 	db.Raw("SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = lower(?))", name).Scan(&exists)
 	if !exists {

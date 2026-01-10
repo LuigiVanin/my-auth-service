@@ -1,14 +1,14 @@
 package services
 
 import (
+	"auth_service/app/models/dto"
 	jm "auth_service/app/modules/jwt"
 	sr "auth_service/app/modules/session/repository"
 	e "auth_service/common/errors"
-	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
 	"errors"
-	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
@@ -31,38 +31,34 @@ func NewAuthorizeService(jwtService jm.IJwtService, sessionRepository sr.ISessio
 func (this *AuthorizeService) Authorize(
 	app *entity.App,
 	token string,
-	// user *entity.User,
-	// request dto.RequestInfo,
-) (string, error) {
-	if app.TokenType == "JWT" {
-		texts := strings.Split(token, " ")
+	ip string,
+) (*dto.AuthorizeReponse, error) {
+	texts := strings.Split(token, " ")
 
-		if len(texts) != 2 {
-			return "", e.ThrowBadRequest("Authorization token in wrong format")
-		}
+	if len(texts) != 2 {
+		return nil, e.ThrowBadRequest("Authorization token in wrong format")
+	}
 
-		bearer := texts[0]
-		token = texts[1]
+	bearer := texts[0]
+	token = texts[1]
 
-		if bearer != "Bearer" {
-			return "", e.ThrowBadRequest("Authorization token in wrong format")
-		}
+	if bearer != "Bearer" {
+		return nil, e.ThrowBadRequest("Authorization token in wrong format")
+	}
 
-		fmt.Println("JWT: ", token)
+	switch app.TokenType {
+	case "JWT":
 		payload, err := this.jwtService.ParseAuthToken(token, app.SecretKey)
 
 		if err != nil {
-			fmt.Println(err.Error())
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				return "", e.ThrowUnauthorizedError("Token is expired!")
+				return nil, e.ThrowTokenExpiredError("Token is expired!")
 			}
 			if errors.Is(err, jwt.ErrSignatureInvalid) || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-				return "", e.ThrowUnauthorizedError("Token is invalid!")
+				return nil, e.ThrowUnauthorizedError("Token is invalid!")
 			}
-			return "", e.ThrowBadRequest("Authorization malformatted")
+			return nil, e.ThrowBadRequest("Authorization malformatted")
 		}
-
-		utils.PrintObj(payload)
 
 		session, err := this.sessionRepository.FindWhere(
 			entity.Session{
@@ -74,21 +70,39 @@ func (this *AuthorizeService) Authorize(
 
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return "", e.ThrowUnauthorizedError("Session doesnt exist")
+				return nil, e.ThrowUnauthorizedError("Session doesnt exist")
 			}
-			return "", e.ThrowInternalServerError("Unable to find session")
+			return nil, e.ThrowInternalServerError("Unable to find session")
+		}
+
+		if session.ExpiresAt.Compare(time.Now()) < 0 {
+			return nil, e.ThrowTokenExpiredError("Session is expired!")
 		}
 
 		if session.Invalidated {
-			return "", e.ThrowUnauthorizedError("Session was invalidated, Create a new one!")
+			return nil, e.ThrowUnauthorizedError("Session was invalidated, Create a new one!")
 		}
 
 		if session.Token != payload.Token {
-			return "", e.ThrowUnauthorizedError("Incorrect token!")
+			return nil, e.ThrowUnauthorizedError("Incorrect token!")
 		}
 
-		utils.PrintObj(session)
+		if session.IpAddress != ip {
+			return nil, e.ThrowUnauthorizedError("IP Address mismatch!")
+		}
+
+		return &dto.AuthorizeReponse{
+			User:      session.User,
+			SessionId: payload.SessionId,
+			Appid:     app.ID,
+			ExpiresAt: session.ExpiresAt,
+			TokenType: app.TokenType,
+
+			Authorized: true,
+		}, nil
+	case "SESSION_UUID":
+		return nil, e.ThrowNotImplementedError("SESSION UUID not implemented yet")
 	}
 
-	return "", nil
+	return nil, e.ThrowInternalServerError("Auth method notidentified")
 }

@@ -105,6 +105,26 @@ func ThrowTokenExpiredError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
+func ThrowInvalidFormatError(detail string, extra ...utils.JSON) *GlobalError {
+	return NewGlobalError(
+		"Invalid Format",
+		detail,
+		InvalidFormatErrorCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/401",
+		extra...,
+	)
+}
+
+func ThrowSignatureFaildError(detail string, extra ...utils.JSON) *GlobalError {
+	return NewGlobalError(
+		"Signature Failed",
+		detail,
+		SignatureFailErrorCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/401",
+		extra...,
+	)
+}
+
 func ThrowUnprocessableEntity(detail string, extra ...utils.JSON) *GlobalError {
 	return NewGlobalError(
 		"Unprocessable Entity",

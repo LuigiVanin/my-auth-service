@@ -33,7 +33,6 @@ func (this *AuthorizeController) AuthorizeRequest(ctx *fiber.Ctx) error {
 		return e.ThrowBadRequest("Could not find token in the request")
 	}
 
-	fmt.Println("Token: ", authorization)
 	res, err := this.authService.Authorize(app, authorization, ctx.IP())
 
 	if err != nil {

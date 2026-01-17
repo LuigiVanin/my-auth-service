@@ -6,7 +6,6 @@ import (
 	sr "auth_service/app/modules/session/repository"
 	ss "auth_service/app/modules/session/services"
 	e "auth_service/common/errors"
-	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
 	"errors"
 	"strings"
@@ -47,17 +46,18 @@ func (this *AuthorizeService) FindSessionByToken(token string, tokenType string,
 			if errors.Is(err, jwt.ErrSignatureInvalid) || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
 				return nil, e.ThrowUnauthorizedError("Token is invalid!")
 			}
-			return nil, e.ThrowBadRequest("Authorization malformatted")
+			return nil, e.ThrowBadRequest("Authorization token malformatted")
 		}
 
 		sessionId = payload.SessionId
 		sessionToken = payload.Token
 
 	case "SESSION_UUID":
-		sessionId, sessionToken, err := this.sessionService.DecryptSessionToken(token, secretKey)
+		var err error
+		sessionId, sessionToken, err = this.sessionService.DecryptSessionToken(token, secretKey)
 
 		if sessionId == "" || sessionToken == "" || err != nil {
-			return nil, e.ThrowBadRequest("Authorization malformatted")
+			return nil, e.ThrowBadRequest("Authorization token malformatted")
 		}
 	}
 
@@ -77,7 +77,7 @@ func (this *AuthorizeService) FindSessionByToken(token string, tokenType string,
 	}
 
 	if session.Token != sessionToken {
-		return nil, e.ThrowUnauthorizedError("Incorrect token!")
+		return nil, e.ThrowUnauthorizedError("Incorrect session token!")
 	}
 
 	return session, err
@@ -101,110 +101,32 @@ func (this *AuthorizeService) Authorize(
 		return nil, e.ThrowBadRequest("Authorization token in wrong format")
 	}
 
-	switch app.TokenType {
-	case "JWT":
-		payload, err := this.jwtService.ParseAuthToken(token, app.SecretKey)
+	session, err := this.FindSessionByToken(token, app.TokenType, app.SecretKey)
 
-		if err != nil {
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				return nil, e.ThrowTokenExpiredError("Token is expired!")
-			}
-			if errors.Is(err, jwt.ErrSignatureInvalid) || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-				return nil, e.ThrowUnauthorizedError("Token is invalid!")
-			}
-			return nil, e.ThrowBadRequest("Authorization malformatted")
-		}
-
-		session, err := this.sessionRepository.FindWhere(
-			entity.Session{
-				ID:          payload.SessionId,
-				Invalidated: false,
-			},
-			"User",
-		)
-
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, e.ThrowUnauthorizedError("Session doesnt exist")
-			}
-			return nil, e.ThrowInternalServerError("Unable to find session")
-		}
-
-		if session.ExpiresAt.Compare(time.Now()) < 0 {
-			return nil, e.ThrowTokenExpiredError("Session is expired!")
-		}
-
-		if session.Invalidated {
-			return nil, e.ThrowUnauthorizedError("Session was invalidated, Create a new one!")
-		}
-
-		if session.Token != payload.Token {
-			return nil, e.ThrowUnauthorizedError("Incorrect token!")
-		}
-
-		if session.IpAddress != ip {
-			return nil, e.ThrowUnauthorizedError("IP Address mismatch!")
-		}
-
-		return &dto.AuthorizeReponse{
-			User:      session.User,
-			SessionId: payload.SessionId,
-			Appid:     app.ID,
-			ExpiresAt: session.ExpiresAt,
-			TokenType: app.TokenType,
-
-			Authorized: true,
-		}, nil
-	case "SESSION_UUID":
-		sessionId, token, err := this.sessionService.DecryptSessionToken(token, app.SecretKey)
-
-		if sessionId == "" || token == "" || err != nil {
-			return nil, e.ThrowBadRequest("Authorization malformatted")
-		}
-
-		session, err := this.sessionRepository.FindWhere(
-			entity.Session{
-				ID:          sessionId,
-				Invalidated: false,
-			},
-			"User",
-		)
-
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, e.ThrowUnauthorizedError("Session doesnt exist")
-			}
-			return nil, e.ThrowInternalServerError("Unable to find session")
-		}
-
-		utils.PrintObj(session)
-
-		if session.ExpiresAt.Compare(time.Now()) < 0 {
-			return nil, e.ThrowTokenExpiredError("Session is expired!")
-		}
-
-		if session.Invalidated {
-			return nil, e.ThrowUnauthorizedError("Session was invalidated, Create a new one!")
-		}
-
-		if session.Token != token {
-			return nil, e.ThrowUnauthorizedError("Incorrect token!")
-		}
-
-		if session.IpAddress != ip {
-			return nil, e.ThrowUnauthorizedError("IP Address mismatch!")
-		}
-
-		return &dto.AuthorizeReponse{
-			User:      session.User,
-			SessionId: sessionId,
-			Appid:     app.ID,
-			ExpiresAt: session.ExpiresAt,
-			TokenType: app.TokenType,
-
-			Authorized: true,
-		}, nil
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, e.ThrowInternalServerError("Auth method notidentified")
+	if session.ExpiresAt.Compare(time.Now()) < 0 {
+		return nil, e.ThrowTokenExpiredError("Session is expired!")
+	}
+
+	if session.Invalidated {
+		return nil, e.ThrowUnauthorizedError("Session was invalidated, Create a new one!")
+	}
+
+	if session.IpAddress != ip {
+		return nil, e.ThrowUnauthorizedError("IP Address mismatch!")
+	}
+
+	return &dto.AuthorizeReponse{
+		User:      session.User,
+		SessionId: session.ID,
+		Appid:     app.ID,
+		ExpiresAt: session.ExpiresAt,
+		TokenType: app.TokenType,
+
+		Authorized: true,
+	}, nil
+
 }

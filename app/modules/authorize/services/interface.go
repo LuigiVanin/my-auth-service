@@ -11,4 +11,10 @@ type IAuthorizeService interface {
 		token string,
 		ip string,
 	) (*dto.AuthorizeReponse, error)
+
+	Refresh(
+		app *entity.App,
+		token string,
+		ip string,
+	) (*dto.RefreshResponse, error)
 }

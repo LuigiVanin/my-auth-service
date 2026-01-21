@@ -111,8 +111,6 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		}, nil
 	}
 
-	fmt.Println("token exp: ", app.TokenExpirationTime)
-
 	if app.TokenType == "JWT" {
 		token, err := this.jwtService.CreateAuthToken(
 			dto.AuthPayload{

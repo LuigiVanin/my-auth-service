@@ -1,0 +1,176 @@
+---
+description: When creating new fx modules, go modules and files in general
+alwaysApply: false
+---
+# Project Structure Rules
+
+## Module Organization
+
+This project follows a modular architecture using Uber FX for dependency injection. Each module should be self-contained and follow a consistent structure.
+
+### Module Structure
+
+Each module in `app/modules/` should follow this structure:
+
+```
+module_name/
+├── module_name.module.go    # FX module definition
+├── controller/              # HTTP handlers (if needed)
+│   ├── module_name.controller.go
+│   └── ...
+├── services/                # Business logic layer
+│   ├── interface.go         # Service interface
+│   ├── module_name.service.go
+│   └── ...
+└── repository/              # Data access layer (if needed)
+    ├── interface.go         # Repository interface
+    ├── module_name.repository.go
+    └── ...
+```
+
+### Module File Pattern
+
+Every module must export a `Module` variable using `fx.Module()`:
+
+```go
+var Module = fx.Module(
+    "module_name",
+    fx.Provide(...),
+    fx.Invoke(...),
+)
+```
+
+### FX Module Patterns
+
+1. **Private Dependencies**: Use `fx.Private` for internal dependencies that shouldn't be exposed to other modules:
+   ```go
+   fx.Provide(
+       fx.Private,
+       fx.Annotate(
+           repository.NewXxxRepository,
+           fx.As(new(repository.IXxxRepository)),
+       ),
+   ),
+   ```
+
+2. **Interface Binding**: Always use `fx.Annotate` with `fx.As` to bind implementations to interfaces:
+   ```go
+   fx.Annotate(
+       services.NewXxxService,
+       fx.As(new(services.IXxxService)),
+   )
+   ```
+
+3. **Controller Registration**: Controllers should be registered via `fx.Invoke`:
+   ```go
+   fx.Provide(controller.NewXxxController),
+   fx.Invoke(func(server *fiber.App, controller *controller.XxxController) {
+       controller.Register(server)
+   }),
+   ```
+
+### Directory Structure
+
+```
+auth-service/
+├── app/
+│   ├── middlewares/         # HTTP middlewares and guards
+│   ├── models/
+│   │   └── dto/             # Data Transfer Objects
+│   └── modules/             # Feature modules
+│       └── [module_name]/
+├── cmd/                     # Application entry points
+│   ├── main.go             # Main application
+│   └── database/           # Database utilities
+├── common/                  # Shared utilities
+│   ├── constants/          # Application constants
+│   ├── errors/             # Error handling
+│   ├── interfaces/         # Shared interfaces
+│   └── utils/              # Utility functions
+├── infra/                   # Infrastructure layer
+│   ├── bootstrap/          # Application bootstrap
+│   ├── config/             # Configuration
+│   └── entities/           # GORM entities
+└── migrations/              # Database migrations
+```
+
+### Module Categories
+
+Modules are organized by purpose in `cmd/main.go`:
+
+1. **Utils**: Shared utility modules (cipher, hash, jwt)
+2. **Entities**: Data access modules (app, user_pool, session, profile)
+3. **API**: HTTP API modules (router, register, login, authorize)
+
+### Interface Implementation
+
+All services, repositories, and controllers must implement their interfaces and include compile-time checks:
+
+```go
+var _ IInterfaceName = &StructName{}
+```
+
+### Naming Conventions
+
+- **Modules**: `module_name.module.go` or `module.go`
+- **Controllers**: `module_name.controller.go`
+- **Services**: `module_name.service.go`
+- **Repositories**: `module_name.repository.go`
+- **Interfaces**: `interface.go` (in respective subdirectories)
+- **DTOs**: `module_name.dto.go` in `app/models/dto/`
+- **Entities**: `entity_name.entity.go` in `infra/entities/`
+
+### Module Registration
+
+Modules are registered in `cmd/main.go` using FX:
+
+```go
+fx.New(
+    // Infrastructure
+    fx.Provide(config.NewConfigFromEnv),
+    fx.Provide(bootstrap.NewZapLogger),
+    fx.Provide(bootstrap.NewDatabase),
+    fx.Provide(bootstrap.NewHttpServer),
+    
+    // Utils
+    cipher.Module,
+    hash.Module,
+    jwt.Module,
+    
+    // Entities
+    app.Module,
+    user_pool.Module,
+    session.Module,
+    profile.Module,
+    
+    // API
+    router.Module,
+    register.Module,
+    login.Module,
+    authorize.Module,
+)
+```
+
+### Controller Pattern
+
+Controllers must:
+1. Implement `interfaces.IController` with a `Register(server *fiber.App)` method
+2. Include compile-time check: `var _ interfaces.IController = &XxxController{}`
+3. Register routes in the `Register` method
+4. Use guards and validators from `app/middlewares/`
+
+### Service Pattern
+
+Services must:
+1. Define an interface in `services/interface.go`
+2. Implement the interface with compile-time check
+3. Accept dependencies via constructor function `NewXxxService`
+4. Use `*zap.Logger` for logging
+
+### Repository Pattern
+
+Repositories must:
+1. Define an interface in `repository/interface.go`
+2. Implement the interface with compile-time check
+3. Accept `*gorm.DB` via constructor function `NewXxxRepository`
+4. Work with entities from `infra/entities/`

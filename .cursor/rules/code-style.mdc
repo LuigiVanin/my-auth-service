@@ -1,0 +1,218 @@
+---
+alwaysApply: true
+---
+
+# Code Style Rules
+
+## General Guidelines
+
+Follow Go standard conventions with project-specific patterns.
+
+### Naming Conventions
+
+- **Packages**: Use lowercase, single-word names
+- **Types**: PascalCase (e.g., `LoginService`, `UserRepository`)
+- **Interfaces**: PascalCase with `I` prefix (e.g., `ILoginService`, `IUserRepository`)
+- **Functions**: PascalCase for exported, camelCase for unexported
+- **Variables**: camelCase
+- **Constants**: PascalCase or UPPER_SNAKE_CASE for exported constants
+
+### Receiver Names
+
+Use `this` as the receiver name for methods (project convention):
+
+```go
+func (this *LoginService) LoginWithPassword(...) {
+    // ...
+}
+```
+
+### Constructor Functions
+
+All structs should have a constructor function named `NewXxx`:
+
+```go
+func NewLoginService(
+    userRepository ur.IUserRepository,
+    hashService hs.IHashService,
+    logger *zap.Logger,
+) *LoginService {
+    return &LoginService{
+        userRepository: userRepository,
+        hashService:    hashService,
+        logger:         logger,
+    }
+}
+```
+
+### Interface Implementation Checks
+
+Always include compile-time interface checks immediately after type definition:
+
+```go
+type LoginService struct {
+    // fields
+}
+
+var _ ILoginService = &LoginService{}
+```
+
+### Error Handling
+
+1. **Use Custom Errors**: Use error functions from `common/errors`:
+   - `e.ThrowBadRequest(message)`
+   - `e.ThrowUnauthorizedError(message)`
+   - `e.ThrowInternalServerError(message)`
+   - `e.ThrowNotAllowed(message)`
+   - `e.ThrowNotImplementedError(message)`
+
+2. **Error Propagation**: Return errors from service/repository layers, handle in controllers
+
+3. **Problem Details**: Errors are returned as `*errors.ProblemDetail` which implements `error`
+
+### Logging
+
+1. **Use Zap Logger**: Always use `*zap.Logger` for logging
+2. **Structured Logging**: Use zap fields for structured logging:
+   ```go
+   this.logger.Info("User found", zap.Any("user", user))
+   this.logger.Error("Error occurred", zap.Error(err))
+   ```
+
+3. **Log Levels**:
+   - `Info`: General information
+   - `Error`: Errors that need attention
+   - `Debug`: Debug information (if needed)
+
+### DTOs (Data Transfer Objects)
+
+1. **Location**: All DTOs in `app/models/dto/`
+2. **Naming**: `XxxPayload`, `XxxResponse`, `XxxRequest`
+3. **Validation Tags**: Use `validate` tags for validation:
+   ```go
+   type LoginPayload struct {
+       Email    string `json:"email" validate:"required,email"`
+       Password string `json:"password" validate:"required,min=8"`
+   }
+   ```
+
+### Entities
+
+1. **Location**: All entities in `infra/entities/`
+2. **GORM Tags**: Use GORM tags for database mapping
+3. **JSON Tags**: Include JSON tags for API responses
+4. **Table Names**: Implement `TableName()` method if needed:
+   ```go
+   func (User) TableName() string {
+       return "users"
+   }
+   ```
+
+### Imports
+
+1. **Group Imports**: Group imports by:
+   - Standard library
+   - Third-party packages
+   - Project packages
+
+2. **Aliases**: Use aliases for long package names:
+   ```go
+   import (
+       ur "auth_service/app/modules/user/repository"
+       hs "auth_service/app/modules/hash/services"
+   )
+   ```
+
+3. **Error Package**: Use alias `e` for errors:
+   ```go
+   import e "auth_service/common/errors"
+   ```
+
+### Controller Patterns
+
+1. **Request Parsing**: Use helper functions for parsing:
+   ```go
+   func parseLoginBody[T any](ctx *fiber.Ctx) (T, error) {
+       var payload T
+       if err := ctx.BodyParser(&payload); err != nil {
+           return payload, e.ThrowBadRequest(err.Error())
+       }
+       return payload, nil
+   }
+   ```
+
+2. **Response Handling**: Return JSON responses:
+   ```go
+   return ctx.Status(fiber.StatusOK).JSON(response)
+   ```
+
+3. **Context Access**: Access context values:
+   ```go
+   app := ctx.Locals("app").(*entity.App)
+   ```
+
+### Service Patterns
+
+1. **Dependency Injection**: Accept dependencies via constructor
+2. **Business Logic**: Keep business logic in services, not controllers
+3. **Error Handling**: Return errors, don't handle HTTP responses
+4. **Logging**: Log important operations and errors
+
+### Repository Patterns
+
+1. **GORM Usage**: Use GORM for database operations
+2. **Where Clauses**: Use struct-based where clauses:
+   ```go
+   func (r *UserRepository) FindWhere(where entity.User, with ...string) (*entity.User, error) {
+       var result entity.User
+       whereClause := r.client.Where(where)
+       // ...
+   }
+   ```
+
+3. **Relations**: Support preloading relations via variadic `with` parameter
+4. **Error Handling**: Return GORM errors directly
+
+### Comments
+
+1. **Package Comments**: Each package should have a package comment
+2. **Exported Functions**: Document exported functions
+3. **Complex Logic**: Add comments for complex business logic
+4. **TODOs**: Use `// TODO:` for future improvements
+5. **NOTEs**: Use `// NOTE:` for important information
+
+### Code Formatting
+
+1. **gofmt**: Always format code with `gofmt`
+2. **golangci-lint**: Follow `.golangci.yml` configuration
+3. **Line Length**: Keep lines reasonable (prefer readability)
+
+### Guards and Middlewares
+
+1. **Location**: `app/middlewares/guards/` for guards
+2. **Pattern**: Guards should have an `Act` method:
+   ```go
+   func (guard *AuthGuard) Act(ctx *fiber.Ctx) error {
+       // validation logic
+       return ctx.Next()
+   }
+   ```
+
+3. **Context**: Store validated data in `ctx.Locals()`
+
+### Constants
+
+1. **Location**: `common/constants/` for application constants
+2. **Naming**: Use descriptive names in PascalCase or UPPER_SNAKE_CASE
+
+### Type Safety
+
+1. **Type Assertions**: Always check type assertions:
+   ```go
+   app, ok := ctx.Locals("app").(*entity.App)
+   if !ok || app == nil {
+       return e.ThrowInternalServerError("App context missing")
+   }
+   ```
+
+2. **Generic Functions**: Use generics where appropriate (Go 1.18+)

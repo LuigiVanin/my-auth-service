@@ -17,21 +17,21 @@ type LoginPayloadWithOtp struct {
 }
 
 type OtpPayload struct {
-	OtpCode string `json:"otpCode" validate:"required,min=6,max=6"`
-	OtpId   string `json:"otpId" validate:"required"`
+	OtpCode string `json:"otp_code" validate:"required,min=6,max=6"`
+	OtpId   string `json:"otp_id" validate:"required"`
 }
 
 type RequestInfo struct {
-	IpAddress string `json:"ipAddress"`
-	UserAgent string `json:"userAgent"`
+	IpAddress string `json:"ip_address"`
+	UserAgent string `json:"user_agent"`
 }
 
 type LoginResponse struct {
-	SessionId        string    `json:"sessionId"`
+	SessionId        string    `json:"session_id"`
 	Token            string    `json:"token"`
-	RefreshToken     string    `json:"refreshToken"`
-	ExpiresAt        time.Time `json:"expiresAt"`
-	RefreshExpiresAt time.Time `json:"refreshExpiresAt"`
+	RefreshToken     string    `json:"refresh_token"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
 
 	User entity.User `json:"user"`
 }

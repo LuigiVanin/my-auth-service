@@ -6,7 +6,6 @@ import (
 	e "auth_service/common/errors"
 	"auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
-	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -43,9 +42,24 @@ func (this *AuthorizeController) AuthorizeRequest(ctx *fiber.Ctx) error {
 }
 
 func (this *AuthorizeController) RefreshAuthorization(ctx *fiber.Ctx) error {
-	fmt.Println("Refresh Authorization Controller Triggered")
+	app := ctx.Locals("app").(*entity.App)
+	authorization := ctx.Get("Authorization")
 
-	return e.ThrowNotImplementedError("Refresh Authorization Yet")
+	// 1. Try to get token from Header
+	if authorization == "" {
+		authorization = ctx.Cookies("refresh_token")
+	}
+
+	if authorization == "" {
+		return e.ThrowBadRequest("Could not find refresh token in the request")
+	}
+
+	res, err := this.authService.Refresh(app, authorization, ctx.IP())
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
 func (this *AuthorizeController) Register(server *fiber.App) {

@@ -14,4 +14,5 @@ var Module = fx.Module(
 
 func RegisterMiddlewares(server *fiber.App, appGuard *guards.AppGuard) {
 	server.Group("/auth", appGuard.Act)
+	server.Group("/otp")
 }

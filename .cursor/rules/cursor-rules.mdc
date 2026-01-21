@@ -1,0 +1,67 @@
+---
+alwaysApply: false
+description: "Meta-rules for organizing and managing Cursor rule files"
+glob: "**/*.mdc"
+---
+
+# Cursor Rules Organization
+
+This document defines how rule files should be structured and maintained in the project.
+
+## Rule File Structure
+
+Every rule file should have:
+
+1. **Front Matter**
+   ```yaml
+   ---
+   alwaysApply: boolean    # Whether the rule should be automatically applied
+   description: string     # Brief description of the rule's purpose
+   glob: string           # File pattern this rule applies to
+   ---
+   ```
+
+2. **Clear Sections**
+   - Use proper markdown headings (# for main sections, ## for subsections)
+   - Include examples where appropriate
+   - Use code blocks with language specification
+
+## Available Rules
+
+1. **project-structure.mdc**
+   - Purpose: Documents project organization and components
+   - Apply: When understanding project layout
+   - Glob: All project files
+
+2. **code-style.mdc**
+   - Purpose: Defines coding standards and conventions
+   - Apply: When writing or reviewing code
+
+## Rule Maintenance
+
+### When to Update Rules
+- After introducing new coding patterns
+- When refactoring existing patterns
+- When adding new project components
+- When changing build or test configurations
+
+### How to Update Rules
+1. Add clear examples
+2. Keep documentation concise
+3. Update related rules if needed
+4. Maintain consistent formatting
+
+## Rule Application
+
+Rules should be applied in the following order:
+1. Project structure rules
+2. Code style rules
+3. Component-specific rules
+
+## Rule Validation
+
+Before committing rule changes:
+1. Verify markdown formatting
+2. Check code examples
+3. Validate front matter
+4. Ensure glob patterns are correct

@@ -16,5 +16,5 @@ type RegisterPayloadWithOtp struct {
 	Phone *string `json:"phone"`
 	Name  string  `json:"name" validate:"required"`
 
-	Metadata json.RawMessage `json:"metadata" validate:"required"`
+	Metadata map[string]any `json:"metadata" validate:"required"`
 }

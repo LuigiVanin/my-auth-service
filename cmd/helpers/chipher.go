@@ -1,10 +1,11 @@
 package main
 
 import (
-	"auth_service/app/modules/cipher/services"
-	"auth_service/infra/config"
 	"fmt"
 	"os"
+
+	"auth_service/app/modules/utils/cipher/services"
+	"auth_service/infra/config"
 )
 
 func main() {

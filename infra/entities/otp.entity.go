@@ -7,7 +7,7 @@ import (
 
 type Otp struct {
 	ID     string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	UserId string `gorm:"type:uuid"`
+	UserId *uint  `gorm:"type:bigint"` // nullable: OTP may be generated for unknown users
 	AppId  string `gorm:"type:uuid"`
 
 	Code  string `gorm:"not null" json:"-"`
@@ -20,8 +20,8 @@ type Otp struct {
 	Invalidated bool            `gorm:"not null;default:false"`
 	Metadata    json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`
 
-	User User `gorm:"foreignKey:UserId"`
-	App  App  `gorm:"foreignKey:AppId"`
+	User *User `gorm:"foreignKey:UserId"`
+	App  App   `gorm:"foreignKey:AppId"`
 
 	ExpiresAt time.Time `gorm:"not null"`
 	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`

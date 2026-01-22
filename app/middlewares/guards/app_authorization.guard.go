@@ -1,13 +1,14 @@
 package guards
 
 import (
-	ar "auth_service/app/modules/app/repository"
-	cs "auth_service/app/modules/cipher/services"
-	e "auth_service/common/errors"
-	"auth_service/common/global"
 	"errors"
 	"fmt"
 	"regexp"
+
+	ar "auth_service/app/modules/core/app/repository"
+	cs "auth_service/app/modules/utils/cipher/services"
+	e "auth_service/common/errors"
+	"auth_service/common/global"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"

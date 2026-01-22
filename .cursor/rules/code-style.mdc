@@ -118,8 +118,9 @@ var _ ILoginService = &LoginService{}
 2. **Aliases**: Use aliases for long package names:
    ```go
    import (
-       ur "auth_service/app/modules/user/repository"
-       hs "auth_service/app/modules/hash/services"
+       ur "auth_service/app/modules/core/user/repository"
+       hs "auth_service/app/modules/utils/hash/services"
+       ss "auth_service/app/modules/core/session/services"
    )
    ```
 

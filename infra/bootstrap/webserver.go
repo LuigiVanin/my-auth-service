@@ -1,12 +1,14 @@
 package bootstrap
 
 import (
-	middleware "auth_service/app/middlewares"
-	"auth_service/infra/config"
 	"context"
 	"fmt"
 	"net"
 	"time"
+
+	middleware "auth_service/app/middlewares"
+	"auth_service/app/middlewares/guards"
+	"auth_service/infra/config"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -14,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewHttpServer(cfg *config.Config, logger *zap.Logger) *fiber.App {
+func NewHttpServer(cfg *config.Config, logger *zap.Logger, appGuard *guards.AppGuard) *fiber.App {
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.NewErrorHandler(logger),
@@ -31,8 +33,9 @@ func NewHttpServer(cfg *config.Config, logger *zap.Logger) *fiber.App {
 		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
 	}))
-
 	app.Use(middleware.Json)
+
+	RegisterGuards(app, appGuard)
 
 	return app
 }

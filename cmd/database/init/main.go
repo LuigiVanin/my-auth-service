@@ -1,12 +1,13 @@
 package main
 
 import (
-	"auth_service/app/modules/cipher/services"
-	"auth_service/infra/config"
 	"fmt"
 	"net"
 	"os"
 	"time"
+
+	"auth_service/app/modules/utils/cipher/services"
+	"auth_service/infra/config"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"

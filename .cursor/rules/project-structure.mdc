@@ -75,32 +75,74 @@ var Module = fx.Module(
 auth-service/
 ├── app/
 │   ├── middlewares/         # HTTP middlewares and guards
+│   │   ├── guards/          # Route guards (AppGuard, AuthGuard)
+│   │   └── validators/      # Request validators
 │   ├── models/
 │   │   └── dto/             # Data Transfer Objects
-│   └── modules/             # Feature modules
-│       └── [module_name]/
+│   └── modules/             # Feature modules (organized by category)
+│       ├── api/             # API entry points (HTTP endpoints)
+│       │   ├── authorize/   # Authorization endpoints
+│       │   ├── login/       # Login endpoints
+│       │   └── register/    # Registration endpoints
+│       ├── core/            # Core domain modules (with entities)
+│       │   ├── app/         # Application repository
+│       │   ├── otp/         # OTP functionality
+│       │   ├── profile/     # User profiles
+│       │   ├── session/     # Session management
+│       │   ├── user/        # User repository
+│       │   └── user_pool/   # User pool repository
+│       └── utils/           # Utility modules
+│           ├── cipher/      # Encryption/decryption
+│           ├── hash/        # Password hashing
+│           └── jwt/         # JWT token handling
 ├── cmd/                     # Application entry points
 │   ├── main.go             # Main application
-│   └── database/           # Database utilities
+│   ├── database/           # Database utilities
+│   └── helpers/            # Helper scripts
 ├── common/                  # Shared utilities
 │   ├── constants/          # Application constants
-│   ├── errors/             # Error handling
-│   ├── interfaces/         # Shared interfaces
+│   ├── errors/             # Error handling (ProblemDetail)
+│   ├── global/             # Global instances (logger)
+│   ├── interfaces/         # Shared interfaces (IController)
 │   └── utils/              # Utility functions
 ├── infra/                   # Infrastructure layer
-│   ├── bootstrap/          # Application bootstrap
-│   ├── config/             # Configuration
+│   ├── bootstrap/          # Application bootstrap (server, db, router)
+│   ├── config/             # Configuration (env loading)
 │   └── entities/           # GORM entities
 └── migrations/              # Database migrations
 ```
 
 ### Module Categories
 
-Modules are organized by purpose in `cmd/main.go`:
+Modules are organized by category in `app/modules/`:
 
-1. **Utils**: Shared utility modules (cipher, hash, jwt)
-2. **Entities**: Data access modules (app, user_pool, session, profile)
-3. **API**: HTTP API modules (router, register, login, authorize)
+1. **api/**: HTTP API entry points - modules with controllers that expose HTTP endpoints
+   - `authorize/` - Token authorization and refresh
+   - `login/` - User login (password, OTP)
+   - `register/` - User registration
+
+2. **core/**: Core domain modules - modules with database entities and business logic
+   - `app/` - Application configuration
+   - `otp/` - One-time password management
+   - `profile/` - User profiles
+   - `session/` - Session management
+   - `user/` - User data access
+   - `user_pool/` - User pool data access
+
+3. **utils/**: Utility modules - shared services without database entities
+   - `cipher/` - Encryption/decryption service
+   - `hash/` - Password hashing (argon2)
+   - `jwt/` - JWT token creation/parsing
+
+### Route Registration
+
+Routes are registered in `infra/bootstrap/router.go` (not as a module):
+
+```go
+func RegisterRoutes(server *fiber.App, appGuard *guards.AppGuard) {
+    server.Use("/auth", appGuard.Act)
+}
+```
 
 ### Interface Implementation
 
@@ -125,6 +167,22 @@ var _ IInterfaceName = &StructName{}
 Modules are registered in `cmd/main.go` using FX:
 
 ```go
+import (
+    // API modules
+    "auth_service/app/modules/api/authorize"
+    "auth_service/app/modules/api/login"
+    "auth_service/app/modules/api/register"
+    // Core modules
+    "auth_service/app/modules/core/app"
+    "auth_service/app/modules/core/profile"
+    "auth_service/app/modules/core/session"
+    "auth_service/app/modules/core/user_pool"
+    // Utils modules
+    "auth_service/app/modules/utils/cipher"
+    "auth_service/app/modules/utils/hash"
+    "auth_service/app/modules/utils/jwt"
+)
+
 fx.New(
     // Infrastructure
     fx.Provide(config.NewConfigFromEnv),
@@ -132,22 +190,26 @@ fx.New(
     fx.Provide(bootstrap.NewDatabase),
     fx.Provide(bootstrap.NewHttpServer),
     
-    // Utils
+    fx.Provide(guards.NewAppGuard),
+    
+    // Utils modules
     cipher.Module,
     hash.Module,
     jwt.Module,
     
-    // Entities
+    // Core modules (with entities)
     app.Module,
     user_pool.Module,
     session.Module,
     profile.Module,
     
-    // API
-    router.Module,
+    // API modules (HTTP endpoints)
     register.Module,
     login.Module,
     authorize.Module,
+    
+    fx.Invoke(bootstrap.RegisterRoutes),
+    fx.Invoke(bootstrap.StartServer),
 )
 ```
 

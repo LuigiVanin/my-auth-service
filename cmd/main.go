@@ -1,22 +1,22 @@
 package main
 
 import (
-	"auth_service/app/middlewares/guards"
-	"auth_service/app/modules/app"
-	"auth_service/app/modules/authorize"
-	"auth_service/app/modules/cipher"
-	"auth_service/app/modules/hash"
-	"auth_service/app/modules/jwt"
-	"auth_service/app/modules/login"
-	"auth_service/app/modules/register"
-	"auth_service/app/modules/router"
+	"context"
 
-	"auth_service/app/modules/profile"
-	"auth_service/app/modules/session"
-	"auth_service/app/modules/user_pool"
+	"auth_service/app/middlewares/guards"
+	"auth_service/app/modules/api/authorize"
+	"auth_service/app/modules/api/login"
+	"auth_service/app/modules/api/register"
+	"auth_service/app/modules/core/app"
+	"auth_service/app/modules/core/otp"
+	"auth_service/app/modules/core/profile"
+	"auth_service/app/modules/core/session"
+	"auth_service/app/modules/core/user_pool"
+	"auth_service/app/modules/utils/cipher"
+	"auth_service/app/modules/utils/hash"
+	"auth_service/app/modules/utils/jwt"
 	"auth_service/infra/bootstrap"
 	"auth_service/infra/config"
-	"context"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -37,14 +37,14 @@ func main() {
 		hash.Module,
 		jwt.Module,
 
-		// Entities
+		// Core
 		app.Module,
 		user_pool.Module,
 		session.Module,
 		profile.Module,
+		otp.Module,
 
 		// API
-		router.Module,
 		register.Module,
 		login.Module,
 		authorize.Module,

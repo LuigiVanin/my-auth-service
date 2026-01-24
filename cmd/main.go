@@ -31,6 +31,8 @@ func main() {
 		fx.Provide(bootstrap.NewHttpServer),
 
 		fx.Provide(guards.NewAppGuard),
+		fx.Provide(guards.NewAuthGuard),
+		fx.Provide(guards.NewOtpGuard),
 
 		// Utils
 		cipher.Module,

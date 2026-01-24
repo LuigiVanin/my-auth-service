@@ -20,10 +20,11 @@ func GenerateRandomDigits(length int) string {
 func GenerateRandomCharacters(length int) string {
 	var result strings.Builder
 	characters := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	count := len(characters)
 
 	for range length {
-		count := len(characters)
-		character := strconv.Itoa(rand.Intn(count))
+		index := rand.Intn(count)
+		character := string(characters[index])
 		result.WriteString(character)
 	}
 

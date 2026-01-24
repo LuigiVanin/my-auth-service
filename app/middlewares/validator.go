@@ -19,7 +19,7 @@ type ValidationError struct {
 	List []ValidationFieldError `json:"list"`
 }
 
-func validate[T any](payload T) error {
+func Validate[T any](payload T) error {
 	validator := v.New()
 
 	if err := validator.Struct(payload); err != nil {
@@ -55,8 +55,7 @@ func BodyValidator[T any]() func(ctx *fiber.Ctx) error {
 		if err := ctx.BodyParser(&payload); err != nil {
 			return err
 		}
-
-		err := validate(payload)
+		err := Validate(payload)
 
 		if err != nil {
 			return err

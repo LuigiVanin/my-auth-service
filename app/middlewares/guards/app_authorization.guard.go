@@ -10,9 +10,13 @@ import (
 	e "auth_service/common/errors"
 	"auth_service/common/global"
 
+	i "auth_service/common/interfaces"
+
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
+
+var _ i.IGuard = &AppGuard{}
 
 type AppGuard struct {
 	appRepository ar.IAppRepository
@@ -37,7 +41,7 @@ func validateKeyFormat(key string) error {
 	return nil
 }
 
-func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
+func (this *AppGuard) Act(ctx *fiber.Ctx) error {
 	global.Logger.Info("App Guard Triggered")
 	appKey := ctx.Get("X-Public-Key")
 	poolKey := ctx.Get("X-Pool-Key")
@@ -55,19 +59,19 @@ func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
 		return e.ThrowUnauthorizedError("Invalid X-Pool-Key format")
 	}
 
-	appUuid, err := guard.cipherService.DecryptUuidToken(appKey)
+	appUuid, err := this.cipherService.DecryptUuidToken(appKey)
 
 	if err != nil {
 		return e.ThrowUnauthorizedError("Invalid X-Public-Key")
 	}
 
-	poolUuid, err := guard.cipherService.DecryptUuidToken(poolKey)
+	poolUuid, err := this.cipherService.DecryptUuidToken(poolKey)
 
 	if err != nil {
 		return e.ThrowUnauthorizedError("Invalid X-Pool-Key")
 	}
 
-	app, err := guard.appRepository.FindAppbyIdWithPool(appUuid)
+	app, err := this.appRepository.FindAppbyIdWithPool(appUuid)
 
 	if err != nil || app == nil {
 		return e.ThrowNotFound(fmt.Sprintf("Error Searching for App: `%s`", err.Error()))
@@ -98,7 +102,7 @@ func (guard *AppGuard) Act(ctx *fiber.Ctx) error {
 	ctx.Locals("app", app)
 	ctx.Locals("pool", &app.UsersPool)
 
-	fmt.Println("Finished middleware app and pool")
+	this.logger.Info("Finished middleware app and pool")
 
 	return ctx.Next()
 }

@@ -12,21 +12,22 @@ import (
 
 type AuthGuard struct {
 	authService services.IAuthorizeService
+	logger      *zap.Logger
 }
 
-func NewAuthGuard(authService services.IAuthorizeService) *AuthGuard {
+func NewAuthGuard(authService services.IAuthorizeService, logger *zap.Logger) *AuthGuard {
 	return &AuthGuard{
 		authService: authService,
+		logger:      logger,
 	}
 }
 
-func (guard *AuthGuard) Act(ctx *fiber.Ctx) error {
-	global.Logger.Info("Auth Guard Triggered")
+func (this *AuthGuard) Act(ctx *fiber.Ctx) error {
+	this.logger.Info("Auth Guard Triggered")
 
 	app, ok := ctx.Locals("app").(*entity.App)
 	if !ok || app == nil {
-		// AppGuard must be run before AuthGuard
-		return e.ThrowInternalServerError("App context missing in AuthGuard")
+		return e.ThrowInternalServerError("App context missing in AuthGuard - should be run before AuthGuard")
 	}
 
 	authorization := ctx.Get("Authorization")
@@ -37,7 +38,7 @@ func (guard *AuthGuard) Act(ctx *fiber.Ctx) error {
 
 	// Validate the token using AuthorizeService
 	// We pass ctx.IP() to validate IP address mismatch as done in AuthorizeController
-	res, err := guard.authService.Authorize(app, authorization, ctx.IP())
+	res, err := this.authService.Authorize(app, authorization, ctx.IP())
 
 	if err != nil {
 		return err

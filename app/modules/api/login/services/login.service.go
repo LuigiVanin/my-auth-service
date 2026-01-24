@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 
 	"auth_service/app/models/dto"
@@ -131,8 +130,6 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 
 		if err != nil {
 			this.logger.Error("Error: ", zap.Error(err))
-
-			fmt.Println("RAW ERROR: ", err.Error())
 			return nil, e.ThrowInternalServerError("Failed to create token")
 		}
 

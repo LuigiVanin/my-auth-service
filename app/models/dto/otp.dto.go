@@ -8,6 +8,8 @@ import (
 type ConsumableOtpPayload struct {
 	Action constants.AuthAction `json:"action" validate:"required,oneof=LOGIN REGISTER VERIFY_EMAIL TWO_FA FORGOT_PASSWORD CHANGE_EMAIL REGEN_APP_SECRET_KEY"`
 
+	Contact string `json:"contact"`
+
 	// Metadata accepts any valid JSON object. Fiber's JSON parser will reject invalid JSON.
 	// Use omitempty to make it optional, or remove it to require the field.
 	Metadata map[string]any `json:"metadata" validate:"required"`
@@ -52,4 +54,9 @@ type GenerateConsumableOtpResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 
 	Metadata any `json:"metadata"`
+}
+
+type PayloadOtpData struct {
+	Id   string `json:"id" validate:"required"`
+	Code string `json:"code" validate:"required"`
 }

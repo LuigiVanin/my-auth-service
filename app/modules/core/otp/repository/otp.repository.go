@@ -23,3 +23,38 @@ func (repo *OtpRepository) Create(otp *entity.Otp) (*entity.Otp, error) {
 	}
 	return otp, nil
 }
+
+func (repo *OtpRepository) FindById(otpId string) (*entity.Otp, error) {
+	var otp entity.Otp
+
+	err := repo.db.Where("id = ?", otpId).First(&otp).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &otp, nil
+}
+
+func (repo *OtpRepository) FindLastOneWhere(where entity.Otp, with ...string) (*entity.Otp, error) {
+	var result entity.Otp
+
+	// NOTE: Sorting by created_at in descending order to get the latest OTP ALWAYS
+	whereClause := repo.db.Where(where).Order("created_at DESC")
+
+	if len(with) > 0 {
+		for _, relation := range with {
+			whereClause = whereClause.Preload(relation)
+		}
+	}
+
+	err := whereClause.First(&result).Error
+	return &result, err
+}
+
+func (repo *OtpRepository) Invalidate(otpId string) error {
+	err := repo.db.Model(&entity.Otp{}).Where("id = ?", otpId).Update("invalidated", true).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}

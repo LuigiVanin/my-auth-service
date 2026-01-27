@@ -45,6 +45,16 @@ func ThrowNotAllowed(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
+func ThrowTooManyRequests(detail string, extra ...utils.JSON) *GlobalError {
+	return NewGlobalError(
+		"Too Many Requests",
+		detail,
+		TooManyRequestsErrorCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/429",
+		extra...,
+	)
+}
+
 func ThrowBadRequest(detail string, extra ...utils.JSON) *GlobalError {
 	return NewGlobalError(
 		"Bad Request",

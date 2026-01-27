@@ -21,7 +21,6 @@ var Module = fx.Module(
 	),
 
 	fx.Provide(
-		fx.Private,
 		fx.Annotate(
 			services.NewOtpService,
 			fx.As(new(services.IOtpService)),

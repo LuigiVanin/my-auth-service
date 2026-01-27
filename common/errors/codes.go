@@ -60,6 +60,12 @@ var (
 		Second: fiber.StatusMethodNotAllowed,
 	}
 
+	// Too Many Requests 429
+	TooManyRequestsErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "TOO_MANY_REQUESTS",
+		Second: fiber.StatusTooManyRequests,
+	}
+
 	// Conflict 409
 	ConflictErrorCode ErrorCodePair = ErrorCodePair{
 		First:  "CONFLICT",

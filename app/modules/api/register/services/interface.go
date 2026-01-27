@@ -13,5 +13,8 @@ type IRegisterService interface {
 		userData dto.RegisterPayloadWithPassoword,
 	) (*entity.User, error)
 
-	RegisterWithOtp() error
+	RegisterWithOtp(
+		app *entity.App,
+		payload dto.RegisterPayloadWithOtp,
+	) (*entity.User, error)
 }

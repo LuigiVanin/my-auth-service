@@ -14,6 +14,7 @@ type ServerConfig struct {
 type AppConfig struct {
 	Name          string
 	EncryptionKey string
+	Env           string
 }
 
 type DatabaseConfig struct {
@@ -45,10 +46,10 @@ func NewConfigFromEnv() *Config {
 		panic(err)
 	}
 
-	env := os.Getenv("ENV")
+	envMode := os.Getenv("APP_ENV")
 
-	if env == "" {
-		env = "dev"
+	if envMode == "" {
+		envMode = "development"
 	}
 
 	host := os.Getenv("DB_HOST")
@@ -77,14 +78,14 @@ func NewConfigFromEnv() *Config {
 
 	return &Config{
 
-		Env: env,
-
 		Server: ServerConfig{
 			Port: os.Getenv("SERVER_PORT"),
 		},
+
 		App: AppConfig{
 			Name:          os.Getenv("APP_NAME"),
 			EncryptionKey: os.Getenv("APP_ENCRYPTION_KEY"),
+			Env:           envMode,
 		},
 
 		Database: DatabaseConfig{

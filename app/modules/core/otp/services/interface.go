@@ -9,7 +9,10 @@ import (
 type IOtpService interface {
 	GenerateConsumable(
 		app *entity.App,
-		action constants.AuthAction,
-		metadata map[string]any,
+		payload dto.ConsumableOtpPayload,
 	) (*dto.GenerateConsumableOtpResponse, error)
+
+	ValidateConsumable(payload dto.PayloadOtpData, appId string, action constants.AuthAction) (*entity.Otp, error)
+
+	Invalidate(otpId string)
 }

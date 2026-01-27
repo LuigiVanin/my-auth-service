@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"slices"
+	"strings"
 
 	"auth_service/app/models/dto"
 	ss "auth_service/app/modules/core/session/services"
@@ -44,7 +45,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	}
 
 	user, err := this.userRepository.FindWhere(entity.User{
-		Email:       userData.Email,
+		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
 	})
 
@@ -114,7 +115,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		token, err := this.jwtService.CreateAuthToken(
 			dto.AuthPayload{
 				User: dto.JwtUser{
-					Email: user.Email,
+					Email: strings.ToLower(user.Email),
 					Name:  user.Name,
 					Id:    user.ID,
 				},

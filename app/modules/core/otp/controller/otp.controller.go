@@ -40,7 +40,7 @@ func (c *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 
 	body.Metadata["Ip"] = ctx.IP()
 
-	res, err := c.otpService.GenerateConsumable(app, body.Action, body.Metadata)
+	res, err := c.otpService.GenerateConsumable(app, body)
 
 	if err != nil {
 		return err

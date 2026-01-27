@@ -17,4 +17,6 @@ type RegisterPayloadWithOtp struct {
 	Name  string  `json:"name" validate:"required"`
 
 	Metadata map[string]any `json:"metadata" validate:"required"`
+
+	Otp PayloadOtpData `json:"otp" validate:"required"`
 }

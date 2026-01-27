@@ -37,17 +37,28 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 
 	method := ctx.Queries()["method"]
 
-	var payload dto.RegisterPayloadWithPassoword
-
-	if err := ctx.BodyParser(&payload); err != nil {
-		return e.ThrowBadRequest(err.Error())
-	}
-
 	if method == "otp" {
-		return this.service.RegisterWithOtp()
+		var payload dto.RegisterPayloadWithOtp
+
+		if err := ctx.BodyParser(&payload); err != nil {
+			return e.ThrowBadRequest(err.Error())
+		}
+
+		user, err := this.service.RegisterWithOtp(app, payload)
+
+		if err != nil {
+			return err
+		}
+
+		return ctx.Status(fiber.StatusCreated).JSON(user)
 	}
 
 	if method == "password" || method == "" {
+		var payload dto.RegisterPayloadWithPassoword
+
+		if err := ctx.BodyParser(&payload); err != nil {
+			return e.ThrowBadRequest(err.Error())
+		}
 
 		user, err := this.service.RegisterWithPassword(app, payload)
 

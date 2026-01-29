@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+type PayloadOtpData struct {
+	Id   string `json:"id" validate:"required"`
+	Code string `json:"code" validate:"required"`
+}
+
 // ConsumableOtpPayload is the internal structure used by the service
 type ConsumableOtpPayload struct {
 	Action constants.AuthAction `json:"action"`
@@ -15,11 +20,16 @@ type ConsumableOtpPayload struct {
 	Payload map[string]any `json:"payload"`
 }
 
-// OtpStoredMetadata is the structure stored in the OTP metadata column
+type OtpStoredMetadataPayload struct {
+	Email string  `json:"email" validate:"email"`
+	Phone *string `json:"phone,omitempty"`
+	Name  string  `json:"name,omitempty"`
+}
+
 type OtpStoredMetadata struct {
-	Ip                string         `json:"ip"`
-	Payload           map[string]any `json:"payload"`
-	VerificationCount int            `json:"verification_count"`
+	Ip                string                   `json:"ip"`
+	Payload           OtpStoredMetadataPayload `json:"payload"`
+	VerificationCount int                      `json:"verification_count"`
 }
 
 // OtpRegisterPayload is the request body for REGISTER action
@@ -55,7 +65,7 @@ type OtpRegisterActionMetadata struct {
 type OtpLoginActionMetadata struct {
 	OtpMetadata
 
-	Email string `json:"email" validate:"required,email"`
+	Payload OtpMetadataPayload `json:"payload" validate:"required"`
 }
 
 type GenerateConsumableOtpResponse struct {
@@ -68,9 +78,4 @@ type GenerateConsumableOtpResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 
 	Payload map[string]any `json:"-"`
-}
-
-type PayloadOtpData struct {
-	Id   string `json:"id" validate:"required"`
-	Code string `json:"code" validate:"required"`
 }

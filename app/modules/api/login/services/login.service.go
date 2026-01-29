@@ -1,15 +1,18 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"slices"
 	"strings"
 
 	"auth_service/app/models/dto"
 	as "auth_service/app/modules/api/authorize/services"
+	os "auth_service/app/modules/core/otp/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
 	hs "auth_service/app/modules/utils/hash/services"
+	"auth_service/common/constants"
 	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
@@ -24,6 +27,7 @@ type LoginService struct {
 	hashService      hs.IHashService
 	sessionService   ss.ISessionService
 	authorizeService as.IAuthorizeService
+	otpService       os.IOtpService
 	logger           *zap.Logger
 }
 
@@ -32,6 +36,7 @@ func NewLoginService(
 	hashService hs.IHashService,
 	sessionService ss.ISessionService,
 	authorizeService as.IAuthorizeService,
+	otpService os.IOtpService,
 	logger *zap.Logger,
 ) *LoginService {
 
@@ -40,6 +45,7 @@ func NewLoginService(
 		hashService:      hashService,
 		sessionService:   sessionService,
 		authorizeService: authorizeService,
+		otpService:       otpService,
 		logger:           logger,
 	}
 }
@@ -110,5 +116,71 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
 	}
 
-	return nil, e.ThrowNotImplementedError("LoginWithOtp is not implemented")
+	user, err := this.userRepository.FindWhere(entity.User{
+		Email:       strings.ToLower(userData.Email),
+		UsersPoolId: app.UsersPool.ID,
+	})
+
+	if err != nil || user == nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, e.ThrowNotFound("User not found in User Pool")
+		}
+
+		return nil, e.ThrowInternalServerError("Failed to find user in User Pool")
+	}
+
+	this.logger.Info("User found in User Pool", zap.Any("user", user))
+
+	otp, err := this.otpService.ValidateConsumable(userData.Otp, app.ID, constants.ActionLogin)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = this.CompareOtpMetadataWithPayload(otp, userData)
+
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := this.sessionService.CreateNew(app, user, request, "WITH_PASSWORD")
+	if err != nil {
+		return nil, err
+	}
+
+	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
+
+	session.User = *user
+
+	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
+
+	if err != nil {
+		this.logger.Error("Failed to create authorization credentials", zap.Error(err))
+		return nil, err
+	}
+
+	go this.otpService.Invalidate(otp.ID)
+
+	return &dto.LoginResponse{
+		SessionId:        session.ID,
+		AccessToken:      credentials.AccessToken,
+		RefreshToken:     credentials.RefreshToken,
+		ExpiresAt:        session.ExpiresAt,
+		RefreshExpiresAt: session.RefreshExpiresAt,
+		User:             *user,
+	}, nil
+}
+
+func (this *LoginService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.LoginPayloadWithOtp) error {
+	var metadata dto.OtpLoginActionMetadata
+
+	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
+		return e.ThrowInternalServerError("Failed to parse OTP metadata")
+	}
+
+	if !strings.EqualFold(metadata.Payload.Email, userData.Email) {
+		return e.ThrowBadRequest("Email provided does not match the one used to generate the OTP")
+	}
+
+	return nil
 }

@@ -23,6 +23,8 @@ type RegisterPayloadWithOtp struct {
 
 	Metadata map[string]any `json:"metadata" validate:"required"`
 
+	Password string `json:"password,omitempty" validate:"omitempty,min=8"`
+
 	Otp PayloadOtpData `json:"otp" validate:"required"`
 }
 

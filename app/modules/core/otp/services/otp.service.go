@@ -51,17 +51,16 @@ func NewOtpService(otpRepository repository.IOtpRepository, hashService hs.IHash
 // TODO: Not allow ather fields to be stored inside of the metada
 func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.ConsumableOtpPayload, ip string) (*dto.GenerateConsumableOtpResponse, error) {
 
-	// Build the metadata structure with IP and payload
+	data, _ := utils.MapToStruct[dto.OtpStoredMetadataPayload](payload.Payload)
+
 	storedMetadata := dto.OtpStoredMetadata{
 		Ip:      ip,
-		Payload: payload.Payload,
+		Payload: data,
 	}
+
+	utils.PrintObj(storedMetadata)
 
 	// Add verification_count to payload if not present
-	if storedMetadata.Payload == nil {
-		storedMetadata.Payload = make(map[string]any)
-	}
-
 	storedMetadata.VerificationCount = 0
 
 	jsonMetadata, err := json.Marshal(storedMetadata)

@@ -12,8 +12,8 @@ import (
 	"auth_service/app/modules/core/profile/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
-	upr "auth_service/app/modules/core/user_pool/repository"
 	us "auth_service/app/modules/core/user/services"
+	upr "auth_service/app/modules/core/user_pool/repository"
 	hs "auth_service/app/modules/utils/hash/services"
 
 	"auth_service/common/constants"
@@ -62,7 +62,6 @@ func NewRegisterService(
 		authorizeService:   authorizeService,
 	}
 }
-
 
 func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword, request dto.RequestInfo) (*dto.RegisterResponse, error) {
 
@@ -207,12 +206,23 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 
 	go this.otpService.Invalidate(otp.ID)
 
+	var hashedPassword string
+
+	if userData.Password != "" {
+		hashedPassword, err = this.hashService.HashText(userData.Password, uuid.New().String())
+		if err != nil {
+			return nil, e.ThrowInternalServerError("Failed to hash password")
+		}
+	}
+
 	user, err := this.userRepository.Create(entity.User{
-		Email:       userData.Email,
-		Name:        userData.Name,
-		Phone:       phone,
-		UsersPoolId: app.UsersPool.ID,
-		ProfileId:   profile.ID,
+		Email:        userData.Email,
+		Name:         userData.Name,
+		Phone:        phone,
+		UsersPoolId:  app.UsersPool.ID,
+		VerifyEmail:  true,
+		ProfileId:    profile.ID,
+		PasswordHash: hashedPassword,
 	})
 
 	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))

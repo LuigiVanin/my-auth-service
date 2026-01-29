@@ -13,13 +13,13 @@ type LoginPayloadWithPassoword struct {
 type LoginPayloadWithOtp struct {
 	Email string `json:"email" validate:"required,email"`
 
-	Otp OtpPayload `json:"otp"`
+	Otp PayloadOtpData `json:"otp"`
 }
 
-type OtpPayload struct {
-	OtpCode string `json:"otp_code" validate:"required,min=6,max=6"`
-	OtpId   string `json:"otp_id" validate:"required"`
-}
+// type OtpPayload struct {
+// 	OtpCode string `json:"otp_code" validate:"required"`
+// 	OtpId   string `json:"otp_id" validate:"required"`
+// }
 
 type RequestInfo struct {
 	IpAddress string `json:"ip_address"`

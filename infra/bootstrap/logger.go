@@ -13,7 +13,7 @@ import (
 func NewZapLogger(cfg *config.Config) *zap.Logger {
 	var loggerConfig zap.Config
 
-	if slices.Contains([]string{"dev", "development"}, cfg.Env) {
+	if slices.Contains([]string{"dev", "development"}, cfg.App.Env) {
 		loggerConfig = zap.NewDevelopmentConfig()
 		loggerConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		loggerConfig.EncoderConfig.ConsoleSeparator = "\n\t| "

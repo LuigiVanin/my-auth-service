@@ -35,6 +35,12 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 
 	app := ctx.Locals("app").(*entity.App)
 
+	// Extract request information
+	requestInfo := dto.RequestInfo{
+		IpAddress: ctx.IP(),
+		UserAgent: ctx.Get("User-Agent"),
+	}
+
 	method := ctx.Queries()["method"]
 
 	if method == "otp" {
@@ -44,13 +50,13 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 			return e.ThrowBadRequest(err.Error())
 		}
 
-		user, err := this.service.RegisterWithOtp(app, payload)
+		response, err := this.service.RegisterWithOtp(app, payload, requestInfo)
 
 		if err != nil {
 			return err
 		}
 
-		return ctx.Status(fiber.StatusCreated).JSON(user)
+		return ctx.Status(fiber.StatusCreated).JSON(response)
 	}
 
 	if method == "password" || method == "" {
@@ -60,13 +66,13 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 			return e.ThrowBadRequest(err.Error())
 		}
 
-		user, err := this.service.RegisterWithPassword(app, payload)
+		response, err := this.service.RegisterWithPassword(app, payload, requestInfo)
 
 		if err != nil {
 			return err
 		}
 
-		return ctx.Status(fiber.StatusCreated).JSON(user)
+		return ctx.Status(fiber.StatusCreated).JSON(response)
 	}
 
 	return e.ThrowUnprocessableEntity("Invalid register method")

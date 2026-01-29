@@ -1,18 +1,20 @@
 package services
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+
 	"auth_service/app/models/dto"
 	"auth_service/app/modules/core/otp/repository"
+	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"
 	"auth_service/common/constants"
 	e "auth_service/common/errors"
 	"auth_service/common/utils"
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -23,62 +25,91 @@ var _ IOtpService = &OtpService{}
 
 const (
 	OtpExpirationDuration = 5 * time.Minute
+	OtpRateLimitDuration  = time.Minute / 3
 	OtpLength             = 6
 )
 
 type OtpService struct {
 	otpRepository repository.IOtpRepository
 	hashService   hs.IHashService
+	userService   us.IUserService
 	logger        *zap.Logger
 	cfg           *config.Config
 }
 
-func NewOtpService(otpRepository repository.IOtpRepository, hashService hs.IHashService, logger *zap.Logger, cfg *config.Config) *OtpService {
+func NewOtpService(otpRepository repository.IOtpRepository, hashService hs.IHashService, userService us.IUserService, logger *zap.Logger, cfg *config.Config) *OtpService {
 	return &OtpService{
 		otpRepository: otpRepository,
 		hashService:   hashService,
+		userService:   userService,
 		logger:        logger,
 		cfg:           cfg,
 	}
 }
 
 // TODO: it will be necessary to build an rate limit for ip addresses for this function
-func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.ConsumableOtpPayload) (*dto.GenerateConsumableOtpResponse, error) {
+// TODO: Not allow ather fields to be stored inside of the metada
+func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.ConsumableOtpPayload, ip string) (*dto.GenerateConsumableOtpResponse, error) {
 
-	var jsonMetadata []byte
-	var metadataJson any
-
-	switch payload.Action {
-	case constants.ActionRegister:
-		// TODO: check if the app has the action allowed (WITH_OTP)
-		registerMetadata, err := utils.MapToStruct[dto.OtpRegisterActionMetadata](payload.Metadata)
-		if err != nil {
-			return nil, e.ThrowUnprocessableEntity("Invalid metadata structure for REGISTER action")
-		}
-
-		// Safely access Ip from metadata
-		ip, ok := payload.Metadata["Ip"].(string)
-
-		if !ok {
-			return nil, e.ThrowUnprocessableEntity("Ip address is required in metadata")
-		}
-
-		registerMetadata.OtpMetadata.VeficationCount = 0
-		registerMetadata.OtpMetadata.Ip = ip
-
-		if payload.Contact == "" {
-			payload.Contact = registerMetadata.Email
-		}
-
-		metadataJson = registerMetadata
-	default:
-		return nil, e.ThrowUnprocessableEntity("Invalid OTP action")
+	// Build the metadata structure with IP and payload
+	storedMetadata := dto.OtpStoredMetadata{
+		Ip:      ip,
+		Payload: payload.Payload,
 	}
 
-	jsonMetadata, err := json.Marshal(metadataJson)
+	// Add verification_count to payload if not present
+	if storedMetadata.Payload == nil {
+		storedMetadata.Payload = make(map[string]any)
+	}
 
+	storedMetadata.VerificationCount = 0
+
+	jsonMetadata, err := json.Marshal(storedMetadata)
 	if err != nil {
-		return nil, err
+		return nil, e.ThrowInternalServerError("Failed to marshal metadata")
+	}
+
+	// Extract contact based on action
+	switch payload.Action {
+	case constants.ActionRegister:
+		if payload.Contact == "" {
+			// Try to get email from payload
+			if email, ok := payload.Payload["email"].(string); ok {
+				payload.Contact = email
+			} else {
+				return nil, e.ThrowBadRequest("Email is required for REGISTER action")
+			}
+		}
+
+		// Check if user already exists for REGISTER action
+		exists, err := this.userService.IsAlreadyCreated(payload.Contact, app)
+		if err != nil {
+			this.logger.Error("Failed to check if user exists", zap.Error(err))
+			return nil, e.ThrowInternalServerError("Failed to check user existence")
+		}
+		if exists {
+			return nil, e.ThrowBadRequest("User already exists")
+		}
+	case constants.ActionLogin:
+		if payload.Contact == "" {
+			// Try to get email from payload
+			if email, ok := payload.Payload["email"].(string); ok {
+				payload.Contact = email
+			} else {
+				return nil, e.ThrowBadRequest("Email is required for LOGIN action")
+			}
+
+			exists, err := this.userService.IsAlreadyCreated(payload.Contact, app)
+			if err != nil {
+				this.logger.Error("Failed to check if user exists", zap.Error(err))
+				return nil, e.ThrowInternalServerError("Failed to check user existence")
+			}
+			if !exists {
+				return nil, e.ThrowNotFound("User not found in User Pool")
+			}
+		}
+	default:
+		return nil, e.ThrowUnprocessableEntity("Invalid OTP action")
 	}
 
 	// Check if there was a recent OTP request for this contact, app, and action
@@ -91,8 +122,9 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 	if err == nil && lastOtp != nil {
 		// Check if the last OTP was created within the last minute
 		timeSinceLastOtp := time.Since(lastOtp.CreatedAt)
-		if timeSinceLastOtp < time.Minute {
-			remainingTime := time.Minute - timeSinceLastOtp
+
+		if timeSinceLastOtp < OtpRateLimitDuration {
+			remainingTime := OtpRateLimitDuration - timeSinceLastOtp
 
 			return nil, e.ThrowTooManyRequests(
 				fmt.Sprintf("Please wait %d seconds before requesting another OTP", int(remainingTime.Seconds())),
@@ -140,9 +172,9 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 		Action: payload.Action,
 
 		ExpiresAt: otp.ExpiresAt,
-		CreatedAt: otp.CreatedAt, // Added CreatedAt to response for completeness
+		CreatedAt: otp.CreatedAt,
 
-		Metadata: payload.Metadata,
+		Payload: payload.Payload,
 	}, nil
 }
 

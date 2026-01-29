@@ -1,6 +1,11 @@
 package dto
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+
+	entity "auth_service/infra/entities"
+)
 
 type RegisterPayloadWithPassoword struct {
 	Email    string  `json:"email" validate:"required,email"`
@@ -19,4 +24,14 @@ type RegisterPayloadWithOtp struct {
 	Metadata map[string]any `json:"metadata" validate:"required"`
 
 	Otp PayloadOtpData `json:"otp" validate:"required"`
+}
+
+type RegisterResponse struct {
+	SessionId        string    `json:"session_id"`
+	AccessToken      string    `json:"access_token"`
+	RefreshToken     string    `json:"refresh_token"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
+
+	User entity.User `json:"user"`
 }

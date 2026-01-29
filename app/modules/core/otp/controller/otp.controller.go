@@ -1,11 +1,11 @@
 package controller
 
 import (
-	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
 	"auth_service/app/models/dto"
 	"auth_service/app/modules/core/otp/services"
+	"auth_service/common/constants"
 	e "auth_service/common/errors"
 	"auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
@@ -29,18 +29,33 @@ func NewOtpController(otpService services.IOtpService, otpGuard *guards.OtpGuard
 	}
 }
 
-func (c *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
+func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 
 	app := ctx.Locals("app").(*entity.App)
 
-	var body dto.ConsumableOtpPayload
-	if err := ctx.BodyParser(&body); err != nil {
+	// Extract action from query params
+	actionStr := ctx.Query("action")
+	if actionStr == "" {
+		return e.ThrowBadRequest("Action query parameter is required")
+	}
+
+	// Parse the entire body as the payload
+	var bodyPayload map[string]any
+	if err := ctx.BodyParser(&bodyPayload); err != nil {
 		return e.ThrowBadRequest("Invalid request body")
 	}
 
-	body.Metadata["Ip"] = ctx.IP()
+	// Build the ConsumableOtpPayload
+	payload := dto.ConsumableOtpPayload{
+		Action:  constants.AuthAction(actionStr),
+		Contact: "", // Will be extracted from payload in service
+		Payload: bodyPayload,
+	}
 
-	res, err := c.otpService.GenerateConsumable(app, body)
+	// Get IP address from context
+	ip := ctx.IP()
+
+	res, err := this.otpService.GenerateConsumable(app, payload, ip)
 
 	if err != nil {
 		return err
@@ -54,7 +69,6 @@ func (this *OtpController) Register(server *fiber.App) {
 
 	group.Post(
 		"/generate_consumable",
-		middleware.BodyValidator[dto.ConsumableOtpPayload](),
 		validators.OtpValidator,
 		this.otpGuard.Act,
 		this.GenerateConsumable,

@@ -1,11 +1,11 @@
 package guards
 
 import (
-	"auth_service/app/models/dto"
 	"auth_service/common/constants"
 	e "auth_service/common/errors"
 	i "auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
+	"slices"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -33,15 +33,25 @@ func (this *OtpGuard) Act(ctx *fiber.Ctx) error {
 		return e.ThrowInternalServerError("App context missing in AuthGuard - should be run before AuthGuard")
 	}
 
-	var body dto.ConsumableOtpPayload
-	if err := ctx.BodyParser(&body); err != nil {
-		return e.ThrowBadRequest("Invalid request body")
+	// Extract action from query params
+	action := ctx.Query("action")
+
+	if action == "" {
+		return e.ThrowBadRequest("Action query parameter is required")
 	}
 
-	if body.Action == constants.ActionRegister {
+	// If action is REGISTER, skip auth guard (allow unauthenticated)
+	if slices.Contains(
+		[]constants.AuthAction{
+			constants.ActionRegister,
+			constants.ActionLogin,
+		},
+		constants.AuthAction(action),
+	) {
 		return ctx.Next()
 	}
 
+	// For other actions, require authentication
 	err := this.authGuard.Act(ctx)
 
 	if err != nil {

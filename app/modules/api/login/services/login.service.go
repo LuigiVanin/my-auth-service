@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"auth_service/app/models/dto"
+	as "auth_service/app/modules/api/authorize/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
 	hs "auth_service/app/modules/utils/hash/services"
-	jwt "auth_service/app/modules/utils/jwt"
 	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
@@ -20,21 +20,27 @@ import (
 var _ ILoginService = &LoginService{}
 
 type LoginService struct {
-	userRepository ur.IUserRepository
-	hashService    hs.IHashService
-	sessionService ss.ISessionService
-	jwtService     jwt.IJwtService
-	logger         *zap.Logger
+	userRepository   ur.IUserRepository
+	hashService      hs.IHashService
+	sessionService   ss.ISessionService
+	authorizeService as.IAuthorizeService
+	logger           *zap.Logger
 }
 
-func NewLoginService(userRepository ur.IUserRepository, hashService hs.IHashService, jwtService jwt.IJwtService, sessionService ss.ISessionService, logger *zap.Logger) *LoginService {
+func NewLoginService(
+	userRepository ur.IUserRepository,
+	hashService hs.IHashService,
+	sessionService ss.ISessionService,
+	authorizeService as.IAuthorizeService,
+	logger *zap.Logger,
+) *LoginService {
 
 	return &LoginService{
-		userRepository: userRepository,
-		hashService:    hashService,
-		sessionService: sessionService,
-		jwtService:     jwtService,
-		logger:         logger,
+		userRepository:   userRepository,
+		hashService:      hashService,
+		sessionService:   sessionService,
+		authorizeService: authorizeService,
+		logger:           logger,
 	}
 }
 
@@ -53,7 +59,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// NOTE: If the user is not found in the User Pool, it means that the user is not registered in the app
 			// TODO: Maybe is not a great ideia to return 404 here, this could be a hint to badactors
-			return nil, e.ThrowUnauthorizedError("User not found in User Pool") // NOT FOUND?
+			return nil, e.ThrowNotFound("User not found in User Pool") // NOT FOUND
 		}
 
 		return nil, e.ThrowInternalServerError("Failed to find user in User Pool")
@@ -77,79 +83,26 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		return nil, err
 	}
 
-	this.logger.Info("Session created successfully", zap.Any("session", session))
+	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
 
-	encryptedRefreshToken, err := this.sessionService.EncryptSessionToken(
-		session.ID,
-		session.RefreshToken,
-		app.SecretKey,
-	)
+	// Populate User field in session for CreateAuthorizationCredentials
+	session.User = *user
 
+	// Generate authorization credentials
+	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
 	if err != nil {
-		return nil, e.ThrowInternalServerError("Failed to create token")
+		this.logger.Error("Failed to create authorization credentials", zap.Error(err))
+		return nil, err
 	}
 
-	if app.TokenType == "SESSION_UUID" {
-		encryptedToken, err := this.sessionService.EncryptSessionToken(
-			session.ID,
-			session.Token,
-			app.SecretKey,
-		)
-
-		if err != nil {
-			return nil, e.ThrowInternalServerError("Failed to create token")
-		}
-
-		return &dto.LoginResponse{
-			SessionId:        session.ID,
-			AccessToken:      encryptedToken,
-			RefreshToken:     encryptedRefreshToken,
-			ExpiresAt:        session.ExpiresAt,
-			RefreshExpiresAt: session.RefreshExpiresAt,
-
-			User: *user,
-		}, nil
-	}
-
-	if app.TokenType == "JWT" {
-		token, err := this.jwtService.CreateAuthToken(
-			dto.AuthPayload{
-				User: dto.JwtUser{
-					Email: strings.ToLower(user.Email),
-					Name:  user.Name,
-					Id:    user.ID,
-				},
-				AppId:      app.ID,
-				UserPoolId: app.UsersPoolId,
-				SessionId:  session.ID,
-				Token:      session.Token,
-				Time:       session.CreatedAt,
-				ExpireTime: uint(app.TokenExpirationTime),
-			},
-			app.SecretKey,
-		)
-
-		if err != nil {
-			this.logger.Error("Error: ", zap.Error(err))
-			return nil, e.ThrowInternalServerError("Failed to create token")
-		}
-
-		return &dto.LoginResponse{
-			SessionId:        session.ID,
-			AccessToken:      token,
-			RefreshToken:     encryptedRefreshToken,
-			ExpiresAt:        session.ExpiresAt,
-			RefreshExpiresAt: session.RefreshExpiresAt,
-
-			User: *user,
-		}, nil
-	}
-
-	if app.TokenType == "FAST_JWT" {
-		return nil, e.ThrowNotImplementedError("FAST_JWT Token is not implemented")
-	}
-
-	return nil, e.ThrowBadRequest("Invalid token type, please contact the administrator")
+	return &dto.LoginResponse{
+		SessionId:        session.ID,
+		AccessToken:      credentials.AccessToken,
+		RefreshToken:     credentials.RefreshToken,
+		ExpiresAt:        session.ExpiresAt,
+		RefreshExpiresAt: session.RefreshExpiresAt,
+		User:             *user,
+	}, nil
 }
 
 func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloadWithOtp, request dto.RequestInfo) (*dto.LoginResponse, error) {

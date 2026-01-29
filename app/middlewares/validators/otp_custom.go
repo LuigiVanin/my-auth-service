@@ -10,17 +10,18 @@ import (
 )
 
 func OtpValidator(ctx *fiber.Ctx) error {
-	var payload dto.ConsumableOtpPayload
-
-	if err := ctx.BodyParser(&payload); err != nil {
-		return e.ThrowBadRequest(err.Error())
+	// Extract action from query params
+	action := ctx.Query("action")
+	if action == "" {
+		return e.ThrowBadRequest("Action query parameter is required")
 	}
 
-	switch payload.Action {
+	// Validate action and apply appropriate body validator
+	switch constants.AuthAction(action) {
 	case constants.ActionRegister:
 		return middleware.BodyValidator[dto.OtpRegisterPayload]()(ctx)
 	case constants.ActionLogin:
-		return middleware.BodyValidator[dto.OtpLoginActionPayload]()(ctx)
+		return middleware.BodyValidator[dto.OtpLoginPayload]()(ctx)
 	default:
 		return e.ThrowUnprocessableEntity("Invalid OTP action")
 	}

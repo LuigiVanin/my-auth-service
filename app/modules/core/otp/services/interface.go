@@ -10,6 +10,7 @@ type IOtpService interface {
 	GenerateConsumable(
 		app *entity.App,
 		payload dto.ConsumableOtpPayload,
+		ip string,
 	) (*dto.GenerateConsumableOtpResponse, error)
 
 	ValidateConsumable(payload dto.PayloadOtpData, appId string, action constants.AuthAction) (*entity.Otp, error)

@@ -5,43 +5,57 @@ import (
 	"time"
 )
 
+// ConsumableOtpPayload is the internal structure used by the service
 type ConsumableOtpPayload struct {
-	Action constants.AuthAction `json:"action" validate:"required,oneof=LOGIN REGISTER VERIFY_EMAIL TWO_FA FORGOT_PASSWORD CHANGE_EMAIL REGEN_APP_SECRET_KEY"`
+	Action constants.AuthAction `json:"action"`
 
 	Contact string `json:"contact"`
 
-	// Metadata accepts any valid JSON object. Fiber's JSON parser will reject invalid JSON.
-	// Use omitempty to make it optional, or remove it to require the field.
-	Metadata map[string]any `json:"metadata" validate:"required"`
+	// Payload contains the actual data from the request body
+	Payload map[string]any `json:"payload"`
 }
+
+// OtpStoredMetadata is the structure stored in the OTP metadata column
+type OtpStoredMetadata struct {
+	Ip                string         `json:"ip"`
+	Payload           map[string]any `json:"payload"`
+	VerificationCount int            `json:"verification_count"`
+}
+
+// OtpRegisterPayload is the request body for REGISTER action
+type OtpRegisterPayload struct {
+	Email string  `json:"email" validate:"required,email"`
+	Phone *string `json:"phone"`
+	Name  string  `json:"name" validate:"required"`
+}
+
+// OtpLoginPayload is the request body for LOGIN action
+type OtpLoginPayload struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+// Legacy types kept for backward compatibility
 type OtpMetadata struct {
 	Ip              string `json:"ip"`
 	VeficationCount int    `json:"vefication_count"`
 }
 
+type OtpMetadataPayload struct {
+	Email string  `json:"email" validate:"email"`
+	Phone *string `json:"phone"`
+	Name  string  `json:"name"`
+}
+
 type OtpRegisterActionMetadata struct {
 	OtpMetadata
 
-	Email string  `json:"email" validate:"required,email"`
-	Phone *string `json:"phone"`
-	Name  string  `json:"name" validate:"required"`
+	Payload OtpMetadataPayload `json:"payload" validate:"required"`
 }
 
 type OtpLoginActionMetadata struct {
 	OtpMetadata
 
 	Email string `json:"email" validate:"required,email"`
-}
-
-type OtpRegisterPayload struct {
-	Action   constants.AuthAction      `json:"action" validate:"required,oneof=LOGIN REGISTER VERIFY_EMAIL TWO_FA FORGOT_PASSWORD CHANGE_EMAIL REGEN_APP_SECRET_KEY"`
-	Metadata OtpRegisterActionMetadata `json:"metadata" validate:"required"`
-}
-
-type OtpLoginActionPayload struct {
-	Action constants.AuthAction `json:"action" validate:"required,oneof=LOGIN REGISTER VERIFY_EMAIL TWO_FA FORGOT_PASSWORD CHANGE_EMAIL REGEN_APP_SECRET_KEY"`
-
-	Metadata OtpLoginActionMetadata `json:"metadata" validate:"required"`
 }
 
 type GenerateConsumableOtpResponse struct {
@@ -53,7 +67,7 @@ type GenerateConsumableOtpResponse struct {
 	ExpiresAt time.Time `json:"expires_at"`
 	CreatedAt time.Time `json:"created_at"`
 
-	Metadata any `json:"metadata"`
+	Payload map[string]any `json:"-"`
 }
 
 type PayloadOtpData struct {

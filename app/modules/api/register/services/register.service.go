@@ -2,16 +2,18 @@ package services
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
 	"auth_service/app/models/dto"
+	as "auth_service/app/modules/api/authorize/services"
 	os "auth_service/app/modules/core/otp/services"
 	"auth_service/app/modules/core/profile/services"
+	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
 	upr "auth_service/app/modules/core/user_pool/repository"
+	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"
 
 	"auth_service/common/constants"
@@ -20,7 +22,6 @@ import (
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 var _ IRegisterService = &RegisterService{}
@@ -28,48 +29,56 @@ var _ IRegisterService = &RegisterService{}
 type RegisterService struct {
 	userPoolRepository upr.IUserPoolRepository
 	userRepository     ur.IUserRepository
+	userService        us.IUserService
 	logger             *zap.Logger
 	hashService        hs.IHashService
 	profileService     services.IProfileService
 	otpService         os.IOtpService
+	sessionService     ss.ISessionService
+	authorizeService   as.IAuthorizeService
 }
 
-func NewRegisterService(userPoolRepository upr.IUserPoolRepository, userRepository ur.IUserRepository, profileService services.IProfileService, logger *zap.Logger, hashService hs.IHashService, otpService os.IOtpService) *RegisterService {
+func NewRegisterService(
+	userPoolRepository upr.IUserPoolRepository,
+	userRepository ur.IUserRepository,
+	userService us.IUserService,
+	profileService services.IProfileService,
+	logger *zap.Logger,
+	hashService hs.IHashService,
+	otpService os.IOtpService,
+	sessionService ss.ISessionService,
+	authorizeService as.IAuthorizeService,
+) *RegisterService {
 
 	return &RegisterService{
 		userPoolRepository: userPoolRepository,
 		userRepository:     userRepository,
+		userService:        userService,
 		profileService:     profileService,
 		logger:             logger,
 		hashService:        hashService,
 		otpService:         otpService,
+		sessionService:     sessionService,
+		authorizeService:   authorizeService,
 	}
 }
 
-func (this *RegisterService) IsUserAlreadyRegistered(app *entity.App, email string) error {
-	_, err := this.userRepository.FindWhere(entity.User{
-		Email:       strings.ToLower(email),
-		UsersPoolId: app.UsersPool.ID,
-	})
 
-	if err == nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return e.ThrowBadRequest("User already exists")
-	}
-
-	return nil
-}
-
-func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword) (*entity.User, error) {
+func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword, request dto.RequestInfo) (*dto.RegisterResponse, error) {
 
 	// TODO: move this logic to a permission guard or something like that
 	if !slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
 	}
 
-	err := this.IsUserAlreadyRegistered(app, userData.Email)
-
+	// Check if user already exists
+	exists, err := this.userService.IsAlreadyCreated(userData.Email, app)
 	if err != nil {
-		return nil, err
+		this.logger.Error("Failed to check if user exists", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to check user existence")
+	}
+	if exists {
+		return nil, e.ThrowBadRequest("User already exists")
 	}
 
 	// NOTE: Here I am using a random uuid as Salt. The Salt is stored inside the hashed password in argon2
@@ -125,19 +134,48 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return nil, e.ThrowInternalServerError("Failed to find user")
 	}
 
-	// TODO: replace the createdUser from a User.entity to a DTO RegisterResponse
-	return createdUser, nil
+	// Create session for the newly registered user
+	session, err := this.sessionService.CreateNew(app, createdUser, request, "WITH_PASSWORD")
+	if err != nil {
+		this.logger.Error("Failed to create session", zap.Error(err))
+		return nil, err
+	}
+
+	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
+
+	// Populate User field in session for CreateAuthorizationCredentials
+	session.User = *createdUser
+
+	// Generate authorization credentials
+	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
+	if err != nil {
+		this.logger.Error("Failed to create authorization credentials", zap.Error(err))
+		return nil, err
+	}
+
+	return &dto.RegisterResponse{
+		SessionId:        session.ID,
+		AccessToken:      credentials.AccessToken,
+		RefreshToken:     credentials.RefreshToken,
+		ExpiresAt:        session.ExpiresAt,
+		RefreshExpiresAt: session.RefreshExpiresAt,
+		User:             *createdUser,
+	}, nil
 }
 
-func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.RegisterPayloadWithOtp) (*entity.User, error) {
+func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.RegisterPayloadWithOtp, request dto.RequestInfo) (*dto.RegisterResponse, error) {
 	if !slices.Contains(app.LoginTypes, "WITH_OTP") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
 	}
 
-	err := this.IsUserAlreadyRegistered(app, userData.Email)
-
+	// Check if user already exists
+	exists, err := this.userService.IsAlreadyCreated(userData.Email, app)
 	if err != nil {
-		return nil, err
+		this.logger.Error("Failed to check if user exists", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to check user existence")
+	}
+	if exists {
+		return nil, e.ThrowBadRequest("User already exists")
 	}
 
 	profile, err := this.profileService.GetProfileByAppRole(app.Role)
@@ -193,7 +231,33 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		return nil, e.ThrowInternalServerError("Failed to find user")
 	}
 
-	return createdUser, nil
+	// Create session for the newly registered user
+	session, err := this.sessionService.CreateNew(app, createdUser, request, "WITH_OTP")
+	if err != nil {
+		this.logger.Error("Failed to create session", zap.Error(err))
+		return nil, err
+	}
+
+	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
+
+	// Populate User field in session for CreateAuthorizationCredentials
+	session.User = *createdUser
+
+	// Generate authorization credentials
+	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
+	if err != nil {
+		this.logger.Error("Failed to create authorization credentials", zap.Error(err))
+		return nil, err
+	}
+
+	return &dto.RegisterResponse{
+		SessionId:        session.ID,
+		AccessToken:      credentials.AccessToken,
+		RefreshToken:     credentials.RefreshToken,
+		ExpiresAt:        session.ExpiresAt,
+		RefreshExpiresAt: session.RefreshExpiresAt,
+		User:             *createdUser,
+	}, nil
 }
 
 func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*dto.OtpRegisterActionMetadata, error) {
@@ -203,11 +267,11 @@ func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, user
 		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")
 	}
 
-	if !strings.EqualFold(metadata.Email, userData.Email) {
+	if !strings.EqualFold(metadata.Payload.Email, userData.Email) {
 		return nil, e.ThrowBadRequest("Email provided does not match the one used to generate the OTP")
 	}
 
-	if metadata.Name != userData.Name {
+	if metadata.Payload.Name != userData.Name {
 		return nil, e.ThrowBadRequest("Name provided does not match the one used to generate the OTP")
 	}
 

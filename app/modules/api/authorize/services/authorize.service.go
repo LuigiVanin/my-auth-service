@@ -162,9 +162,26 @@ func (this *AuthorizeService) Refresh(
 		return nil, e.ThrowInternalServerError("Failed to rotate session")
 	}
 
+	credentials, err := this.CreateAuthorizationCredentials(app, newSession)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.RefreshResponse{
+		SessionId:        newSession.ID,
+		AccessToken:      credentials.AccessToken,
+		RefreshToken:     credentials.RefreshToken,
+		ExpiresAt:        newSession.ExpiresAt,
+		RefreshExpiresAt: newSession.RefreshExpiresAt,
+		User:             session.User,
+	}, nil
+}
+
+func (this *AuthorizeService) CreateAuthorizationCredentials(app *entity.App, session *entity.Session) (*AuthorizationCredentials, error) {
 	encryptedRefreshToken, err := this.sessionService.EncryptSessionToken(
-		newSession.ID,
-		newSession.RefreshToken,
+		session.ID,
+		session.RefreshToken,
 		app.SecretKey,
 	)
 	if err != nil {
@@ -184,17 +201,17 @@ func (this *AuthorizeService) Refresh(
 				},
 				AppId:      app.ID,
 				UserPoolId: app.UsersPoolId,
-				SessionId:  newSession.ID,
-				Token:      newSession.Token,
-				Time:       newSession.CreatedAt,
+				SessionId:  session.ID,
+				Token:      session.Token,
+				Time:       session.CreatedAt,
 				ExpireTime: uint(app.TokenExpirationTime),
 			},
 			app.SecretKey,
 		)
 	case "SESSION_UUID":
 		accessToken, err = this.sessionService.EncryptSessionToken(
-			newSession.ID,
-			newSession.Token,
+			session.ID,
+			session.Token,
 			app.SecretKey,
 		)
 	default:
@@ -205,13 +222,9 @@ func (this *AuthorizeService) Refresh(
 		return nil, e.ThrowInternalServerError("Failed to generate access token")
 	}
 
-	return &dto.RefreshResponse{
-		SessionId:        newSession.ID,
-		AccessToken:      accessToken,
-		RefreshToken:     encryptedRefreshToken,
-		ExpiresAt:        newSession.ExpiresAt,
-		RefreshExpiresAt: newSession.RefreshExpiresAt,
-		User:             session.User,
+	return &AuthorizationCredentials{
+		AccessToken:  accessToken,
+		RefreshToken: encryptedRefreshToken,
 	}, nil
 }
 

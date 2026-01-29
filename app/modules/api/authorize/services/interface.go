@@ -5,6 +5,11 @@ import (
 	entity "auth_service/infra/entities"
 )
 
+type AuthorizationCredentials struct {
+	AccessToken  string
+	RefreshToken string
+}
+
 type IAuthorizeService interface {
 	Authorize(
 		app *entity.App,
@@ -17,4 +22,9 @@ type IAuthorizeService interface {
 		token string,
 		ip string,
 	) (*dto.RefreshResponse, error)
+
+	CreateAuthorizationCredentials(
+		app *entity.App,
+		session *entity.Session,
+	) (*AuthorizationCredentials, error)
 }

@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"auth_service/common/global"
 	"auth_service/infra/config"
+	"slices"
 	"time"
 
 	"go.uber.org/zap"
@@ -12,7 +13,7 @@ import (
 func NewZapLogger(cfg *config.Config) *zap.Logger {
 	var loggerConfig zap.Config
 
-	if cfg.Env == "dev" {
+	if slices.Contains([]string{"dev", "development"}, cfg.Env) {
 		loggerConfig = zap.NewDevelopmentConfig()
 		loggerConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		loggerConfig.EncoderConfig.ConsoleSeparator = "\n\t| "

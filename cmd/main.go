@@ -11,6 +11,7 @@ import (
 	"auth_service/app/modules/core/otp"
 	"auth_service/app/modules/core/profile"
 	"auth_service/app/modules/core/session"
+	"auth_service/app/modules/core/user"
 	"auth_service/app/modules/core/user_pool"
 	"auth_service/app/modules/utils/cipher"
 	"auth_service/app/modules/utils/hash"
@@ -40,6 +41,7 @@ func main() {
 		jwt.Module,
 
 		// Core
+		user.Module,
 		app.Module,
 		user_pool.Module,
 		session.Module,

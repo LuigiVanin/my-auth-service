@@ -65,6 +65,16 @@ func ThrowBadRequest(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
+func ThrowInvalidOtpCode(detail string, extra ...utils.JSON) *GlobalError {
+	return NewGlobalError(
+		"Invalid OTP Code",
+		detail,
+		InvalidOtpCodeErrorCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/400",
+		extra...,
+	)
+}
+
 func ThrowConflict(detail string, extra ...utils.JSON) *GlobalError {
 	return NewGlobalError(
 		"Conflict",

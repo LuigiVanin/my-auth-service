@@ -19,6 +19,8 @@ type Otp struct {
 
 	Contact string `gorm:"not null;index:idx_otp_app_contact"`
 
+	VerificationCount int `gorm:"not null;default:0" json:"verification_count"`
+
 	Invalidated bool            `gorm:"not null;default:false"`
 	Metadata    json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`
 

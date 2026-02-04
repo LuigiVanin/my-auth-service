@@ -27,6 +27,11 @@ var (
 		Second: fiber.StatusBadRequest,
 	}
 
+	InvalidOtpCodeErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "INVALID_OTP_CODE",
+		Second: fiber.StatusBadRequest,
+	}
+
 	// Unauthorized 401
 	UnauthorizedErrorCode ErrorCodePair = ErrorCodePair{
 		First:  "UNAUTHORIZED",

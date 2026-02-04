@@ -1,18 +1,24 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
 
 	"auth_service/app/models/dto"
+	os "auth_service/app/modules/core/otp/services"
 	sr "auth_service/app/modules/core/session/repository"
 	ss "auth_service/app/modules/core/session/services"
+	us "auth_service/app/modules/core/user/services"
+	hs "auth_service/app/modules/utils/hash/services"
 	jm "auth_service/app/modules/utils/jwt"
+	"auth_service/common/constants"
 	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -23,14 +29,28 @@ type AuthorizeService struct {
 	jwtService        jm.IJwtService
 	sessionRepository sr.ISessionRepository
 	sessionService    ss.ISessionService
+	userService       us.IUserService
+	otpService        os.IOtpService
+	hashService       hs.IHashService
 	logger            *zap.Logger
 }
 
-func NewAuthorizeService(jwtService jm.IJwtService, sessionRepository sr.ISessionRepository, sessionService ss.ISessionService, logger *zap.Logger) IAuthorizeService {
+func NewAuthorizeService(
+	jwtService jm.IJwtService,
+	sessionRepository sr.ISessionRepository,
+	sessionService ss.ISessionService,
+	userService us.IUserService,
+	otpService os.IOtpService,
+	hashService hs.IHashService,
+	logger *zap.Logger,
+) IAuthorizeService {
 	return &AuthorizeService{
 		jwtService:        jwtService,
 		sessionRepository: sessionRepository,
 		sessionService:    sessionService,
+		userService:       userService,
+		otpService:        otpService,
+		hashService:       hashService,
 		logger:            logger,
 	}
 }
@@ -232,7 +252,7 @@ func (this *AuthorizeService) Authorize(
 	app *entity.App,
 	token string,
 	ip string,
-) (*dto.AuthorizeReponse, error) {
+) (*dto.AuthorizeResponse, error) {
 	texts := strings.Split(token, " ")
 
 	if len(texts) != 2 {
@@ -274,7 +294,7 @@ func (this *AuthorizeService) Authorize(
 		this.logger.Info("Session used", zap.String("session_id", session.ID))
 	}()
 
-	return &dto.AuthorizeReponse{
+	return &dto.AuthorizeResponse{
 		User:      session.User,
 		SessionId: session.ID,
 		Appid:     app.ID,
@@ -284,4 +304,53 @@ func (this *AuthorizeService) Authorize(
 		Authorized: true,
 	}, nil
 
+}
+
+func (this *AuthorizeService) SetPassword(user *entity.User, newPassword string) error {
+	hashedPassword, err := this.hashService.HashText(newPassword, uuid.New().String())
+	if err != nil {
+		return e.ThrowInternalServerError("Failed to hash password")
+	}
+
+	user.PasswordHash = hashedPassword
+
+	if err := this.userService.Update(user); err != nil {
+		return e.ThrowInternalServerError("Failed to update user password")
+	}
+
+	return nil
+}
+
+func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPasswordPayload) (*entity.User, error) {
+
+	otpResponse, err := this.otpService.ValidateConsumable(payload.Otp, app.ID, constants.ActionForgotPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	var metadata dto.OtpStoredMetadata
+
+	if err := json.Unmarshal(otpResponse.Metadata, &metadata); err != nil {
+		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")
+	}
+
+	if metadata.Payload.Email == "" {
+		return nil, e.ThrowBadRequest("Email is required in OTP metadata")
+	}
+
+	if metadata.Payload.Email != payload.Email {
+		return nil, e.ThrowUnauthorizedError("Email does not match OTP metadata")
+	}
+
+	user, err := this.userService.FindUserInPool(payload.Email, app.UsersPool.ID)
+
+	if err != nil {
+		return nil, e.ThrowNotFound("User not found")
+	}
+
+	if err := this.SetPassword(user, payload.NewPassword); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }

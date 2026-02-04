@@ -2,6 +2,7 @@ package repository
 
 import (
 	entity "auth_service/infra/entities"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -49,6 +50,14 @@ func (repo *OtpRepository) FindLastOneWhere(where entity.Otp, with ...string) (*
 
 	err := whereClause.First(&result).Error
 	return &result, err
+}
+
+func (repo *OtpRepository) Update(otp *entity.Otp) error {
+	if otp.ID == "" {
+		return errors.New("otp id is required")
+	}
+
+	return repo.db.Save(otp).Error
 }
 
 func (repo *OtpRepository) Invalidate(otpId string) error {

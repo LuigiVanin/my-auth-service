@@ -15,7 +15,7 @@ type IAuthorizeService interface {
 		app *entity.App,
 		token string,
 		ip string,
-	) (*dto.AuthorizeReponse, error)
+	) (*dto.AuthorizeResponse, error)
 
 	Refresh(
 		app *entity.App,
@@ -27,4 +27,6 @@ type IAuthorizeService interface {
 		app *entity.App,
 		session *entity.Session,
 	) (*AuthorizationCredentials, error)
+
+	ResetPassword(app *entity.App, payload dto.ResetPasswordPayload) (*entity.User, error)
 }

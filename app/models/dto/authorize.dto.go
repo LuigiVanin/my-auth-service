@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type AuthorizeReponse struct {
+type AuthorizeResponse struct {
 	User entity.User `json:"user"`
 
 	SessionId string `json:"user_id"`
@@ -25,4 +25,10 @@ type RefreshResponse struct {
 	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
 
 	User entity.User `json:"user"`
+}
+
+type ResetPasswordPayload struct {
+	Email       string         `json:"email" validate:"required,email"`
+	NewPassword string         `json:"new_password" validate:"required"`
+	Otp         PayloadOtpData `json:"otp" validate:"required"`
 }

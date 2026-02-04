@@ -79,3 +79,13 @@ type GenerateConsumableOtpResponse struct {
 
 	Payload map[string]any `json:"-"`
 }
+
+type VerifyConsumableOtpPayload struct {
+	Code string `json:"code" validate:"required"`
+}
+
+type VerifyConsumableOtpResponse struct {
+	Metadata          OtpStoredMetadataPayload `json:"metadata"`
+	VerificationCount int                      `json:"verification_count"`
+	Verified          bool                     `json:"verified"`
+}

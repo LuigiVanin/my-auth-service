@@ -40,11 +40,12 @@ func (this *OtpGuard) Act(ctx *fiber.Ctx) error {
 		return e.ThrowBadRequest("Action query parameter is required")
 	}
 
-	// If action is REGISTER, skip auth guard (allow unauthenticated)
+	// If action is REGISTER, LOGIN or FORGOT_PASSWORD skip auth guard (allow unauthenticated)
 	if slices.Contains(
 		[]constants.AuthAction{
 			constants.ActionRegister,
 			constants.ActionLogin,
+			constants.ActionForgotPassword,
 		},
 		constants.AuthAction(action),
 	) {

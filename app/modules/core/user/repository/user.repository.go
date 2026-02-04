@@ -2,6 +2,7 @@ package repository
 
 import (
 	entity "auth_service/infra/entities"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -53,4 +54,13 @@ func (r *UserRepository) FindManyWhere(where entity.User, with ...string) (*[]en
 func (r *UserRepository) Create(user entity.User) (*entity.User, error) {
 	err := r.client.Create(&user).Error
 	return &user, err
+}
+
+func (r *UserRepository) Update(user *entity.User) error {
+
+	if user.ID == 0 {
+		return errors.New("user id is required")
+	}
+
+	return r.client.Save(user).Error
 }

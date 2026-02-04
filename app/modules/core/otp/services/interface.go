@@ -14,6 +14,7 @@ type IOtpService interface {
 	) (*dto.GenerateConsumableOtpResponse, error)
 
 	ValidateConsumable(payload dto.PayloadOtpData, appId string, action constants.AuthAction) (*entity.Otp, error)
+	VerifyConsumable(otpId string, code string, appId string) (*dto.VerifyConsumableOtpResponse, error)
 
 	Invalidate(otpId string)
 }

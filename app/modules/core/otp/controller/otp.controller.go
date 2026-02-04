@@ -1,6 +1,7 @@
 package controller
 
 import (
+	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
 	"auth_service/app/models/dto"
@@ -64,6 +65,27 @@ func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
+func (this *OtpController) VerifyConsumable(ctx *fiber.Ctx) error {
+	otpId := ctx.Params("otp_id")
+	if otpId == "" {
+		return e.ThrowBadRequest("OTP id is required")
+	}
+
+	var payload dto.VerifyConsumableOtpPayload
+	if err := ctx.BodyParser(&payload); err != nil {
+		return e.ThrowBadRequest("Invalid request body")
+	}
+
+	app := ctx.Locals("app").(*entity.App)
+
+	res, err := this.otpService.VerifyConsumable(otpId, payload.Code, app.ID)
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(res)
+}
+
 func (this *OtpController) Register(server *fiber.App) {
 	group := server.Group("/otp")
 
@@ -72,6 +94,12 @@ func (this *OtpController) Register(server *fiber.App) {
 		validators.OtpValidator,
 		this.otpGuard.Act,
 		this.GenerateConsumable,
+	)
+
+	group.Put(
+		"/verify/:otp_id",
+		middleware.BodyValidator[dto.VerifyConsumableOtpPayload](),
+		this.VerifyConsumable,
 	)
 
 }

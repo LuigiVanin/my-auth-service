@@ -36,3 +36,14 @@ func (this *UserService) IsAlreadyCreated(email string, app *entity.App) (bool, 
 
 	return false, err
 }
+
+func (this *UserService) FindUserInPool(email string, usersPoolId string) (*entity.User, error) {
+	return this.userRepository.FindWhere(entity.User{
+		Email:       strings.ToLower(email),
+		UsersPoolId: usersPoolId,
+	})
+}
+
+func (this *UserService) Update(user *entity.User) error {
+	return this.userRepository.Update(user)
+}

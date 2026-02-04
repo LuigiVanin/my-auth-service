@@ -191,11 +191,11 @@ func (this *OtpService) ValidateConsumable(payload dto.PayloadOtpData, appId str
 	}
 
 	if otp.Action != string(action) {
-		return nil, e.ThrowBadRequest("Invalid OTP action")
+		return nil, e.ThrowInvalidOtpCode("Invalid OTP action")
 	}
 
 	if otp.AppId != appId {
-		return nil, e.ThrowBadRequest("Invalid OTP app ID")
+		return nil, e.ThrowInvalidOtpCode("Invalid OTP app ID")
 	}
 
 	if otp.Invalidated {
@@ -222,10 +222,76 @@ func (this *OtpService) ValidateConsumable(payload dto.PayloadOtpData, appId str
 		}
 	}
 
-	go func() {
-	}()
-
 	return otp, nil
+}
+
+func (this *OtpService) VerifyConsumable(otpId string, code string, appId string) (*dto.VerifyConsumableOtpResponse, error) {
+	otp, err := this.otpRepository.FindById(otpId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, e.ThrowNotFound("Otp not found")
+		}
+		return nil, e.ThrowInternalServerError("Failed to find otp")
+	}
+
+	if otp.AppId != appId {
+		return nil, e.ThrowUnauthorizedError("Invalid OTP app ID")
+	}
+
+	if otp.Invalidated {
+		return nil, e.ThrowBadRequest("Otp already used")
+	}
+
+	if otp.ExpiresAt.Before(time.Now()) {
+		return nil, e.ThrowBadRequest("Otp expired")
+	}
+
+	if otp.VerificationCount >= 5 {
+		// Invalidate OTP if max attempts reached?
+		// For now, just return error as per requirement "max count of 5 verification"
+		// Optionally we can invalidate it here to prevent further spam.
+		otp.Invalidated = true
+		_ = this.otpRepository.Update(otp)
+		return nil, e.ThrowBadRequest("Max verification attempts reached")
+	}
+
+	// Validate Code
+	valid := false
+	if this.cfg.App.Env != "development" {
+		isMatch, err := this.hashService.Compare(code, otp.Code)
+		if err != nil {
+			return nil, e.ThrowInternalServerError("Failed to compare otp code")
+		}
+		valid = isMatch
+	} else {
+		valid = otp.Code == code
+	}
+
+	if !valid {
+		otp.VerificationCount++
+		if err := this.otpRepository.Update(otp); err != nil {
+			this.logger.Error("Failed to update otp verification count", zap.Error(err))
+		}
+		return nil, e.ThrowInvalidOtpCode("Invalid OTP code")
+	}
+
+	// Success
+	otp.Invalidated = true
+	if err := this.otpRepository.Update(otp); err != nil {
+		return nil, e.ThrowInternalServerError("Failed to invalidate otp")
+	}
+
+	// Parse metadata to return payload
+	var metadata dto.OtpStoredMetadata
+	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
+		return nil, e.ThrowInternalServerError("Failed to parse otp metadata")
+	}
+
+	return &dto.VerifyConsumableOtpResponse{
+		Metadata:          metadata.Payload,
+		VerificationCount: otp.VerificationCount,
+		Verified:          true,
+	}, nil
 }
 
 func (this *OtpService) Invalidate(otpId string) {

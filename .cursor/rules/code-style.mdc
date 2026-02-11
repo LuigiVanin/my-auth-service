@@ -126,7 +126,7 @@ var _ ILoginService = &LoginService{}
 
 3. **Error Package**: Use alias `e` for errors:
    ```go
-   import e "auth_service/common/errors"
+   import e "auth_service/app/errors"
    ```
 
 ### Controller Patterns

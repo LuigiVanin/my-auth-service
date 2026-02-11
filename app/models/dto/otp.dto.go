@@ -12,7 +12,7 @@ type PayloadOtpData struct {
 
 // ConsumableOtpPayload is the internal structure used by the service
 type ConsumableOtpPayload struct {
-	Action constants.AuthAction `json:"action"`
+	// Action constants.AuthAction `json:"action"`
 
 	Contact string `json:"contact"`
 
@@ -82,10 +82,4 @@ type GenerateConsumableOtpResponse struct {
 
 type VerifyConsumableOtpPayload struct {
 	Code string `json:"code" validate:"required"`
-}
-
-type VerifyConsumableOtpResponse struct {
-	Metadata          OtpStoredMetadataPayload `json:"metadata"`
-	VerificationCount int                      `json:"verification_count"`
-	Verified          bool                     `json:"verified"`
 }

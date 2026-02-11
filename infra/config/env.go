@@ -26,11 +26,17 @@ type DatabaseConfig struct {
 	Sslmode  string
 }
 
+type EmailConfig struct {
+	ResendApiKey string
+}
+
 type Config struct {
-	Env      string
+	Env string
+
 	App      AppConfig
 	Database DatabaseConfig
 	Server   ServerConfig
+	Email    EmailConfig
 }
 
 func LoadEnv() error {
@@ -95,6 +101,10 @@ func NewConfigFromEnv() *Config {
 			Password: password,
 			Name:     name,
 			Sslmode:  sllmode,
+		},
+
+		Email: EmailConfig{
+			ResendApiKey: os.Getenv("RESEND_API_KEY"),
 		},
 	}
 }

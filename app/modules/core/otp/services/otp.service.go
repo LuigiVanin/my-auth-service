@@ -15,6 +15,7 @@ import (
 	"auth_service/common/utils"
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"
+	"auth_service/packages/email"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -35,21 +36,23 @@ type OtpService struct {
 	userService   us.IUserService
 	logger        *zap.Logger
 	cfg           *config.Config
+	emailManager  *email.EmailManager
 }
 
-func NewOtpService(otpRepository repository.IOtpRepository, hashService hs.IHashService, userService us.IUserService, logger *zap.Logger, cfg *config.Config) *OtpService {
+func NewOtpService(otpRepository repository.IOtpRepository, hashService hs.IHashService, userService us.IUserService, logger *zap.Logger, cfg *config.Config, emailManager *email.EmailManager) *OtpService {
 	return &OtpService{
 		otpRepository: otpRepository,
 		hashService:   hashService,
 		userService:   userService,
 		logger:        logger,
 		cfg:           cfg,
+		emailManager:  emailManager,
 	}
 }
 
 // TODO: it will be necessary to build an rate limit for ip addresses for this function
 // TODO: Not allow ather fields to be stored inside of the metada
-func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.ConsumableOtpPayload, ip string) (*dto.GenerateConsumableOtpResponse, error) {
+func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *entity.App, payload dto.ConsumableOtpPayload, ip string) (*dto.GenerateConsumableOtpResponse, error) {
 
 	data, _ := utils.MapToStruct[dto.OtpStoredMetadataPayload](payload.Payload)
 
@@ -58,7 +61,7 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 		Payload: data,
 	}
 
-	utils.PrintObj(storedMetadata)
+	// utils.PrintObj(storedMetadata)
 
 	// Add verification_count to payload if not present
 	storedMetadata.VerificationCount = 0
@@ -69,7 +72,7 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 	}
 
 	// Extract contact based on action
-	switch payload.Action {
+	switch action {
 	case constants.ActionRegister:
 		if payload.Contact == "" {
 			// Try to get email from payload
@@ -115,7 +118,7 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 	lastOtp, err := this.otpRepository.FindLastOneWhere(entity.Otp{
 		Contact: payload.Contact,
 		AppId:   app.ID,
-		Action:  string(payload.Action),
+		Action:  string(action),
 	})
 
 	if err == nil && lastOtp != nil {
@@ -150,7 +153,7 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 
 	otp, err := this.otpRepository.Create(&entity.Otp{
 		UserId:   nil,
-		Action:   string(payload.Action),
+		Action:   string(action),
 		Metadata: jsonMetadata,
 		AppId:    app.ID,
 
@@ -164,11 +167,35 @@ func (this *OtpService) GenerateConsumable(app *entity.App, payload dto.Consumab
 		return nil, err
 	}
 
+	if payload.Contact != "" {
+		sentId, err := this.emailManager.Sender().Send(email.EmailPayload{
+			From:    "No Reply <contact@ac-server.space>",
+			To:      []string{payload.Contact},
+			Subject: fmt.Sprintf("OTP Code - %s", action),
+			Body:    fmt.Sprintf("Your OTP is Here: %s", otp.Code),
+		})
+
+		if err != nil {
+			return nil, e.ThrowInternalServerError("Failed to send email")
+		}
+
+		this.logger.Info(
+			"Email sent successfully",
+			zap.String("sent_id", sentId),
+			zap.String("otp_id", otp.ID),
+			zap.String("otp_code", otp.Code),
+			zap.String("action", string(action)),
+			zap.String("contact", payload.Contact),
+			zap.String("app_id", app.ID),
+		)
+
+	}
+
 	return &dto.GenerateConsumableOtpResponse{
 		OtpId: otp.ID,
 		AppId: app.ID,
 
-		Action: payload.Action,
+		Action: action,
 
 		ExpiresAt: otp.ExpiresAt,
 		CreatedAt: otp.CreatedAt,
@@ -225,7 +252,7 @@ func (this *OtpService) ValidateConsumable(payload dto.PayloadOtpData, appId str
 	return otp, nil
 }
 
-func (this *OtpService) VerifyConsumable(otpId string, code string, appId string) (*dto.VerifyConsumableOtpResponse, error) {
+func (this *OtpService) VerifyConsumable(otpId string, code string, appId string) (*VerifyConsumableOtpResponse, error) {
 	otp, err := this.otpRepository.FindById(otpId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -287,7 +314,7 @@ func (this *OtpService) VerifyConsumable(otpId string, code string, appId string
 		return nil, e.ThrowInternalServerError("Failed to parse otp metadata")
 	}
 
-	return &dto.VerifyConsumableOtpResponse{
+	return &VerifyConsumableOtpResponse{
 		Metadata:          metadata.Payload,
 		VerificationCount: otp.VerificationCount,
 		Verified:          true,

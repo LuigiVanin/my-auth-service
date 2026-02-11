@@ -48,7 +48,6 @@ func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 
 	// Build the ConsumableOtpPayload
 	payload := dto.ConsumableOtpPayload{
-		Action:  constants.AuthAction(actionStr),
 		Contact: "", // Will be extracted from payload in service
 		Payload: bodyPayload,
 	}
@@ -56,7 +55,12 @@ func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 	// Get IP address from context
 	ip := ctx.IP()
 
-	res, err := this.otpService.GenerateConsumable(app, payload, ip)
+	res, err := this.otpService.GenerateConsumable(
+		constants.AuthAction(actionStr),
+		app,
+		payload,
+		ip,
+	)
 
 	if err != nil {
 		return err

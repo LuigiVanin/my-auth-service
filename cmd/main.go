@@ -30,6 +30,7 @@ func main() {
 		fx.Provide(bootstrap.NewZapLogger),
 		fx.Provide(bootstrap.NewDatabase),
 		fx.Provide(bootstrap.NewHttpServer),
+		fx.Provide(bootstrap.NewEmailManager),
 
 		fx.Provide(guards.NewAppGuard),
 		fx.Provide(guards.NewAuthGuard),

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"regexp"
 
+	e "auth_service/app/errors"
 	ar "auth_service/app/modules/core/app/repository"
 	cs "auth_service/app/modules/utils/cipher/services"
-	e "auth_service/common/errors"
 	"auth_service/common/global"
 
 	i "auth_service/common/interfaces"

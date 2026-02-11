@@ -1,13 +1,13 @@
 package controller
 
 import (
+	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
 	"auth_service/app/models/dto"
 	"auth_service/app/modules/core/otp/services"
 	"auth_service/common/constants"
-	e "auth_service/common/errors"
 	"auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
 

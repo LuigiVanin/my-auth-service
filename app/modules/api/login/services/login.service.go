@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
 	as "auth_service/app/modules/api/authorize/services"
 	os "auth_service/app/modules/core/otp/services"
@@ -13,7 +14,6 @@ import (
 	ur "auth_service/app/modules/core/user/repository"
 	hs "auth_service/app/modules/utils/hash/services"
 	"auth_service/common/constants"
-	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
 	"go.uber.org/zap"

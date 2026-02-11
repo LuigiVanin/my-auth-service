@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	e "auth_service/common/errors"
+	e "auth_service/app/errors"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"

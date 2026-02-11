@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	e "auth_service/common/errors"
+	e "auth_service/app/errors"
 
 	v "github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"

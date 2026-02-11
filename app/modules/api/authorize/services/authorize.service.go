@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
 	os "auth_service/app/modules/core/otp/services"
 	sr "auth_service/app/modules/core/session/repository"
@@ -14,7 +15,6 @@ import (
 	hs "auth_service/app/modules/utils/hash/services"
 	jm "auth_service/app/modules/utils/jwt"
 	"auth_service/common/constants"
-	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
 	"github.com/golang-jwt/jwt/v5"

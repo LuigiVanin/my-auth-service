@@ -16,8 +16,8 @@ import (
 	upr "auth_service/app/modules/core/user_pool/repository"
 	hs "auth_service/app/modules/utils/hash/services"
 
+	e "auth_service/app/errors"
 	"auth_service/common/constants"
-	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
 	"github.com/google/uuid"

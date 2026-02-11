@@ -1,10 +1,10 @@
 package controller
 
 import (
+	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/models/dto"
 	"auth_service/app/modules/api/authorize/services"
-	e "auth_service/common/errors"
 	"auth_service/common/interfaces"
 	"auth_service/common/utils"
 	entity "auth_service/infra/entities"

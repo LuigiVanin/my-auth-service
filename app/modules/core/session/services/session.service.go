@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
 	sr "auth_service/app/modules/core/session/repository"
 	cs "auth_service/app/modules/utils/cipher/services"
-	e "auth_service/common/errors"
 	entity "auth_service/infra/entities"
 
 	"go.uber.org/zap"

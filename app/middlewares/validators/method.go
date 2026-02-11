@@ -1,8 +1,8 @@
 package validators
 
 import (
+	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
-	e "auth_service/common/errors"
 
 	"github.com/gofiber/fiber/v2"
 )

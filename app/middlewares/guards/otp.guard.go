@@ -1,8 +1,8 @@
 package guards
 
 import (
+	e "auth_service/app/errors"
 	"auth_service/common/constants"
-	e "auth_service/common/errors"
 	i "auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
 	"slices"

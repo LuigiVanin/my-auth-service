@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
 	"auth_service/app/modules/core/otp/repository"
 	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"
 	"auth_service/common/constants"
-	e "auth_service/common/errors"
 	"auth_service/common/utils"
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"

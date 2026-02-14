@@ -1,6 +1,7 @@
 package config
 
 import (
+	"auth_service/common/constants"
 	"fmt"
 	"os"
 
@@ -39,8 +40,8 @@ type Config struct {
 	Email    EmailConfig
 }
 
-func LoadEnv() error {
-	if err := godotenv.Load(); err != nil {
+func LoadEnv(envFileName string) error {
+	if err := godotenv.Load(envFileName); err != nil {
 		fmt.Println("No .env file found or error loading .env file. Using system environment variables.")
 	}
 	return nil
@@ -64,9 +65,13 @@ func NewConfigFromEnv() *Config {
 
 	envMode := ReadEnvArg()
 
-	fmt.Println("---------------------\nEnvironment mode:", envMode)
+	envFileName := ".env"
 
-	if err := LoadEnv(); err != nil {
+	if envMode != "" {
+		envFileName = envFileName + "." + envMode
+	}
+
+	if err := LoadEnv(envFileName); err != nil {
 		fmt.Printf("Error loading environment variables: %v", err)
 		panic(err)
 	}
@@ -74,12 +79,24 @@ func NewConfigFromEnv() *Config {
 	if envMode == "" {
 		envMode = os.Getenv("APP_ENV")
 	}
-
+	if envMode != "" {
+		fmt.Printf(
+			"-------------------------------------\n✔ Environment Mode Loaded:%s %s%s\n",
+			constants.ColorGreen,
+			envMode,
+			constants.ColorReset,
+		)
+	}
 	if envMode == "" {
+		fmt.Printf(
+			"-------------------------------------\n%sEnvironment Mode NOT FOUND%s - Using default: %s\n",
+			constants.ColorRed,
+			constants.ColorReset,
+			"development",
+		)
+
 		envMode = "development"
 	}
-
-	fmt.Println("\n---------------------\nEnvironment mode:", envMode)
 
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")

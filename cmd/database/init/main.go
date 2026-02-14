@@ -7,23 +7,12 @@ import (
 	"time"
 
 	"auth_service/app/modules/utils/cipher/services"
+	"auth_service/common/constants"
 	"auth_service/infra/config"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-)
-
-// ANSI Colors
-const (
-	ColorReset  = "\033[0m"
-	ColorRed    = "\033[31m"
-	ColorGreen  = "\033[32m"
-	ColorYellow = "\033[33m"
-	ColorBlue   = "\033[34m"
-	ColorCyan   = "\033[36m"
-	ColorGray   = "\033[37m"
-	Bold        = "\033[1m"
 )
 
 func main() {
@@ -264,9 +253,9 @@ Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)
 	// Write to credentials.txt
 	err = os.WriteFile("credentials.txt", finalContent, 0644)
 	if err != nil {
-		fmt.Printf("%s✘ Failed to write credentials.txt: %v%s\n", ColorRed, err, ColorReset)
+		fmt.Printf("%s✘ Failed to write credentials.txt: %v%s\n", constants.ColorRed, err, constants.ColorReset)
 	} else {
-		fmt.Printf("%s✔ Credentials saved to credentials.txt%s\n", ColorGreen, ColorReset)
+		fmt.Printf("%s✔ Credentials saved to credentials.txt%s\n", constants.ColorGreen, constants.ColorReset)
 	}
 
 	// Print Credentials to Terminal
@@ -286,24 +275,24 @@ Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)
 	printKeyValue("Encrypted App ID", encryptedAppId)
 
 	fmt.Println()
-	fmt.Printf("%s%sUse the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)%s\n", ColorGray, Bold, ColorReset)
+	fmt.Printf("%s%sUse the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)%s\n", constants.ColorGray, constants.Bold, constants.ColorReset)
 	fmt.Println()
 }
 
 func printHeader(text string) {
-	fmt.Printf("%s%s=== %s ===%s\n", ColorCyan, Bold, text, ColorReset)
+	fmt.Printf("%s%s=== %s ===%s\n", constants.ColorCyan, constants.Bold, text, constants.ColorReset)
 }
 
 func printSection(text string) {
-	fmt.Printf("\n%s%s%s%s\n", ColorYellow, Bold, text, ColorReset)
+	fmt.Printf("\n%s%s%s%s\n", constants.ColorYellow, constants.Bold, text, constants.ColorReset)
 }
 
 func printSuccess(text string) {
-	fmt.Printf("%s✔ %s%s\n", ColorGreen, text, ColorReset)
+	fmt.Printf("%s✔ %s%s\n", constants.ColorGreen, text, constants.ColorReset)
 }
 
 func printError(msg string, err error) {
-	fmt.Printf("%s✘ %s: %v%s\n", ColorRed, msg, err, ColorReset)
+	fmt.Printf("%s✘ %s: %v%s\n", constants.ColorRed, msg, err, constants.ColorReset)
 	// Don't panic here to allow deferred rollback to handle it gracefully if needed,
 	// or panic if that is the desired behavior to stop immediately.
 	// The previous code panic'd, so we'll keep it or let main return.
@@ -314,5 +303,5 @@ func printError(msg string, err error) {
 }
 
 func printKeyValue(key, value string) {
-	fmt.Printf("%s%-20s:%s %s\n", ColorBlue, key, ColorReset, value)
+	fmt.Printf("%s%-20s:%s %s\n", constants.ColorBlue, key, constants.ColorReset, value)
 }

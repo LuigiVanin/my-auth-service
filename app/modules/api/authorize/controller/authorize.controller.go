@@ -73,6 +73,7 @@ func (this *AuthorizeController) ForgotPassword(ctx *fiber.Ctx) error {
 	app := ctx.Locals("app").(*entity.App)
 
 	user, err := this.authService.ResetPassword(app, payload)
+
 	if err != nil {
 		return err
 	}

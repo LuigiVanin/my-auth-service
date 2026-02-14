@@ -46,17 +46,40 @@ func LoadEnv() error {
 	return nil
 }
 
+func NewConfigFromYaml() *Config {
+	return &Config{}
+}
+
+func ReadEnvArg() string {
+	args := os.Args[1:]
+
+	if len(args) > 0 {
+		return args[0]
+	}
+
+	return ""
+}
+
 func NewConfigFromEnv() *Config {
+
+	envMode := ReadEnvArg()
+
+	fmt.Println("---------------------\nEnvironment mode:", envMode)
+
 	if err := LoadEnv(); err != nil {
 		fmt.Printf("Error loading environment variables: %v", err)
 		panic(err)
 	}
 
-	envMode := os.Getenv("APP_ENV")
+	if envMode == "" {
+		envMode = os.Getenv("APP_ENV")
+	}
 
 	if envMode == "" {
 		envMode = "development"
 	}
+
+	fmt.Println("\n---------------------\nEnvironment mode:", envMode)
 
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")

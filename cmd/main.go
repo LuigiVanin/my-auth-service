@@ -26,7 +26,7 @@ import (
 func main() {
 
 	fx.New(
-		fx.Provide(config.NewConfigFromEnv),
+		fx.Provide(config.CreateEnvConfig),
 		fx.Provide(bootstrap.NewZapLogger),
 		fx.Provide(bootstrap.NewDatabase),
 		fx.Provide(bootstrap.NewHttpServer),

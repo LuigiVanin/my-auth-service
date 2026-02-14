@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	cfg := config.NewConfigFromEnv()
+	cfg := config.CreateEnvConfig()
 	url := cfg.FormatDatabaseUrl()
 
 	db, err := sqlx.Connect("postgres", url)

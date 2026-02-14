@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	cfg := config.NewConfigFromEnv()
+	cfg := config.CreateEnvConfig()
 	dsn := cfg.FormatDatabaseUrl()
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})

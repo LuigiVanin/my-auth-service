@@ -2,9 +2,14 @@ tmp/
 .env
 .env.development
 .env.prod
+
+.env.development.yaml
+
 bin/
 build/
 node_modules/
 credentials.txt
 
 migrate
+
+cmd/sandbox/

@@ -4,7 +4,9 @@ import (
 	"auth_service/common/constants"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/goccy/go-yaml"
 	"github.com/joho/godotenv"
 )
 
@@ -13,9 +15,9 @@ type ServerConfig struct {
 }
 
 type AppConfig struct {
-	Name          string
-	EncryptionKey string
-	Env           string
+	Name          string `yaml:"name"`
+	EncryptionKey string `yaml:"encryption_key"`
+	Env           string `yaml:"env"`
 }
 
 type DatabaseConfig struct {
@@ -28,7 +30,7 @@ type DatabaseConfig struct {
 }
 
 type EmailConfig struct {
-	ResendApiKey string
+	ResendApiKey string `yaml:"resend_api_key"`
 }
 
 type Config struct {
@@ -47,8 +49,56 @@ func LoadEnv(envFileName string) error {
 	return nil
 }
 
-func NewConfigFromYaml() *Config {
-	return &Config{}
+func NewConfigFromYaml(envMode string) (*Config, error) {
+
+	// Default filename
+	envFileName := ".env.yml"
+	var config Config
+
+	if envMode != "" {
+		// e.g. .env.development.yaml
+		envFileName = ".env." + envMode + ".yaml"
+	}
+
+	rootPath, err := findProjectRoot()
+	if err != nil {
+		// If root not found, try current directory
+		rootPath = "."
+	}
+
+	fullPath := filepath.Join(rootPath, envFileName)
+	yamlFileContent, err := os.ReadFile(fullPath)
+
+	if err != nil {
+		return nil, fmt.Errorf("error reading %s from %s: %w", envFileName, rootPath, err)
+	}
+
+	err = yaml.Unmarshal(yamlFileContent, &config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func findProjectRoot() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		if _, err := os.Stat(filepath.Join(wd, "go.mod")); err == nil {
+			return wd, nil
+		}
+
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			return "", fmt.Errorf("go.mod not found")
+		}
+		wd = parent
+	}
 }
 
 func ReadEnvArg() string {
@@ -61,43 +111,7 @@ func ReadEnvArg() string {
 	return ""
 }
 
-func NewConfigFromEnv() *Config {
-
-	envMode := ReadEnvArg()
-
-	envFileName := ".env"
-
-	if envMode != "" {
-		envFileName = envFileName + "." + envMode
-	}
-
-	if err := LoadEnv(envFileName); err != nil {
-		fmt.Printf("Error loading environment variables: %v", err)
-		panic(err)
-	}
-
-	if envMode == "" {
-		envMode = os.Getenv("APP_ENV")
-	}
-	if envMode != "" {
-		fmt.Printf(
-			"-------------------------------------\n✔ Environment Mode Loaded:%s %s%s\n",
-			constants.ColorGreen,
-			envMode,
-			constants.ColorReset,
-		)
-	}
-	if envMode == "" {
-		fmt.Printf(
-			"-------------------------------------\n%sEnvironment Mode NOT FOUND%s - Using default: %s\n",
-			constants.ColorRed,
-			constants.ColorReset,
-			"development",
-		)
-
-		envMode = "development"
-	}
-
+func NewConfigFromSysEnv(envMode string) (*Config, error) {
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
 	user := os.Getenv("DB_USER")
@@ -146,7 +160,79 @@ func NewConfigFromEnv() *Config {
 		Email: EmailConfig{
 			ResendApiKey: os.Getenv("RESEND_API_KEY"),
 		},
+	}, nil
+}
+
+func NewConfigFromEnvFile(envMode string) (*Config, error) {
+
+	envFileName := ".env"
+
+	if envMode != "" {
+		envFileName = envFileName + "." + envMode
 	}
+
+	if err := LoadEnv(envFileName); err != nil {
+		fmt.Printf("Error loading environment variables: %v", err)
+		return nil, err
+	}
+
+	if envMode == "" {
+		envMode = os.Getenv("APP_ENV")
+	}
+
+	if envMode == "" {
+		envMode = "development"
+	}
+
+	return NewConfigFromSysEnv(envMode)
+}
+
+func CreateEnvConfig() *Config {
+	envMode := ReadEnvArg()
+
+	// Try YAML first
+	cfg, err := NewConfigFromYaml(envMode)
+	if err == nil {
+		fmt.Printf(
+			"-------------------------------------\n%s✔ Loaded YAML Configuration (%s)%s\n-------------------------------------\n",
+			constants.ColorGreen,
+			envMode,
+			constants.ColorReset,
+		)
+		return cfg
+	}
+
+	// If YAML fails (file not found or other error), try .env file
+	// fmt.Printf("YAML configuration not found or invalid: %v. Trying .env file...\n", err)
+
+	cfg, err = NewConfigFromEnvFile(envMode)
+	if err == nil {
+		fmt.Printf(
+			"-------------------------------------\n%s✔ Loaded .env Configuration (%s)%s\n-------------------------------------\n",
+			constants.ColorGreen,
+			envMode,
+			constants.ColorReset,
+		)
+		return cfg
+	}
+
+	// If .env fails, try system environment variables
+	// fmt.Printf(".env configuration not found or invalid: %v. Trying system environment variables...\n", err)
+
+	fmt.Printf("Loading from system environment variables...\n")
+	cfg, err = NewConfigFromSysEnv(envMode)
+
+	if err != nil {
+		panic("No valid configuration found (checked YAML, .env, and system environment variables).")
+	}
+
+	fmt.Printf(
+		"-------------------------------------\n%s✔ Loaded System Environment Variables (%s)%s\n-------------------------------------\n",
+		constants.ColorGreen,
+		envMode,
+		constants.ColorReset,
+	)
+	return cfg
 }
 
 func (cfg *Config) FormatDatabaseUrl() string {

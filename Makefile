@@ -9,13 +9,13 @@ run:
 	go run $(CMD_MAIN)
 
 dev:
-	air
+	air -- $(filter-out $@,$(MAKECMDGOALS))
 
 build:
 	go build -o ./build/auth_service $(CMD_MAIN)
 
 migrate:
-	go run $(CMD_MIGRATE)
+	go run $(CMD_MIGRATE) $(filter-out $@,$(MAKECMDGOALS))
 
 # create-migration is deprecated with GORM AutoMigrate
 # create-migration:
@@ -26,7 +26,7 @@ migrate:
 # 	./migrate create -ext sql -dir ./migrations -digits 3 -seq $(filter-out $@,$(MAKECMDGOALS))
 
 init:
-	go run $(CMD_START_UP)
+	go run $(CMD_START_UP) $(filter-out $@,$(MAKECMDGOALS))
 
 cipher:
 	go run $(CMD_CIPHER) $(filter-out $@,$(MAKECMDGOALS))

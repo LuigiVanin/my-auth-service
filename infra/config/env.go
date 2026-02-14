@@ -236,12 +236,13 @@ func CreateEnvConfig() *Config {
 }
 
 func (cfg *Config) FormatDatabaseUrl() string {
-	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s",
+	return fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=UTC",
+		cfg.Database.Host,
 		cfg.Database.User,
 		cfg.Database.Password,
-		cfg.Database.Host,
-		cfg.Database.Port,
 		cfg.Database.Name,
+		cfg.Database.Port,
 		cfg.Database.Sslmode,
 	)
 

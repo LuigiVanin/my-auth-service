@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.prod.yaml
+build/
+tmp/
+node_modules/
+credentials.txt
+credentials.*.txt
+.vscode/
+.cursor/
+.husky/
+
+auth_service
+
+.env.development.yaml

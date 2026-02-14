@@ -4,12 +4,16 @@ tmp/
 .env.prod
 
 .env.development.yaml
+.env.prod.yaml
 
 bin/
 build/
 node_modules/
 credentials.txt
+credentials.*.txt
+
 
 migrate
+auth_service
 
 cmd/sandbox/

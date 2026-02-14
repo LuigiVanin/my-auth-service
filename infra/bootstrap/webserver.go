@@ -48,7 +48,8 @@ func StartServer(
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(_ context.Context) error {
-				addr := fmt.Sprintf(":%s", config.Server.Port)
+				// Listen on all interfaces (0.0.0.0)
+				addr := fmt.Sprintf("0.0.0.0:%s", config.Server.Port)
 				ln, err := net.Listen("tcp", addr)
 
 				if err != nil {

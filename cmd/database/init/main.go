@@ -129,7 +129,7 @@ func main() {
 	//    app via database APP_ROLE -> PROFILES.
 	_, err = tx.Exec(`
 		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
-		SELECT $1, 'ADMIN', 999, '{}', '{}', '{}'
+		SELECT $1, 'ADMIN', 0, '{ "register": true }', '{}', '{}'
 		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'ADMIN')
 	`, adminProfileId)
 
@@ -141,7 +141,7 @@ func main() {
 
 	_, err = tx.Exec(`
 		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
-		SELECT $1, 'ADMIN', 999, '{}', '{}', '{}'
+		SELECT $1, 'ADMIN', 999, '{ "register": false }', '{}', '{}'
 		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'ADMIN')
 	`, managerProfileId)
 	if err != nil {
@@ -152,7 +152,7 @@ func main() {
 
 	_, err = tx.Exec(`
 		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
-		SELECT $1, 'USER', 999, '{}', '{}', '{}'
+		SELECT $1, 'USER', 0, '{ "register": true }', '{}', '{}'
 		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'USER')
 	`, consumerProfileId)
 	if err != nil {
@@ -210,7 +210,7 @@ func main() {
 	}
 	timestamp := time.Now().Format(time.RFC1123)
 
-	separator := fmt.Sprintf("\n\n------------------------------------------------------------"+
+	separator := fmt.Sprintf("\n\n------------------------------------------------------------\n"+
 		"Generated on: %s\n"+
 		"Device: %s\n"+
 		"IP: %s\n"+

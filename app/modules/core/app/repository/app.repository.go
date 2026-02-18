@@ -18,14 +18,34 @@ func NewAppRepository(client *gorm.DB) *AppRepository {
 	}
 }
 
-func (r *AppRepository) FindAppbyIdWithPool(id string) (*entity.App, error) {
+func (this *AppRepository) FindAppbyIdWithPool(id string) (*entity.App, error) {
 	var result entity.App
 
-	err := r.client.Preload("UsersPool").Where("id = ?", id).First(&result).Error
+	err := this.client.Preload("UsersPool").Where("id = ?", id).First(&result).Error
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &result, nil
+}
+
+func (this *AppRepository) FindWhere(where entity.App, with ...string) (*entity.App, error) {
+	var result entity.App
+
+	err := this.client.Where(where).First(&result).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (this *AppRepository) Create(app *entity.App) (*entity.App, error) {
+	err := this.client.Create(app).Error
+	if err != nil {
+		return nil, err
+	}
+	return app, nil
 }

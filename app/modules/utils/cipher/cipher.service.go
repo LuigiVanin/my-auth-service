@@ -1,4 +1,4 @@
-package services
+package cipher
 
 import (
 	"auth_service/common/utils"

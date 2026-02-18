@@ -13,11 +13,10 @@ func RegisterValidator(ctx *fiber.Ctx) error {
 	validatorMiddleware := middleware.BodyValidator[dto.RegisterPayloadWithPassoword]()
 
 	switch registerMethod {
-	case "password":
-	case "":
-		validatorMiddleware = middleware.BodyValidator[dto.RegisterPayloadWithPassoword]()
-	case "otp":
+	case "otp", "":
 		validatorMiddleware = middleware.BodyValidator[dto.RegisterPayloadWithOtp]()
+	case "password":
+		validatorMiddleware = middleware.BodyValidator[dto.RegisterPayloadWithPassoword]()
 	default:
 		return e.ThrowUnprocessableEntity("Invalid register method")
 	}

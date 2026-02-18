@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"auth_service/app/models/dto"
-	as "auth_service/app/modules/api/authorize/services"
+	as "auth_service/app/modules/authorize/services"
 	os "auth_service/app/modules/core/otp/services"
 	"auth_service/app/modules/core/profile/services"
 	ss "auth_service/app/modules/core/session/services"
@@ -18,6 +18,7 @@ import (
 
 	e "auth_service/app/errors"
 	"auth_service/common/constants"
+	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
 
 	"github.com/google/uuid"
@@ -68,6 +69,10 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 	// TODO: move this logic to a permission guard or something like that
 	if !slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
+	}
+
+	if app.VerifyEmail {
+		return nil, e.ThrowNotAllowed("This app requires email verification, to do that you will need to register with OTP!")
 	}
 
 	// Check if user already exists
@@ -163,8 +168,21 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 }
 
 func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.RegisterPayloadWithOtp, request dto.RequestInfo) (*dto.RegisterResponse, error) {
-	if !slices.Contains(app.LoginTypes, "WITH_OTP") {
-		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
+	// if !slices.Contains(app.LoginTypes, "WITH_OTP") {
+	// 	return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
+	// }
+
+	if userData.Password == "" && slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
+		return nil, e.ThrowUnprocessableEntity("Password is required to register with OTP",
+			utils.JSON{
+				"errors": utils.JSON{
+					"field": "Password",
+					"tag":   "password",
+					"param": "",
+					"value": "-",
+				},
+			},
+		)
 	}
 
 	// Check if user already exists
@@ -208,7 +226,7 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 
 	var hashedPassword string
 
-	if userData.Password != "" {
+	if userData.Password != "" && slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		hashedPassword, err = this.hashService.HashText(userData.Password, uuid.New().String())
 		if err != nil {
 			return nil, e.ThrowInternalServerError("Failed to hash password")

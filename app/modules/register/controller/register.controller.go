@@ -5,7 +5,7 @@ import (
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
 	"auth_service/app/models/dto"
-	"auth_service/app/modules/api/register/services"
+	"auth_service/app/modules/register/services"
 	"auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
 
@@ -43,7 +43,7 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 
 	method := ctx.Queries()["method"]
 
-	if method == "otp" {
+	if method == "otp" || method == "" {
 		var payload dto.RegisterPayloadWithOtp
 
 		if err := ctx.BodyParser(&payload); err != nil {
@@ -59,7 +59,7 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusCreated).JSON(response)
 	}
 
-	if method == "password" || method == "" {
+	if method == "password" {
 		var payload dto.RegisterPayloadWithPassoword
 
 		if err := ctx.BodyParser(&payload); err != nil {

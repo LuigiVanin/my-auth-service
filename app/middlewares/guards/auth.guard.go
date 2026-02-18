@@ -2,7 +2,7 @@ package guards
 
 import (
 	e "auth_service/app/errors"
-	"auth_service/app/modules/api/authorize/services"
+	"auth_service/app/modules/authorize/services"
 	"auth_service/common/global"
 	entity "auth_service/infra/entities"
 

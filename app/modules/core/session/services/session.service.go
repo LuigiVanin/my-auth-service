@@ -10,7 +10,7 @@ import (
 	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
 	sr "auth_service/app/modules/core/session/repository"
-	cs "auth_service/app/modules/utils/cipher/services"
+	cipher "auth_service/app/modules/utils/cipher"
 	entity "auth_service/infra/entities"
 
 	"go.uber.org/zap"
@@ -20,11 +20,11 @@ var _ ISessionService = &SessionService{}
 
 type SessionService struct {
 	repository    sr.ISessionRepository
-	cipherService cs.ICipherService
+	cipherService cipher.ICipherService
 	logger        *zap.Logger
 }
 
-func NewSessionService(repository sr.ISessionRepository, cipherService cs.ICipherService, logger *zap.Logger) *SessionService {
+func NewSessionService(repository sr.ISessionRepository, cipherService cipher.ICipherService, logger *zap.Logger) *SessionService {
 	return &SessionService{
 		repository:    repository,
 		cipherService: cipherService,
@@ -84,7 +84,7 @@ func (this *SessionService) EncryptSessionToken(sessionId string, token string, 
 
 	return this.cipherService.EncryptTextIntoToken(
 		rawData,
-		cs.CipherOptions{
+		cipher.CipherOptions{
 			OverrideKey: secretKey,
 		},
 	)
@@ -93,7 +93,7 @@ func (this *SessionService) EncryptSessionToken(sessionId string, token string, 
 func (this *SessionService) DecryptSessionToken(tokenString string, secretKey string) (string, string, error) {
 	plaintext, err := this.cipherService.DecryptTokenIntoText(
 		tokenString,
-		cs.CipherOptions{
+		cipher.CipherOptions{
 			OverrideKey: secretKey,
 		},
 	)

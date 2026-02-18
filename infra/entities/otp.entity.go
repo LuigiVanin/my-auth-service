@@ -17,6 +17,7 @@ type Otp struct {
 	// NOTE: In he future add column to chose the sender
 	// Method string `gorm:"type:OTP_METHOD;not null;default:'EMAIL'"`
 
+	// NOTE: Will always be the email
 	Contact string `gorm:"not null;index:idx_otp_app_contact"`
 
 	VerificationCount int `gorm:"not null;default:0" json:"verification_count"`

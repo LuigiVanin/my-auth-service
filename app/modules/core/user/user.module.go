@@ -1,10 +1,11 @@
 package user
 
 import (
-	"auth_service/app/modules/core/user/repository"
+	"auth_service/app/modules/core/user/controller"
 	ur "auth_service/app/modules/core/user/repository"
 	"auth_service/app/modules/core/user/services"
 
+	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 )
 
@@ -20,7 +21,16 @@ var Module = fx.Module(
 	fx.Provide(
 		fx.Private,
 		fx.Annotate(
-			repository.NewUserRepository,
+			ur.NewUserRepository,
 			fx.As(new(ur.IUserRepository)),
 		)),
+
+	fx.Provide(
+		fx.Private,
+		controller.NewUserController,
+	),
+
+	fx.Invoke(func(server *fiber.App, controller *controller.UserController) {
+		controller.Register(server)
+	}),
 )

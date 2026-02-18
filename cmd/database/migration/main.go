@@ -50,8 +50,8 @@ func main() {
 	err = db.AutoMigrate(
 		&entity.UsersPool{},
 		&entity.Profile{},
-		&entity.App{},
 		&entity.User{},
+		&entity.App{},
 		&entity.Session{},
 		&entity.AppRoleProfile{},
 		&entity.Otp{},

@@ -1,4 +1,4 @@
-package services
+package cipher
 
 type ICipherService interface {
 	EncryptUuidIntoToken(uuid string, options ...CipherOptions) (string, error)

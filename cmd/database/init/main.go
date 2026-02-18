@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"auth_service/app/modules/utils/cipher/services"
+	cipher "auth_service/app/modules/utils/cipher"
 	"auth_service/common/constants"
 	"auth_service/infra/config"
 
@@ -42,7 +42,7 @@ func main() {
 		}
 	}()
 
-	cipherService := services.NewCipherService(cfg)
+	cipherService := cipher.NewCipherService(cfg)
 
 	fmt.Println()
 	printHeader("Initializing Database Seed")
@@ -129,7 +129,7 @@ func main() {
 	//    app via database APP_ROLE -> PROFILES.
 	_, err = tx.Exec(`
 		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
-		SELECT $1, 'ADMIN', 0, '{ "register": true }', '{}', '{}'
+		SELECT $1, 'ADMIN', 999, '{ "register": false }', '{}', '{}'
 		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'ADMIN')
 	`, adminProfileId)
 
@@ -141,7 +141,7 @@ func main() {
 
 	_, err = tx.Exec(`
 		INSERT INTO app_role_profiles (profile_id, role, priority, permission, relation, metadata)
-		SELECT $1, 'ADMIN', 999, '{ "register": false }', '{}', '{}'
+		SELECT $1, 'ADMIN', 0, '{ "register": true }', '{}', '{}'
 		WHERE NOT EXISTS (SELECT 1 FROM app_role_profiles WHERE profile_id = $1 AND role = 'ADMIN')
 	`, managerProfileId)
 	if err != nil {

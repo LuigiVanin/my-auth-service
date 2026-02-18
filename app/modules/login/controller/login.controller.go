@@ -5,7 +5,7 @@ import (
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
 	"auth_service/app/models/dto"
-	"auth_service/app/modules/api/login/services"
+	"auth_service/app/modules/login/services"
 	"auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
 

@@ -8,7 +8,7 @@ import (
 
 	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
-	as "auth_service/app/modules/api/authorize/services"
+	as "auth_service/app/modules/authorize/services"
 	os "auth_service/app/modules/core/otp/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
@@ -59,7 +59,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	user, err := this.userRepository.FindWhere(entity.User{
 		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
-	})
+	}, "Profile")
 
 	if err != nil || user == nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -119,7 +119,7 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 	user, err := this.userRepository.FindWhere(entity.User{
 		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
-	})
+	}, "Profile")
 
 	if err != nil || user == nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

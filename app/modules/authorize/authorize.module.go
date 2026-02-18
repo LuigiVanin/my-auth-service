@@ -1,8 +1,8 @@
 package authorize
 
 import (
-	"auth_service/app/modules/api/authorize/controller"
-	"auth_service/app/modules/api/authorize/services"
+	"auth_service/app/modules/authorize/controller"
+	"auth_service/app/modules/authorize/services"
 	sr "auth_service/app/modules/core/session/repository"
 
 	"github.com/gofiber/fiber/v2"

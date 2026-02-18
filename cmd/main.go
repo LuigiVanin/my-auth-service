@@ -4,15 +4,16 @@ import (
 	"context"
 
 	"auth_service/app/middlewares/guards"
-	"auth_service/app/modules/api/authorize"
-	"auth_service/app/modules/api/login"
-	"auth_service/app/modules/api/register"
+
+	"auth_service/app/modules/authorize"
 	"auth_service/app/modules/core/app"
 	"auth_service/app/modules/core/otp"
 	"auth_service/app/modules/core/profile"
 	"auth_service/app/modules/core/session"
 	"auth_service/app/modules/core/user"
 	"auth_service/app/modules/core/user_pool"
+	"auth_service/app/modules/login"
+	"auth_service/app/modules/register"
 	"auth_service/app/modules/utils/cipher"
 	"auth_service/app/modules/utils/hash"
 	"auth_service/app/modules/utils/jwt"
@@ -35,6 +36,7 @@ func main() {
 		fx.Provide(guards.NewAppGuard),
 		fx.Provide(guards.NewAuthGuard),
 		fx.Provide(guards.NewOtpGuard),
+		fx.Provide(guards.NewPermissionsGuard),
 
 		// Utils
 		cipher.Module,

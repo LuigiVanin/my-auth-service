@@ -1,9 +1,9 @@
 package login
 
 import (
-	"auth_service/app/modules/api/login/controller"
-	"auth_service/app/modules/api/login/services"
 	ur "auth_service/app/modules/core/user/repository"
+	"auth_service/app/modules/login/controller"
+	"auth_service/app/modules/login/services"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"auth_service/app/modules/utils/cipher/services"
+	services "auth_service/app/modules/utils/cipher"
 	"auth_service/infra/config"
 )
 

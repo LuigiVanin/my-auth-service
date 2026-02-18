@@ -1,9 +1,9 @@
 package register
 
 import (
-	"auth_service/app/modules/api/register/controller"
-	"auth_service/app/modules/api/register/services"
 	"auth_service/app/modules/core/user/repository"
+	"auth_service/app/modules/register/controller"
+	"auth_service/app/modules/register/services"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"

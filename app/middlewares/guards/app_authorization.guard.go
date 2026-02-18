@@ -7,7 +7,7 @@ import (
 
 	e "auth_service/app/errors"
 	ar "auth_service/app/modules/core/app/repository"
-	cs "auth_service/app/modules/utils/cipher/services"
+	cipher "auth_service/app/modules/utils/cipher"
 	"auth_service/common/global"
 
 	i "auth_service/common/interfaces"
@@ -20,11 +20,11 @@ var _ i.IGuard = &AppGuard{}
 
 type AppGuard struct {
 	appRepository ar.IAppRepository
-	cipherService cs.ICipherService
+	cipherService cipher.ICipherService
 	logger        *zap.Logger
 }
 
-func NewAppGuard(appRepository ar.IAppRepository, cipherService cs.ICipherService, logger *zap.Logger) *AppGuard {
+func NewAppGuard(appRepository ar.IAppRepository, cipherService cipher.ICipherService, logger *zap.Logger) *AppGuard {
 	return &AppGuard{
 		appRepository: appRepository,
 		cipherService: cipherService,

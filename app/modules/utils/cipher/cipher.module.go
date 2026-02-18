@@ -1,8 +1,6 @@
 package cipher
 
 import (
-	"auth_service/app/modules/utils/cipher/services"
-
 	"go.uber.org/fx"
 )
 
@@ -11,8 +9,8 @@ var Module = fx.Module(
 
 	fx.Provide(
 		fx.Annotate(
-			services.NewCipherService,
-			fx.As(new(services.ICipherService)),
+			NewCipherService,
+			fx.As(new(ICipherService)),
 		),
 	),
 )

@@ -9,5 +9,5 @@ import (
 func RegisterGuards(server *fiber.App, appGuard *guards.AppGuard) {
 	server.Use("/auth", appGuard.Act)
 	server.Use("/otp", appGuard.Act)
-	server.Use("core/apps", appGuard.Act)
+	server.Use("/core", appGuard.Act)
 }

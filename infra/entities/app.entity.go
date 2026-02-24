@@ -8,35 +8,35 @@ import (
 )
 
 type App struct {
-	ID          string  `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	UsersPoolId string  `gorm:"type:uuid;not null"`
-	OwnerUserId *uint   `gorm:"type:bigint;default:null"`
-	ParentAppId *string `gorm:"type:uuid;default:null"`
+	ID          string  `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	UsersPoolId string  `gorm:"type:uuid;not null" json:"users_pool_id"`
+	OwnerUserId *uint   `gorm:"type:bigint;default:null" json:"owner_user_id,omitempty"`
+	ParentAppId *string `gorm:"type:uuid;default:null" json:"parent_app_id,omitempty"`
 
-	PublicKey string `gorm:"not null"`
-	SecretKey string `gorm:"not null"`
+	PublicKey string `gorm:"not null" json:"public_key"`
+	SecretKey string `gorm:"not null" json:"secret_key"`
 
-	Name string `gorm:"not null"`
+	Name string `gorm:"not null" json:"name"`
 
-	Role string `gorm:"type:APP_ROLE;default:'USER';not null"`
+	Role string `gorm:"type:APP_ROLE;default:'USER';not null" json:"role"`
 
-	LoginTypes                 pq.StringArray `gorm:"type:AUTH_METHOD[];not null"`
-	TokenType                  string         `gorm:"type:TOKEN_TYPE;not null"`
-	TokenExpirationTime        int64          `gorm:"not null"`
-	RefreshTokenExpirationTime int64          `gorm:"not null;default:1296000"` // 15 days
+	LoginTypes                 pq.StringArray `gorm:"type:AUTH_METHOD[];not null" json:"login_types"`
+	TokenType                  string         `gorm:"type:TOKEN_TYPE;not null" json:"token_type"`
+	TokenExpirationTime        int64          `gorm:"not null" json:"token_expiration_time"`
+	RefreshTokenExpirationTime int64          `gorm:"not null;default:1296000" json:"refresh_token_expiration_time"` // 15 days
 
-	Private bool `gorm:"default:false;not null"`
+	Private bool `gorm:"default:false;not null" json:"private"`
 	// VerifiedEmailDate *time.Time `gorm:"column:verified_email_date"`
-	VerifyEmail bool `gorm:"default:true;not null"`
+	VerifyEmail bool `gorm:"default:true;not null" json:"verify_email"`
 
-	Metadata json.RawMessage `gorm:"type:jsonb;default:'{}';not null"`
+	Metadata json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`
 
-	UsersPool UsersPool `gorm:"foreignKey:UsersPoolId"`
-	OwnerUser *User     `gorm:"foreignKey:OwnerUserId"`
-	ParentApp *App      `gorm:"foreignKey:ParentAppId"`
+	UsersPool UsersPool `gorm:"foreignKey:UsersPoolId" json:"users_pool,omitempty"`
+	OwnerUser *User     `gorm:"foreignKey:OwnerUserId" json:"owner_user,omitempty"`
+	ParentApp *App      `gorm:"foreignKey:ParentAppId" json:"parent_app,omitempty"`
 
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"created_at"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updated_at"`
 }
 
 func (App) TableName() string {

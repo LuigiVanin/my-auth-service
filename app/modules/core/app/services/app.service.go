@@ -5,21 +5,26 @@ import (
 	"auth_service/app/models/dto"
 	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user_pool/repository"
+	"auth_service/app/modules/utils/cipher"
 
 	entity "auth_service/infra/entities"
+
+	"github.com/google/uuid"
 )
 
 type AppService struct {
 	appRepository      ar.IAppRepository
 	userPoolRepository ur.IUserPoolRepository
+	cipherService      cipher.ICipherService
 }
 
 var _ IAppService = &AppService{}
 
-func NewAppService(appRepository ar.IAppRepository, userPoolRepository ur.IUserPoolRepository) *AppService {
+func NewAppService(appRepository ar.IAppRepository, userPoolRepository ur.IUserPoolRepository, cipherService cipher.ICipherService) *AppService {
 	return &AppService{
 		appRepository:      appRepository,
 		userPoolRepository: userPoolRepository,
+		cipherService:      cipherService,
 	}
 }
 
@@ -58,6 +63,9 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		return nil, e.ThrowBadRequest("User pool id or name is required")
 	}
 
+	secretKey := uuid.New().String()
+	publicKey := uuid.New().String()
+
 	app, err := this.appRepository.Create(&entity.App{
 		UsersPoolId:                targetUserPoolid,
 		Name:                       payload.Name,
@@ -67,6 +75,8 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		RefreshTokenExpirationTime: payload.RefreshTokenExpirationTime,
 		Private:                    payload.Private,
 		VerifyEmail:                payload.VerifyEmail,
+		PublicKey:                  secretKey,
+		SecretKey:                  publicKey,
 
 		OwnerUserId: &currentUser.ID,
 		ParentAppId: &currentApp.ID,
@@ -82,6 +92,15 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to create app")
+	}
+
+	app.PublicKey, err = this.cipherService.EncryptUuidIntoToken(secretKey)
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to encrypt public key")
+	}
+	app.SecretKey, err = this.cipherService.EncryptUuidIntoToken(publicKey)
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to encrypt secret key")
 	}
 
 	return app, nil

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	cipher "auth_service/app/modules/utils/cipher"
+	hash "auth_service/app/modules/utils/hash/services"
 	"auth_service/common/constants"
 	"auth_service/infra/config"
 
@@ -162,7 +163,10 @@ func main() {
 	printSuccess("Consumer App Role Profile created")
 
 	// 5. Create Admin User
-	adminPassword := uuid.New().String()
+
+	hashService := hash.NewHashService()
+
+	adminPassword, err := hashService.HashText(uuid.New().String(), uuid.New().String())
 	var adminUserId int // ID is SERIAL
 	var adminUserUuid string
 	err = tx.QueryRow(`

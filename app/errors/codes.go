@@ -38,6 +38,11 @@ var (
 		Second: fiber.StatusUnauthorized,
 	}
 
+	PermissionDeniedErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "PERMISSION_DENIED",
+		Second: fiber.StatusForbidden,
+	}
+
 	TokenExpiredErrorCode ErrorCodePair = ErrorCodePair{
 		First:  "TOKEN_EXPIRED",
 		Second: fiber.StatusUnauthorized,

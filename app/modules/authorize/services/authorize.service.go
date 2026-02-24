@@ -15,7 +15,6 @@ import (
 	hs "auth_service/app/modules/utils/hash/services"
 	jm "auth_service/app/modules/utils/jwt"
 	"auth_service/common/constants"
-	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -95,7 +94,7 @@ func (this *AuthorizeService) FindSessionByToken(token string, tokenType string,
 		"User.Profile",
 	)
 
-	utils.PrintObj(session)
+	// utils.PrintObj(session)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

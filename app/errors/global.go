@@ -115,6 +115,16 @@ func ThrowUnauthorizedError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
+func ThrowPermissionDeniedError(detail string, extra ...utils.JSON) *GlobalError {
+	return NewGlobalError(
+		"Permission Denied",
+		detail,
+		PermissionDeniedErrorCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/401",
+		extra...,
+	)
+}
+
 func ThrowTokenExpiredError(detail string, extra ...utils.JSON) *GlobalError {
 	return NewGlobalError(
 		"Token Expired",

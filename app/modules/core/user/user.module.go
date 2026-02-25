@@ -19,7 +19,6 @@ var Module = fx.Module(
 		)),
 
 	fx.Provide(
-		fx.Private,
 		fx.Annotate(
 			ur.NewUserRepository,
 			fx.As(new(ur.IUserRepository)),

@@ -1,5 +1,7 @@
 package dto
 
+import entity "auth_service/infra/entities"
+
 type CreateAppPayloadUserPool struct {
 	Id   string `json:"id" validate:"required_without=Name"`
 	Name string `json:"name" validate:"required_without=Id"`
@@ -18,4 +20,19 @@ type CreateAppPayload struct {
 	VerifyEmail bool `json:"verify_email" validate:"required"`
 
 	UserPool CreateAppPayloadUserPool `json:"user_pool" validate:"required"`
+}
+
+type GetAppsQuery struct {
+	Skip  int    `query:"skip"`
+	Limit int    `query:"limit"`
+	Name  string `query:"name"`
+
+	UserOwnerId int64 `query:"user_owner_id"`
+}
+
+type GetAppsResponse struct {
+	Total  int64        `json:"total"`
+	Amount int          `json:"amount"`
+	Skip   int          `json:"skip"`
+	Data   []entity.App `json:"data"`
 }

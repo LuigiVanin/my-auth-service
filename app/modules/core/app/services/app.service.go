@@ -47,7 +47,8 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 	} else if payload.UserPool.Name != "" {
 
 		userPool, err := this.userPoolRepository.Create(&entity.UsersPool{
-			Name: payload.UserPool.Name,
+			Name:        payload.UserPool.Name,
+			OwnerUserId: &currentUser.ID,
 		})
 
 		if err != nil {
@@ -106,8 +107,51 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 	return app, nil
 }
 
-func (this *AppService) FindAll() ([]entity.App, error) {
-	return []entity.App{}, e.ThrowInternalServerError("Not Implemented Yet")
+func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App, query *dto.GetAppsQuery) (*dto.GetAppsResponse, error) {
+	if currentUser == nil || currentApp == nil {
+		return nil, e.ThrowInternalServerError("Current user or current app is required")
+	}
+
+	var queryString string
+	var args []interface{}
+
+	if currentUser.Profile != nil && currentUser.Profile.Key == "ADMIN" {
+		queryString = "(owner_user_id = ? OR parent_app_id = ?)"
+		args = append(args, currentUser.ID, currentApp.ID)
+	} else {
+		queryString = "owner_user_id = ?"
+		args = append(args, currentUser.ID)
+	}
+
+	if query != nil && query.Name != "" {
+		queryString += " AND name ILIKE ?"
+		args = append(args, "%"+query.Name+"%")
+	}
+
+	skip := 0
+	limit := 10 // Default limit
+
+	if query != nil {
+		if query.Skip > 0 {
+			skip = query.Skip
+		}
+		if query.Limit > 0 {
+			limit = query.Limit
+		}
+	}
+
+	apps, count, err := this.appRepository.FindManyWhereAndCount(queryString, args, skip, limit)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to fetch apps")
+	}
+
+	return &dto.GetAppsResponse{
+		Total:  count,
+		Amount: len(*apps),
+		Skip:   skip,
+		Data:   *apps,
+	}, nil
 }
 
 func (this *AppService) FindById(id string) (*entity.App, error) {

@@ -5,6 +5,7 @@ import (
 	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -26,42 +27,45 @@ This is an example of the permission field on the profiles table:
 
 ```json
 // MANAGER profile
-{
-  "api": {
-    "/core/apps": {
-      "methods": ["POST", "GET"]
-    },
-    "/core/apps/:id": {
-      "methods": ["GET", "PUT", "DELETE"]
-    },
-    "/core/apps/:id/users": {
-      "methods": ["GET", "POST"],
-      "query": {
-        "skip": "^[0-9]+$",
-        "limit": "^[0-9]+$",
-        "name": "^.+$",
-        "email": "^.+$"
-      }
-    }
-  }
-}
+
+	{
+	  "api": {
+	    "/core/apps": {
+	      "methods": ["POST", "GET"]
+	    },
+	    "/core/apps/:id": {
+	      "methods": ["GET", "PUT", "DELETE"]
+	    },
+	    "/core/apps/:id/users": {
+	      "methods": ["GET", "POST"],
+	      "query": {
+	        "skip": "^[0-9]+$",
+	        "limit": "^[0-9]+$",
+	        "name": "^.+$",
+	        "email": "^.+$"
+	      }
+	    }
+	  }
+	}
+
 ```
 
 The example bellow is also a permission, but this time from the ADMIN profile, where there is the use
 of the wild card:
 ```json
-{
-  "api": {
-    "*": {
-      "methods": ["*"]
-    },
+
+	{
+	  "api": {
+	    "*": {
+	      "methods": ["*"]
+	    },
+		}
 	}
-}
+
 ```
 
 OBS.: The default behaviour for a empty query field is to assume: "query": { "*" : "*" }
 */
-
 type PermissionsGuard struct {
 	logger *zap.Logger
 }
@@ -107,6 +111,8 @@ func (this *PermissionsGuard) Act(ctx *fiber.Ctx) error {
 
 	// Check for a match in permissions
 	apiPerm, hasPerm := this.findMatchingPermission(ctx.Route().Path, permissions)
+
+	fmt.Print("hasPerm: ", hasPerm)
 	if !hasPerm {
 		this.logger.Warn("No matching permission found for path", zap.String("path", ctx.Route().Path))
 		return e.ThrowPermissionDeniedError(
@@ -139,33 +145,25 @@ func (this *PermissionsGuard) Act(ctx *fiber.Ctx) error {
 }
 
 func (this *PermissionsGuard) findMatchingPermission(path string, permissions Permission) (ApiPermission, bool) {
-	// Try exact match first
-	if perm, ok := permissions.Api[path]; ok {
-		return perm, true
-	}
 
-	// Try wildcard match "*"
 	if perm, ok := permissions.Api["*"]; ok {
 		return perm, true
 	}
 
-	// Iterate over keys to check for regex matches (e.g. replacing :id with \d+)
+	if perm, ok := permissions.Api[path]; ok {
+		return perm, true
+	}
+
 	for key, perm := range permissions.Api {
-		if key == "*" {
-			continue
-		}
 
-		regexKey := strings.ReplaceAll(key, ":id", `\d+`)
-		regexKey = strings.ReplaceAll(
-			regexKey,
-			":uuid",
-			`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`,
-		)
+		uuidRegexCode := `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 
-		regexKey = "^" + regexKey + "$"
+		regexKey := strings.ReplaceAll(key, ":id", `/d`)
+		regexKey = strings.ReplaceAll(regexKey, ":uuid", uuidRegexCode)
 
-		matched, err := regexp.MatchString(regexKey, path)
-		if err == nil && matched {
+		regexKey = `^` + regexKey + `$`
+
+		if matched, err := regexp.MatchString(regexKey, path); err == nil && matched {
 			return perm, true
 		}
 	}

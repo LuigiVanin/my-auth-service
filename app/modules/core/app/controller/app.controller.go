@@ -9,6 +9,7 @@ import (
 	entity "auth_service/infra/entities"
 
 	services "auth_service/app/modules/core/app/services"
+	us "auth_service/app/modules/core/user/services"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
@@ -16,6 +17,7 @@ import (
 
 type AppController struct {
 	appService       services.IAppService
+	userService      us.IUserService
 	authGuard        *guards.AuthGuard
 	permissionsGuard *guards.PermissionsGuard
 	logger           *zap.Logger
@@ -23,10 +25,17 @@ type AppController struct {
 
 var _ interfaces.IController = &AppController{}
 
-func NewAppController(authGuard *guards.AuthGuard, permissionsGuard *guards.PermissionsGuard, appService services.IAppService, logger *zap.Logger) *AppController {
+func NewAppController(
+	authGuard *guards.AuthGuard,
+	permissionsGuard *guards.PermissionsGuard,
+	appService services.IAppService,
+	userService us.IUserService,
+	logger *zap.Logger,
+) *AppController {
 	return &AppController{
 		authGuard:        authGuard,
 		appService:       appService,
+		userService:      userService,
 		permissionsGuard: permissionsGuard,
 		logger:           logger,
 	}
@@ -52,9 +61,41 @@ func (this *AppController) CreateApp(ctx *fiber.Ctx) error {
 }
 
 func (this *AppController) GetApps(ctx *fiber.Ctx) error {
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Apps fetched successfully",
-	})
+	currentUser := ctx.Locals("user").(*entity.User)
+	currentApp := ctx.Locals("app").(*entity.App)
+
+	var query dto.GetAppsQuery
+	if err := ctx.QueryParser(&query); err != nil {
+		return e.ThrowBadRequest("Invalid query parameters")
+	}
+
+	apps, err := this.appService.FindAll(currentUser, currentApp, &query)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(apps)
+}
+
+func (this *AppController) GetUsersFromApp(ctx *fiber.Ctx) error {
+	currentUser := ctx.Locals("user").(*entity.User)
+	currentApp := ctx.Locals("app").(*entity.App)
+
+	targetAppId := ctx.Params("id")
+
+	var query dto.GetUsersAppQuery
+	if err := ctx.QueryParser(&query); err != nil {
+		return e.ThrowBadRequest("Invalid query parameters")
+	}
+
+	response, err := this.userService.FindAllUsersFromApp(targetAppId, currentUser, currentApp, &query)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(response)
 }
 
 func (this *AppController) GetApp(ctx *fiber.Ctx) error {
@@ -87,7 +128,11 @@ func (this *AppController) Register(server *fiber.App) {
 		this.CreateApp,
 	)
 	group.Get("/apps", this.authGuard.Act, this.permissionsGuard.Act, this.GetApps)
+
 	group.Get("/apps/:id", this.authGuard.Act, this.permissionsGuard.Act, this.GetApp)
+
+	group.Get("/apps/:id/users", this.authGuard.Act, this.permissionsGuard.Act, this.GetUsersFromApp)
+
 	group.Get("/user/:user_id/apps", this.authGuard.Act, this.permissionsGuard.Act, this.GetUsersApps)
 	group.Put("/apps/:id", this.authGuard.Act, this.permissionsGuard.Act, this.UpdateApp)
 }

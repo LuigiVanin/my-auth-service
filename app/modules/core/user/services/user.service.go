@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	e "auth_service/app/errors"
+	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user/repository"
 
 	"gorm.io/gorm"
@@ -14,12 +15,16 @@ import (
 
 type UserService struct {
 	userRepository ur.IUserRepository
+	appRepository  ar.IAppRepository
 }
 
 var _ IUserService = &UserService{}
 
-func NewUserService(userRepository ur.IUserRepository) *UserService {
-	return &UserService{userRepository: userRepository}
+func NewUserService(userRepository ur.IUserRepository, appRepository ar.IAppRepository) *UserService {
+	return &UserService{
+		userRepository: userRepository,
+		appRepository:  appRepository,
+	}
 }
 
 func (this *UserService) IsAlreadyCreated(email string, app *entity.App) (bool, error) {
@@ -67,9 +72,22 @@ func (this *UserService) FindAllUsersFromApp(
 		canAccess = true
 
 	} else if currentUser.Profile != nil && currentUser.Profile.Key == "MANAGER" {
-		if currentApp.OwnerUserId != nil && *currentApp.OwnerUserId == currentUser.ID {
+		app, err := this.appRepository.FindAppbyIdWithPool(targetAppId)
+
+		if err != nil || app == nil {
+			return nil, e.ThrowBadRequest("The app doesnt exist")
+		}
+
+		var appOwnerUserId uint = 0
+
+		if app.OwnerUserId != nil {
+			appOwnerUserId = *app.OwnerUserId
+		}
+
+		if appOwnerUserId == currentUser.ID {
 			canAccess = true
 		}
+
 	}
 
 	if !canAccess {
@@ -88,7 +106,7 @@ func (this *UserService) FindAllUsersFromApp(
 		}
 	}
 
-	users, count, err := this.userRepository.FindFromAppId(targetAppId, skip, limit, "Preload")
+	users, count, err := this.userRepository.FindFromAppId(targetAppId, skip, limit, "Profile")
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to fetch users")

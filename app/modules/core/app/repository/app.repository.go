@@ -50,18 +50,18 @@ func (this *AppRepository) FindWhere(where entity.App, with ...string) (*entity.
 	return &result, nil
 }
 
-func (this *AppRepository) FindManyWhere(query any, args []any, with ...string) (*[]entity.App, error) {
+func (this *AppRepository) FindManyWhere(where any, args []any, with ...string) (*[]entity.App, error) {
 	var result []entity.App
 
-	where := this.client.Where(query, args...)
+	query := this.client.Where(where, args...)
 
 	if len(with) > 0 {
 		for _, relation := range with {
-			where = where.Preload(relation)
+			query = query.Preload(relation)
 		}
 	}
 
-	err := where.Find(&result).Error
+	err := query.Find(&result).Error
 
 	if err != nil {
 		return nil, err
@@ -71,41 +71,41 @@ func (this *AppRepository) FindManyWhere(query any, args []any, with ...string) 
 }
 
 func (this *AppRepository) FindManyWhereAndCount(
-	query any,
+	where any,
 	args []any,
 	skip int,
 	limit int,
 	with ...string,
-) (*[]entity.App, int64, error) {
+) ([]entity.App, int64, error) {
 
 	var result []entity.App
 	var count int64
 
-	where := this.client.Model(&entity.App{}).Where(query, args...)
+	query := this.client.Model(&entity.App{}).Where(where, args...)
 
 	if len(with) > 0 {
 		for _, relation := range with {
-			where = where.Preload(relation)
+			query = query.Preload(relation)
 		}
 	}
 
-	err := where.Count(&count).Error
+	err := query.Count(&count).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
 	if limit > 0 {
-		where = where.Limit(limit)
+		query = query.Limit(limit)
 	}
 	if skip >= 0 {
-		where = where.Offset(skip)
+		query = query.Offset(skip)
 	}
 
-	err = where.Find(&result).Error
+	err = query.Find(&result).Error
 
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return &result, count, nil
+	return result, count, nil
 }

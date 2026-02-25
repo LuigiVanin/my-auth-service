@@ -140,17 +140,24 @@ func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App
 		}
 	}
 
-	apps, count, err := this.appRepository.FindManyWhereAndCount(queryString, args, skip, limit)
+	apps, count, err := this.appRepository.FindManyWhereAndCount(queryString, args, skip, limit, "UsersPool")
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to fetch apps")
 	}
 
+	for idx := range apps {
+		// Omiting Public and Private Key from listing visualization
+		apps[idx].SecretKey = ""
+		apps[idx].PublicKey = ""
+	}
+
 	return &dto.GetAppsResponse{
 		Total:  count,
-		Amount: len(*apps),
+		Amount: len(apps),
 		Skip:   skip,
-		Data:   *apps,
+		Limit:  limit,
+		Data:   apps,
 	}, nil
 }
 

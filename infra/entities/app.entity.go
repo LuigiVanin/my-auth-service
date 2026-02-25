@@ -13,8 +13,8 @@ type App struct {
 	OwnerUserId *uint   `gorm:"type:bigint;default:null" json:"owner_user_id,omitempty"`
 	ParentAppId *string `gorm:"type:uuid;default:null" json:"parent_app_id,omitempty"`
 
-	PublicKey string `gorm:"not null" json:"public_key"`
-	SecretKey string `gorm:"not null" json:"secret_key"`
+	PublicKey string `gorm:"not null" json:"public_key,omitempty"`
+	SecretKey string `gorm:"not null" json:"secret_key,omitempty"`
 
 	Name string `gorm:"not null" json:"name"`
 

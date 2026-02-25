@@ -59,6 +59,17 @@ func (this *MockAppRepository) FindWhere(where entity.App, with ...string) (*ent
 	return args.Get(0).(*entity.App), args.Error(1)
 }
 
+func (this *MockAppRepository) FindManyWhereAndCount(
+	where any,
+	args []any,
+	skip int,
+	limit int,
+	with ...string,
+
+) (*[]entity.App, int64, error) {
+	return &[]entity.App{}, 0, nil
+}
+
 type MockCipherService struct {
 	mock.Mock
 }
@@ -95,12 +106,12 @@ func (this *MockUserRepository) FindWhere(where entity.User, with ...string) (*e
 	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (this *MockUserRepository) FindManyWhere(where entity.User, with ...string) (*[]entity.User, error) {
-	args := this.Called(where, with)
+func (this *MockUserRepository) FindManyWhere(where entity.User, skip int, limit int, with ...string) (*[]entity.User, int64, error) {
+	args := this.Called(where, skip, limit, with)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, 0, args.Error(2)
 	}
-	return args.Get(0).(*[]entity.User), args.Error(1)
+	return args.Get(0).(*[]entity.User), args.Get(1).(int64), args.Error(2)
 }
 
 func (this *MockUserRepository) Create(user entity.User) (*entity.User, error) {
@@ -114,6 +125,15 @@ func (this *MockUserRepository) Create(user entity.User) (*entity.User, error) {
 func (this *MockUserRepository) Update(user *entity.User) error {
 	args := this.Called(user)
 	return args.Error(0)
+}
+
+func (this *MockUserRepository) FindFromAppId(id string, skip int, limit int, with ...string) ([]entity.User, int64, error) {
+	args := this.Called(id, skip, limit, with)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(1)
+	}
+
+	return []entity.User{}, 0, args.Error(0)
 }
 
 type MockHashService struct {

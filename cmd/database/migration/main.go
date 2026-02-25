@@ -47,6 +47,10 @@ func main() {
 	// So I should check for lowercase.
 
 	// 3. AutoMigrate
+	// We run migration in two steps to handle circular dependencies (e.g., UsersPool <-> User)
+
+	// Step 1: Create tables without foreign key constraints
+	db.Config.DisableForeignKeyConstraintWhenMigrating = true
 	err = db.AutoMigrate(
 		&entity.UsersPool{},
 		&entity.Profile{},
@@ -57,7 +61,22 @@ func main() {
 		&entity.Otp{},
 	)
 	if err != nil {
-		log.Fatal("Migration failed:", err)
+		log.Fatal("Migration failed during table creation:", err)
+	}
+
+	// Step 2: Create foreign key constraints
+	db.Config.DisableForeignKeyConstraintWhenMigrating = false
+	err = db.AutoMigrate(
+		&entity.UsersPool{},
+		&entity.Profile{},
+		&entity.User{},
+		&entity.App{},
+		&entity.Session{},
+		&entity.AppRoleProfile{},
+		&entity.Otp{},
+	)
+	if err != nil {
+		log.Fatal("Migration failed during constraint creation:", err)
 	}
 
 	fmt.Println("Migrations Finished ✅")

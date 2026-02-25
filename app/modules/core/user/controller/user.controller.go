@@ -36,5 +36,5 @@ func (this *UserController) GetSelf(ctx *fiber.Ctx) error {
 func (this *UserController) Register(server *fiber.App) {
 	group := server.Group("/core/users")
 
-	group.Get("/self", this.authGuard.Act, this.GetSelf)
+	group.Get("/:id", this.authGuard.Act, this.GetSelf)
 }

@@ -80,42 +80,35 @@ func (r *UserRepository) Update(user *entity.User) error {
 	return r.client.Save(user).Error
 }
 
-func (this *UserRepository) FindFromAppId(appId string, skip int, limit int, with ...string) ([]entity.User, int64, error) {
-
+func (this *UserRepository) FindFromAppId(id string, skip int, limit int, with ...string) ([]entity.User, int64, error) {
 	var users []entity.User
 	var count int64
 
-	query := this.client.Table("users").Select("users.*")
-
-	query = query.
+	query := this.client.Model(&entity.User{}).
 		Joins("JOIN apps ON apps.users_pool_id = users.users_pool_id").
-		Where("apps.id = ?", appId).
-		Count(&count)
+		Where("apps.id = ?", id)
 
-	if limit > 0 {
-
-		query = query.Offset(skip)
+	err := query.Count(&count).Error
+	if err != nil {
+		return nil, 0, err
 	}
 
-	if skip > 0 {
-		query = query.Limit(limit)
-	}
-
+	// Apply preloads
 	if len(with) > 0 {
 		for _, relation := range with {
 			query = query.Preload(relation)
 		}
 	}
 
-	err := query.Find(&users).Error
-	/*
-			SELECT u.*, a.name FROM users AS u
-		    JOIN apps AS a ON u.users_pool_id = a.users_pool_id
-		    	WHERE a.id = 'dc29ac9e-d39e-44c2-bc77-86ac2b059155'
-		    	OFFSET 0
-		    	LIMIT 10
-	*/
+	// Apply pagination
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+	if skip >= 0 {
+		query = query.Offset(skip)
+	}
 
+	err = query.Find(&users).Error
 	if err != nil {
 		return nil, 0, err
 	}

@@ -83,8 +83,8 @@ func main() {
 
 	// Admin Profile
 	err = tx.QueryRow(`
-		INSERT INTO profiles (key, name, parent_profile_id)
-		VALUES ('ADMIN', 'Admin Profile', NULL)
+		INSERT INTO profiles (key, name, parent_profile_id, permissions)
+		VALUES ('ADMIN', 'Admin Profile', NULL, '{ "api": { "*": { "methods": ["*"] } } }')
 		ON CONFLICT (key) DO UPDATE SET key=EXCLUDED.key
 		RETURNING id
 	`).Scan(&adminProfileId)
@@ -94,13 +94,15 @@ func main() {
 	}
 	printSuccess("Admin Profile created/retrieved")
 
+	managerPermissions := `{ "api": { "/core/apps": { "methods": ["POST", "GET"] }, "/core/apps/:id": { "methods": ["GET", "PUT", "DELETE"] }, "/core/apps/:id/users": { "methods": ["GET", "POST"], "query": { "skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$", "email": "^.+$" } } } }`
+
 	// Manager Profile
 	err = tx.QueryRow(`
-		INSERT INTO profiles (key, name, parent_profile_id)
-		VALUES ('MANAGER', 'Manager Profile', $1)
+		INSERT INTO profiles (key, name, parent_profile_id, permissions)
+		VALUES ('MANAGER', 'Manager Profile', $1, $2)
 		ON CONFLICT (key) DO UPDATE SET key=EXCLUDED.key
 		RETURNING id
-	`, adminProfileId).Scan(&managerProfileId)
+	`, adminProfileId, managerPermissions).Scan(&managerProfileId)
 	if err != nil {
 		printError("failed to insert or retrieve manager profile", err)
 		return

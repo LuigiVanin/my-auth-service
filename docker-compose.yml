@@ -1,0 +1,4 @@
+services:
+  auth_service_server:
+    build: .
+    ports: 8081:8080

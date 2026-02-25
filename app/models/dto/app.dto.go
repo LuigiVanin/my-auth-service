@@ -34,5 +34,6 @@ type GetAppsResponse struct {
 	Total  int64        `json:"total"`
 	Amount int          `json:"amount"`
 	Skip   int          `json:"skip"`
+	Limit  int          `json:"limit"`
 	Data   []entity.App `json:"data"`
 }

@@ -94,7 +94,7 @@ func main() {
 	}
 	printSuccess("Admin Profile created/retrieved")
 
-	managerPermissions := `{ "api": { "/core/apps": { "methods": ["POST", "GET"] }, "/core/apps/:id": { "methods": ["GET", "PUT", "DELETE"] }, "/core/apps/:id/users": { "methods": ["GET", "POST"], "query": { "skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$", "email": "^.+$" } } } }`
+	managerPermissions := `{"api": {"/core/apps": {"methods": ["POST", "GET"]}, "/core/apps/:id": {"methods": ["GET", "PUT", "DELETE"]}, "/core/users_pool": {"methods": ["GET", "POST", "PUT"]}, "/core/apps/:id/users": {"query": {"name": "^.+$", "skip": "^[0-9]+$", "email": "^.+$", "limit": "^[0-9]+$"}, "methods": ["GET", "POST"]}}}`
 
 	// Manager Profile
 	err = tx.QueryRow(`
@@ -168,14 +168,16 @@ func main() {
 
 	hashService := hash.NewHashService()
 
-	adminPassword, err := hashService.HashText(uuid.New().String(), uuid.New().String())
+	password := uuid.New().String()
+	adminHashedPassword, err := hashService.HashText(password, uuid.New().String())
+
 	var adminUserId int // ID is SERIAL
 	var adminUserUuid string
 	err = tx.QueryRow(`
 		INSERT INTO users (name, email, users_pool_id, password_hash, profile_id)
 		VALUES ('Admin User', 'admin@example.com', $1, $2, $3)
 		RETURNING id, uuid
-	`, usersPoolId, adminPassword, adminProfileId).Scan(&adminUserId, &adminUserUuid)
+	`, usersPoolId, adminHashedPassword, adminProfileId).Scan(&adminUserId, &adminUserUuid)
 	if err != nil {
 		printError("failed to insert admin user", err)
 		return
@@ -241,7 +243,7 @@ App ID              : %s
 Encrypted App ID    : %s
 
 Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)
-`, adminPassword, usersPoolId, encryptedPoolId, appId, encryptedAppId)
+`, adminHashedPassword, usersPoolId, encryptedPoolId, appId, encryptedAppId)
 
 	// Check if file exists and read content
 	var finalContent []byte
@@ -271,7 +273,7 @@ Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)
 	printSection("Admin Credentials")
 	printKeyValue("Username", "Admin User")
 	printKeyValue("Email", "admin@example.com")
-	printKeyValue("Password", adminPassword)
+	printKeyValue("Password", adminHashedPassword)
 
 	printSection("System IDs (Ciphered)")
 	printKeyValue("Users Pool ID", usersPoolId)

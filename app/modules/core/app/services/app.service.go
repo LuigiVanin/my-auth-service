@@ -6,10 +6,12 @@ import (
 	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user_pool/repository"
 	"auth_service/app/modules/utils/cipher"
+	"errors"
 
 	entity "auth_service/infra/entities"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type AppService struct {
@@ -116,9 +118,18 @@ func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App
 	var args []interface{}
 
 	if currentUser.Profile != nil && currentUser.Profile.Key == "ADMIN" {
-		queryString = "(owner_user_id = ? OR parent_app_id = ?)"
-		args = append(args, currentUser.ID, currentApp.ID)
-	} else {
+
+		// If there is a "OwnerUserId" on the query string it should be used if the currentUser is an ADMIN user
+		if query.OwnerUserId != 0 {
+			queryString = "owner_user_id = ?"
+			args = append(args, query.OwnerUserId)
+		} else {
+			queryString = "(parent_app_id = ? OR owner_user_id = ?)"
+			args = append(args, currentApp.ID, currentUser.ID)
+		}
+
+		// If the user is manager, the OwnerUserId field will always be equal to the current user
+	} else if currentUser.Profile != nil && currentUser.Profile.Key == "MANAGER" {
 		queryString = "owner_user_id = ?"
 		args = append(args, currentUser.ID)
 	}
@@ -169,6 +180,26 @@ func (this *AppService) FindAllUserApps(userId string) ([]entity.App, error) {
 	return []entity.App{}, e.ThrowInternalServerError("Not Implemented Yet")
 }
 
-func (this *AppService) Update(id string, app *entity.App) (*entity.App, error) {
-	return nil, e.ThrowInternalServerError("Not Implemented Yet")
+func (this *AppService) Update(user *entity.User, app *entity.App) (*entity.App, error) {
+	app, err := this.appRepository.FindWhere(entity.App{ID: app.ID})
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, e.ThrowNotFound("App with this Id was not found")
+		}
+
+		return nil, e.ThrowInternalServerError("Unable to query app")
+	}
+
+	if *app.OwnerUserId != user.ID && user.Profile.Key != "ADMIN" {
+		return nil, e.ThrowUnauthorizedError("User does not own the app")
+	}
+
+	_, err = this.appRepository.Update(app.ID, *app)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Could not update app")
+	}
+
+	return app, e.ThrowInternalServerError("Not Implemented Yet")
 }

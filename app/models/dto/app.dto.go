@@ -7,6 +7,10 @@ type CreateAppPayloadUserPool struct {
 	Name string `json:"name" validate:"required_without=Id"`
 }
 
+type UpdateAppUserPool struct {
+	Id string `json:"id"`
+}
+
 type CreateAppPayload struct {
 	Name       string   `json:"name" validate:"required"`
 	LoginTypes []string `json:"login_types" validate:"required,dive,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
@@ -22,12 +26,27 @@ type CreateAppPayload struct {
 	UserPool CreateAppPayloadUserPool `json:"user_pool" validate:"required"`
 }
 
+type UpdateApp struct {
+	Name       string   `json:"name" validate:"required"`
+	LoginTypes []string `json:"login_types" validate:"required,dive,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
+	TokenType  string   `json:"token_type" validate:"required,oneof=JWT FAST_JWT SESSION_UUID"`
+
+	TokenExpirationTime        int64 `json:"token_expiration_time" validate:"required,numeric,gt=0"`
+	RefreshTokenExpirationTime int64 `json:"refresh_token_expiration_time" validate:"required,numeric,gt=0"`
+
+	Private bool `json:"private"`
+
+	VerifyEmail bool `json:"verify_email" validate:"required"`
+
+	UserPool UpdateAppUserPool `json:"user_pool"`
+}
+
 type GetAppsQuery struct {
 	Skip  int    `query:"skip"`
 	Limit int    `query:"limit"`
 	Name  string `query:"name"`
 
-	UserOwnerId int64 `query:"user_owner_id"`
+	OwnerUserId int64 `query:"owner_user_id"`
 }
 
 type GetAppsResponse struct {

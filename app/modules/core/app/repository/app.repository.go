@@ -109,3 +109,7 @@ func (this *AppRepository) FindManyWhereAndCount(
 
 	return result, count, nil
 }
+
+func (this *AppRepository) Update(id string, app entity.App) (*entity.App, error) {
+	return nil, nil
+}

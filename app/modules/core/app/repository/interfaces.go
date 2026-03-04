@@ -12,4 +12,6 @@ type IAppRepository interface {
 	// FindManyWhere(query any, args []any, with ...string) (*[]entity.App, error)
 
 	FindManyWhereAndCount(query any, args []any, skip int, limit int, with ...string) ([]entity.App, int64, error)
+
+	Update(id string, app entity.App) (*entity.App, error)
 }

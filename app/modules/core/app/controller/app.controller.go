@@ -104,16 +104,23 @@ func (this *AppController) GetApp(ctx *fiber.Ctx) error {
 	})
 }
 
-func (this *AppController) GetUsersApps(ctx *fiber.Ctx) error {
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "Users apps fetched successfully",
-	})
-}
-
 func (this *AppController) UpdateApp(ctx *fiber.Ctx) error {
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message": "App updated successfully",
-	})
+	var payload dto.UpdateApp
+
+	if err := ctx.BodyParser(&payload); err != nil {
+		return e.ThrowBadRequest(err.Error())
+	}
+
+	currentApp := ctx.Locals("app").(*entity.App)
+	currentUser := ctx.Locals("user").(*entity.User)
+
+	app, err := this.appService.Update(currentUser, currentApp)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(app)
 }
 
 func (this *AppController) Register(server *fiber.App) {
@@ -133,6 +140,5 @@ func (this *AppController) Register(server *fiber.App) {
 
 	group.Get("/apps/:id/users", this.authGuard.Act, this.permissionsGuard.Act, this.GetUsersFromApp)
 
-	group.Get("/user/:user_id/apps", this.authGuard.Act, this.permissionsGuard.Act, this.GetUsersApps)
 	group.Put("/apps/:id", this.authGuard.Act, this.permissionsGuard.Act, this.UpdateApp)
 }

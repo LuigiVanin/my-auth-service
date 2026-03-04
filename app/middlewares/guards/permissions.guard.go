@@ -158,12 +158,13 @@ func (this *PermissionsGuard) findMatchingPermission(path string, permissions Pe
 
 		uuidRegexCode := `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
 
-		regexKey := strings.ReplaceAll(key, ":id", `/d`)
+		regexKey := strings.ReplaceAll(key, ":id", `\d+`)
 		regexKey = strings.ReplaceAll(regexKey, ":uuid", uuidRegexCode)
 
 		regexKey = `^` + regexKey + `$`
 
-		if matched, err := regexp.MatchString(regexKey, path); err == nil && matched {
+		matched, err := regexp.MatchString(regexKey, path)
+		if err == nil && matched {
 			return perm, true
 		}
 	}

@@ -4,8 +4,8 @@ import (
 	ur "auth_service/app/modules/core/user/repository"
 	"auth_service/app/modules/login/controller"
 	"auth_service/app/modules/login/services"
+	"auth_service/common/interfaces"
 
-	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 )
 
@@ -28,9 +28,11 @@ var Module = fx.Module(
 		),
 	),
 
-	fx.Provide(controller.NewLoginController),
-
-	fx.Invoke(func(server *fiber.App, controller *controller.LoginController) {
-		controller.Register(server)
-	}),
+	fx.Provide(
+		fx.Annotate(
+			controller.NewLoginController,
+			fx.As(new(interfaces.IController)),
+			fx.ResultTags(`group:"controllers"`),
+		),
+	),
 )

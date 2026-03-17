@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"auth_service/app/middlewares/guards"
+	"auth_service/common/interfaces"
 
 	"auth_service/app/modules/authorize"
 	"auth_service/app/modules/core/app"
@@ -12,6 +13,7 @@ import (
 	"auth_service/app/modules/core/session"
 	"auth_service/app/modules/core/user"
 	"auth_service/app/modules/core/user_pool"
+	"auth_service/app/modules/healthcheck"
 	"auth_service/app/modules/login"
 	"auth_service/app/modules/register"
 	"auth_service/app/modules/utils/cipher"
@@ -20,6 +22,7 @@ import (
 	"auth_service/infra/bootstrap"
 	"auth_service/infra/config"
 
+	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -55,6 +58,18 @@ func main() {
 		register.Module,
 		login.Module,
 		authorize.Module,
+		healthcheck.Module,
+
+		fx.Invoke(
+			fx.Annotate(
+				func(server *fiber.App, controllers []interfaces.IController) {
+					for _, controller := range controllers {
+						controller.Register(server)
+					}
+				},
+				fx.ParamTags(``, `group:"controllers"`),
+			),
+		),
 
 		fx.Invoke(bootstrap.StartServer),
 

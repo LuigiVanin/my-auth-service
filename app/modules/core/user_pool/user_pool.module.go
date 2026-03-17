@@ -3,8 +3,8 @@ package user_pool
 import (
 	"auth_service/app/modules/core/user_pool/controller"
 	"auth_service/app/modules/core/user_pool/repository"
+	"auth_service/common/interfaces"
 
-	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 )
 
@@ -22,11 +22,10 @@ var Module = fx.Module(
 	// )),
 
 	fx.Provide(
-		fx.Private,
-		controller.NewUserPoolController,
+		fx.Annotate(
+			controller.NewUserPoolController,
+			fx.As(new(interfaces.IController)),
+			fx.ResultTags(`group:"controllers"`),
+		),
 	),
-
-	fx.Invoke(func(controller *controller.UserPoolController, server *fiber.App) {
-		controller.Register(server)
-	}),
 )

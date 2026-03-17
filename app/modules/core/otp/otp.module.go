@@ -4,8 +4,8 @@ import (
 	"auth_service/app/modules/core/otp/controller"
 	"auth_service/app/modules/core/otp/repository"
 	"auth_service/app/modules/core/otp/services"
+	"auth_service/common/interfaces"
 
-	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 )
 
@@ -27,9 +27,11 @@ var Module = fx.Module(
 		),
 	),
 
-	fx.Provide(controller.NewOtpController),
-
-	fx.Invoke(func(controller *controller.OtpController, server *fiber.App) {
-		controller.Register(server)
-	}),
+	fx.Provide(
+		fx.Annotate(
+			controller.NewOtpController,
+			fx.As(new(interfaces.IController)),
+			fx.ResultTags(`group:"controllers"`),
+		),
+	),
 )

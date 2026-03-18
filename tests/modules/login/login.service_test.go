@@ -1,14 +1,13 @@
 package login_test
 
 import (
+	"testing"
+
 	e "auth_service/app/errors"
 	"auth_service/app/models/dto"
 	"auth_service/app/modules/authorize/services"
 	ls "auth_service/app/modules/login/services"
 	entity "auth_service/infra/entities"
-
-	"testing"
-
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -72,7 +71,31 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginOnAppWithoutPasswordLogi
 }
 
 func (this *LoginWithPasswordServiceTestSuite) TestLoginWithNonExistentUserOnTheApp_Error() {
+	// Arrange
+	app := &entity.App{
+		ID:         "app-id",
+		LoginTypes: []string{"WITH_PASSWORD"},
+		UsersPool:  entity.UsersPool{ID: "pool-id"},
+	}
+	payload := dto.LoginPayloadWithPassoword{
+		Email:    "nonexistent@example.com",
+		Password: "password",
+	}
+	requestInfo := dto.RequestInfo{}
 
+	// Mock - user not found
+	expectedWhere := entity.User{
+		Email:       "nonexistent@example.com",
+		UsersPoolId: "pool-id",
+	}
+	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(nil, e.ThrowNotFound("User not found"))
+
+	// Act
+	response, err := this.loginService.LoginWithPassword(app, payload, requestInfo)
+
+	// Assert
+	assert.Nil(this.T(), response)
+	assert.Error(this.T(), err)
 }
 
 func (this *LoginWithPasswordServiceTestSuite) TestLogin_Success() {
@@ -117,6 +140,78 @@ func (this *LoginWithPasswordServiceTestSuite) TestLogin_Success() {
 	assert.NotNil(this.T(), response)
 	assert.Equal(this.T(), "session-id", response.SessionId)
 	assert.Equal(this.T(), "access-token", response.AccessToken)
+}
+
+func (this *LoginWithPasswordServiceTestSuite) TestLoginWithPassword_InvalidPassword_Error() {
+	// Arrange
+	app := &entity.App{
+		ID:         "app-id",
+		LoginTypes: []string{"WITH_PASSWORD"},
+		UsersPool:  entity.UsersPool{ID: "pool-id"},
+	}
+	payload := dto.LoginPayloadWithPassoword{
+		Email:    "test@example.com",
+		Password: "wrongpassword",
+	}
+	requestInfo := dto.RequestInfo{}
+
+	user := &entity.User{
+		ID:           1,
+		Email:        "test@example.com",
+		PasswordHash: "hashed_password",
+	}
+
+	// Mocks
+	expectedWhere := entity.User{
+		Email:       "test@example.com",
+		UsersPoolId: "pool-id",
+	}
+	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(user, nil)
+	this.mockHashService.On("Compare", "wrongpassword", "hashed_password").Return(false, nil)
+
+	// Act
+	response, err := this.loginService.LoginWithPassword(app, payload, requestInfo)
+
+	// Assert
+	assert.Nil(this.T(), response)
+	assert.Error(this.T(), err)
+	assert.IsType(this.T(), e.ThrowUnauthorizedError(""), err)
+}
+
+func (this *LoginWithPasswordServiceTestSuite) TestLoginWithPassword_HashServiceFails_Error() {
+	// Arrange
+	app := &entity.App{
+		ID:         "app-id",
+		LoginTypes: []string{"WITH_PASSWORD"},
+		UsersPool:  entity.UsersPool{ID: "pool-id"},
+	}
+	payload := dto.LoginPayloadWithPassoword{
+		Email:    "test@example.com",
+		Password: "password",
+	}
+	requestInfo := dto.RequestInfo{}
+
+	user := &entity.User{
+		ID:           1,
+		Email:        "test@example.com",
+		PasswordHash: "hashed_password",
+	}
+
+	// Mocks
+	expectedWhere := entity.User{
+		Email:       "test@example.com",
+		UsersPoolId: "pool-id",
+	}
+	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(user, nil)
+	this.mockHashService.On("Compare", "password", "hashed_password").Return(false, assert.AnError)
+
+	// Act
+	response, err := this.loginService.LoginWithPassword(app, payload, requestInfo)
+
+	// Assert
+	assert.Nil(this.T(), response)
+	assert.Error(this.T(), err)
+	assert.IsType(this.T(), e.ThrowInternalServerError(""), err)
 }
 
 func TestServiceSuite(t *testing.T) {

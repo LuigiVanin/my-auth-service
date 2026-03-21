@@ -28,9 +28,8 @@ RUN apk --no-cache add ca-certificates
 # Copy binary from builder
 COPY --from=builder /app/auth_service .
 
-# Copy production config if it exists
-# This command will not fail if the file doesn't exist, but it's better to be explicit
-COPY .env.prod.yaml .
+# Copy production config only if it exists (builder stage already has the full context)
+COPY --from=builder /app/.env.prod.yam[l] ./
 
 # Create a non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

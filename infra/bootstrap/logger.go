@@ -1,8 +1,8 @@
 package bootstrap
 
 import (
-	"auth_service/common/global"
 	"auth_service/infra/config"
+	"auth_service/shared/global"
 	"slices"
 	"time"
 

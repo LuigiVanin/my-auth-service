@@ -3,8 +3,9 @@ package entity
 import "time"
 
 type UsersPool struct {
-	ID   string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	Name string `gorm:"not null"`
+	ID        string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
+	Name      string `gorm:"not null"`
+	PublicKey string `gorm:"not null"`
 
 	OwnerUserId *uint `gorm:"type:bigint;default:null" json:"owner_user_id,omitempty"`
 

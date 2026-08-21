@@ -14,6 +14,7 @@ import (
 	entity "auth_service/infra/entities"
 	mock "auth_service/tests/modules/mock"
 
+	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	testifymock "github.com/stretchr/testify/mock"
@@ -35,7 +36,12 @@ func (this *RegisterControllerTestSuite) SetupTest() {
 	logger := zap.NewNop()
 
 	this.mockRegisterService = new(mock.MockRegisterService)
-	this.registerController = controller.NewRegisterController(this.mockRegisterService, nil, logger)
+	this.registerController = controller.NewRegisterController(
+		this.mockRegisterService,
+		nil,
+		logger,
+		openapi.NewBuilder("test", "test", "test"),
+	)
 
 	// Setup fiber app with custom error handler
 	this.app = fiber.New(fiber.Config{

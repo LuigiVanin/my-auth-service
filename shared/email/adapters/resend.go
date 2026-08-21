@@ -1,7 +1,7 @@
 package adapters
 
 import (
-	"auth_service/packages/email"
+	"auth_service/shared/email"
 	"errors"
 
 	"github.com/resend/resend-go/v3"

@@ -4,7 +4,7 @@ import (
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/models/dto"
-	"auth_service/common/constants"
+	"auth_service/shared/constants"
 
 	"github.com/gofiber/fiber/v2"
 )

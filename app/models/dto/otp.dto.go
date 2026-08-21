@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"auth_service/common/constants"
+	"auth_service/shared/constants"
 	"time"
 )
 

@@ -17,9 +17,9 @@ import (
 	hs "auth_service/app/modules/utils/hash/services"
 
 	e "auth_service/app/errors"
-	"auth_service/common/constants"
-	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
+	"auth_service/shared/utils"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

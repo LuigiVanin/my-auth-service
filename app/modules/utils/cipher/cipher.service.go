@@ -1,8 +1,8 @@
 package cipher
 
 import (
-	"auth_service/common/utils"
 	"auth_service/infra/config"
+	"auth_service/shared/utils"
 
 	"regexp"
 )

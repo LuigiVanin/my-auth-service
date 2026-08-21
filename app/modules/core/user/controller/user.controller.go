@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"auth_service/app/apidocs"
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
-	"auth_service/common/interfaces"
+	entity "auth_service/infra/entities"
+	"auth_service/shared/interfaces"
 
+	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
@@ -12,7 +15,9 @@ import (
 type UserController struct {
 	authGuard        *guards.AuthGuard
 	permissionsGuard *guards.PermissionsGuard
-	logger           *zap.Logger
+
+	logger  *zap.Logger
+	swagger *openapi.Builder
 }
 
 var _ interfaces.IController = &UserController{}
@@ -21,11 +26,14 @@ func NewUserController(
 	authGuard *guards.AuthGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	logger *zap.Logger,
+	builder *openapi.Builder,
 ) *UserController {
+
 	return &UserController{
 		authGuard:        authGuard,
 		permissionsGuard: permissionsGuard,
 		logger:           logger,
+		swagger:          builder,
 	}
 }
 
@@ -36,5 +44,22 @@ func (this *UserController) GetSelf(ctx *fiber.Ctx) error {
 func (this *UserController) Register(server *fiber.App) {
 	group := server.Group("/core/users")
 
+	this.swagger.Add(
+		apidocs.AuthRoute(this.swagger, "GET", "/core/users/{id}", openapi.Options{
+			Summary:     "Get a user",
+			Description: "Reads a single user of the application users pool. Not implemented yet - always answers 501.",
+			Tags:        []string{apidocs.TagUsers},
+		}).
+			AddPathParam("id", openapi.String, openapi.Options{
+				Required:    true,
+				Description: "Id of the user",
+			}).
+			AddResponse(fiber.StatusOK, entity.User{}, openapi.Options{
+				Description: "The requested user",
+			}).
+			AddResponse(fiber.StatusNotImplemented, e.ProblemDetail{}, openapi.Options{
+				Description: "Endpoint not implemented yet",
+			}),
+	)
 	group.Get("/:id", this.authGuard.Act, this.GetSelf)
 }

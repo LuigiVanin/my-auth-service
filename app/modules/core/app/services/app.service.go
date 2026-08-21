@@ -67,7 +67,6 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 	}
 
 	secretKey := uuid.New().String()
-	publicKey := uuid.New().String()
 
 	app, err := this.appRepository.Create(&entity.App{
 		UsersPoolId:                targetUserPoolid,
@@ -78,8 +77,8 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		RefreshTokenExpirationTime: payload.RefreshTokenExpirationTime,
 		Private:                    payload.Private,
 		VerifyEmail:                payload.VerifyEmail,
-		PublicKey:                  secretKey,
-		SecretKey:                  publicKey,
+		// PublicKey:                  secretKey,
+		SecretKey: secretKey,
 
 		OwnerUserId: &currentUser.ID,
 		ParentAppId: &currentApp.ID,
@@ -97,14 +96,30 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		return nil, e.ThrowInternalServerError("Failed to create app")
 	}
 
-	app.PublicKey, err = this.cipherService.EncryptUuidIntoToken(secretKey)
+	encryptKey, err := this.cipherService.EncryptUuidIntoToken(app.ID)
+	app.PublicKey = encryptKey
+
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to encrypt public key")
 	}
-	app.SecretKey, err = this.cipherService.EncryptUuidIntoToken(publicKey)
+
+	_, err = this.appRepository.Update(
+		app.ID,
+		*app,
+	)
+
 	if err != nil {
-		return nil, e.ThrowInternalServerError("Failed to encrypt secret key")
+		return nil, e.ThrowInternalServerError("Unable to update app after creation")
 	}
+
+	// app.PublicKey, err = this.cipherService.EncryptUuidIntoToken(secretKey)
+	// if err != nil {
+	// 	return nil, e.ThrowInternalServerError("Failed to encrypt public key")
+	// }
+	// app.SecretKey, err = this.cipherService.EncryptUuidIntoToken(publicKey)
+	// if err != nil {
+	// 	return nil, e.ThrowInternalServerError("Failed to encrypt secret key")
+	// }
 
 	return app, nil
 }

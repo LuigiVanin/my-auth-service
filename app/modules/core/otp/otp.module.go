@@ -4,7 +4,7 @@ import (
 	"auth_service/app/modules/core/otp/controller"
 	"auth_service/app/modules/core/otp/repository"
 	"auth_service/app/modules/core/otp/services"
-	"auth_service/common/interfaces"
+	"auth_service/shared/interfaces"
 
 	"go.uber.org/fx"
 )

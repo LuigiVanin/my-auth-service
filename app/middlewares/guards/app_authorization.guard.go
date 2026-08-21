@@ -8,9 +8,9 @@ import (
 	e "auth_service/app/errors"
 	ar "auth_service/app/modules/core/app/repository"
 	cipher "auth_service/app/modules/utils/cipher"
-	"auth_service/common/global"
+	"auth_service/shared/global"
 
-	i "auth_service/common/interfaces"
+	i "auth_service/shared/interfaces"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"

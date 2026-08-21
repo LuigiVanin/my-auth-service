@@ -2,8 +2,8 @@ package bootstrap
 
 import (
 	"auth_service/infra/config"
-	"auth_service/packages/email"
-	"auth_service/packages/email/adapters"
+	"auth_service/shared/email"
+	"auth_service/shared/email/adapters"
 
 	"go.uber.org/zap"
 )

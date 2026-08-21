@@ -4,7 +4,7 @@ import (
 	"auth_service/app/modules/core/user/repository"
 	"auth_service/app/modules/register/controller"
 	"auth_service/app/modules/register/services"
-	"auth_service/common/interfaces"
+	"auth_service/shared/interfaces"
 
 	"go.uber.org/fx"
 )

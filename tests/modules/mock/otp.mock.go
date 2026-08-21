@@ -3,8 +3,8 @@ package mock
 import (
 	"auth_service/app/models/dto"
 	os "auth_service/app/modules/core/otp/services"
-	"auth_service/common/constants"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
 
 	"github.com/stretchr/testify/mock"
 )

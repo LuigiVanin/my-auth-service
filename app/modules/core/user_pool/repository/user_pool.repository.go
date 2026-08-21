@@ -1,20 +1,24 @@
 package repository
 
 import (
+	e "auth_service/app/errors"
+	"auth_service/app/modules/utils/cipher"
 	entity "auth_service/infra/entities"
 
 	"gorm.io/gorm"
 )
 
 type UserPoolRepository struct {
-	client *gorm.DB
+	client        *gorm.DB
+	cipherService cipher.ICipherService
 }
 
 var _ IUserPoolRepository = &UserPoolRepository{}
 
-func NewUserPoolRepository(client *gorm.DB) *UserPoolRepository {
+func NewUserPoolRepository(client *gorm.DB, cipherService cipher.ICipherService) *UserPoolRepository {
 	return &UserPoolRepository{
-		client: client,
+		client:        client,
+		cipherService: cipherService,
 	}
 }
 
@@ -29,6 +33,25 @@ func (this *UserPoolRepository) Create(userPool *entity.UsersPool) (*entity.User
 	if err != nil {
 		return nil, err
 	}
+
+	pool, err := this.FindById(userPool.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	pool.PublicKey, err = this.cipherService.EncryptUuidIntoToken(pool.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = this.client.Save(pool).Error
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Unable to update app after creation")
+	}
+
 	return userPool, nil
 }
 

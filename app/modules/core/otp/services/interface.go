@@ -2,8 +2,8 @@ package services
 
 import (
 	"auth_service/app/models/dto"
-	"auth_service/common/constants"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
 )
 
 type VerifyConsumableOtpResponse struct {

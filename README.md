@@ -53,7 +53,7 @@ A robust y authentication and authorization service built with Go, designed to h
 │   │   ├── migration/      # Database migrations
 │   │   └── init/           # Database initialization
 │   └── helpers/            # CLI helper tools
-├── common/                  # Shared utilities
+├── shared/                  # Shared utilities
 │   ├── constants/          # Application constants
 │   ├── interfaces/         # Common interfaces
 │   └── utils/              # Utility functions
@@ -133,13 +133,14 @@ email:
 
 4. Initialize the database:
 ```bash
-make init
+make migrate up
+make seed init
 ```
 
 This command will:
-- Run database migrations
 - Create an ADMIN application
 - Create an ADMIN user
+- Create the default profiles (ADMIN, MANAGER, CONSUMER)
 
 ### Running the Application
 
@@ -208,13 +209,22 @@ To rollback migrations:
 make migrate down
 ```
 
-### Initialize Database with Admin User
+### Database Seeds
 
 To set up the database with an initial admin application and user:
 
 ```bash
-make init
+make seed init
 ```
+
+To wipe every seeded table so `init` can run from scratch again (the schema is kept,
+so there is no need to re-run the migrations):
+
+```bash
+make seed reset
+```
+
+Both accept an optional environment: `make seed init prod`.
 
 ## Security Features
 

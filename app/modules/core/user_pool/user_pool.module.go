@@ -3,7 +3,7 @@ package user_pool
 import (
 	"auth_service/app/modules/core/user_pool/controller"
 	"auth_service/app/modules/core/user_pool/repository"
-	"auth_service/common/interfaces"
+	"auth_service/shared/interfaces"
 
 	"go.uber.org/fx"
 )

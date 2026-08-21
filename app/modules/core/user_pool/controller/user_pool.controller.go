@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"auth_service/app/apidocs"
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
@@ -8,15 +9,25 @@ import (
 	ur "auth_service/app/modules/core/user_pool/repository"
 	entity "auth_service/infra/entities"
 
-	"auth_service/common/interfaces"
+	"auth_service/shared/interfaces"
 
+	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v2"
 )
+
+// createUserPoolResponse mirrors the body returned by CreateUserPool - it only
+// exists to describe the payload in the OpenAPI document.
+type createUserPoolResponse struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
 
 type UserPoolController struct {
 	authGuard          *guards.AuthGuard
 	permissionsGuard   *guards.PermissionsGuard
 	userPoolRepository ur.IUserPoolRepository
+
+	swagger *openapi.Builder
 }
 
 var _ interfaces.IController = &UserPoolController{}
@@ -25,12 +36,14 @@ func NewUserPoolController(
 	authGuard *guards.AuthGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	userPoolRepository ur.IUserPoolRepository,
+	builder *openapi.Builder,
 
 ) *UserPoolController {
 	return &UserPoolController{
 		authGuard:          authGuard,
 		permissionsGuard:   permissionsGuard,
 		userPoolRepository: userPoolRepository,
+		swagger:            builder,
 	}
 }
 
@@ -62,6 +75,23 @@ func (this *UserPoolController) CreateUserPool(ctx *fiber.Ctx) error {
 
 func (this *UserPoolController) Register(server *fiber.App) {
 	group := server.Group("/core/users_pool")
+
+	this.swagger.Add(
+		apidocs.Validated(
+			apidocs.PermissionedRoute(this.swagger, "POST", "/core/users_pool", openapi.Options{
+				Summary:     "Create a users pool",
+				Description: "Creates a users pool owned by the authenticated user. The pool isolates the users of the applications created inside it.",
+				Tags:        []string{apidocs.TagUserPools},
+			}),
+		).
+			AddBody(dto.CreateUserPool{}, openapi.Options{
+				Required:    true,
+				Description: "Name and description of the pool",
+			}).
+			AddResponse(fiber.StatusCreated, createUserPoolResponse{}, openapi.Options{
+				Description: "The created users pool",
+			}),
+	)
 
 	group.Post("",
 		middleware.BodyValidator[dto.CreateUserPool](),

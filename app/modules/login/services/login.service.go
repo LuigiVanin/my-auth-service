@@ -13,8 +13,8 @@ import (
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
 	hs "auth_service/app/modules/utils/hash/services"
-	"auth_service/common/constants"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

@@ -1,9 +1,9 @@
 CMD_MAIN := ./cmd/main.go
 CMD_MIGRATE := ./cmd/database/migration/main.go
-CMD_START_UP := ./cmd/database/init/main.go
+CMD_SEED := ./cmd/database
 CMD_CIPHER := ./cmd/helpers/chipher.go
 
-.PHONY: run dev build migrate init cipher
+.PHONY: run dev build migrate seed cipher
 
 run:
 	go run $(CMD_MAIN)
@@ -25,8 +25,9 @@ migrate:
 # 	fi
 # 	./migrate create -ext sql -dir ./migrations -digits 3 -seq $(filter-out $@,$(MAKECMDGOALS))
 
-init:
-	go run $(CMD_START_UP) $(filter-out $@,$(MAKECMDGOALS))
+# Usage: make seed init [environment] | make seed reset [environment]
+seed:
+	go run $(CMD_SEED) $(filter-out $@,$(MAKECMDGOALS))
 
 cipher:
 	go run $(CMD_CIPHER) $(filter-out $@,$(MAKECMDGOALS))

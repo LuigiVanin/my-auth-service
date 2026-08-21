@@ -1,7 +1,7 @@
 package healthcheck
 
 import (
-	"auth_service/common/interfaces"
+	"auth_service/shared/interfaces"
 
 	"go.uber.org/fx"
 )

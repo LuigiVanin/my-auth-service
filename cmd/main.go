@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"auth_service/app/middlewares/guards"
-	"auth_service/common/interfaces"
+	"auth_service/plugins"
+	"auth_service/shared/interfaces"
 
 	"auth_service/app/modules/authorize"
 	"auth_service/app/modules/core/app"
@@ -22,12 +23,21 @@ import (
 	"auth_service/infra/bootstrap"
 	"auth_service/infra/config"
 
+	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
 func main() {
+
+	swaggerOptions := plugins.SwaggerPluginOptions{
+		Path: "/api/docs",
+		Info: openapi.Info{
+			Title:       "Auth Service",
+			Description: "Description",
+			Version:     "v1.0.0"},
+	}
 
 	fx.New(
 		fx.Provide(config.CreateEnvConfig),
@@ -70,9 +80,7 @@ func main() {
 				fx.ParamTags(``, `group:"controllers"`),
 			),
 		),
-
-		fx.Invoke(bootstrap.StartServer),
-
+		plugins.SwaggerPlugin(swaggerOptions),
 		fx.Invoke(func(lifecycle fx.Lifecycle, logger *zap.Logger) {
 			lifecycle.Append(fx.Hook{
 				OnStop: func(_ context.Context) error {
@@ -80,5 +88,6 @@ func main() {
 				},
 			})
 		}),
+		fx.Invoke(bootstrap.StartServer),
 	).Run()
 }

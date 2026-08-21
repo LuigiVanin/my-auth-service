@@ -1,7 +1,7 @@
 package errors
 
 import (
-	"auth_service/common/utils"
+	"auth_service/shared/utils"
 
 	"github.com/gofiber/fiber/v2"
 )

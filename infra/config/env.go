@@ -1,7 +1,7 @@
 package config
 
 import (
-	"auth_service/common/constants"
+	"auth_service/shared/constants"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,6 +61,7 @@ func NewConfigFromYaml(envMode string) (*Config, error) {
 	}
 
 	rootPath, err := findProjectRoot()
+
 	if err != nil {
 		// If root not found, try current directory
 		rootPath = "."
@@ -187,8 +188,13 @@ func NewConfigFromEnvFile(envMode string) (*Config, error) {
 	return NewConfigFromSysEnv(envMode)
 }
 
-func CreateEnvConfig() *Config {
-	envMode := ReadEnvArg()
+func CreateEnvConfig(env ...string) *Config {
+	var envMode string
+	if len(env) == 0 {
+		envMode = ReadEnvArg()
+	} else {
+		envMode = env[0]
+	}
 
 	// Try YAML first
 	cfg, err := NewConfigFromYaml(envMode)

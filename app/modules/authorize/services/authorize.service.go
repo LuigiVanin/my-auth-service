@@ -14,8 +14,8 @@ import (
 	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"
 	jm "auth_service/app/modules/utils/jwt"
-	"auth_service/common/constants"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

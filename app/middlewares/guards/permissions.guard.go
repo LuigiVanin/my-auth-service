@@ -2,8 +2,8 @@ package guards
 
 import (
 	e "auth_service/app/errors"
-	"auth_service/common/utils"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/utils"
 	"encoding/json"
 	"fmt"
 	"regexp"

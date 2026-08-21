@@ -1,9 +1,9 @@
 package main
 
 import (
-	"auth_service/common/constants"
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
 	"fmt"
 	"log"
 	"strings"

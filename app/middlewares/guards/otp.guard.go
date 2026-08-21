@@ -2,9 +2,9 @@ package guards
 
 import (
 	e "auth_service/app/errors"
-	"auth_service/common/constants"
-	i "auth_service/common/interfaces"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
+	i "auth_service/shared/interfaces"
 	"slices"
 
 	"github.com/gofiber/fiber/v2"

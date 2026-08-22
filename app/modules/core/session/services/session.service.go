@@ -8,10 +8,10 @@ import (
 	"time"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
 	sr "auth_service/app/modules/core/session/repository"
 	cipher "auth_service/app/modules/utils/cipher"
 	entity "auth_service/infra/entities"
+	dto "auth_service/shared/models"
 
 	"go.uber.org/zap"
 )

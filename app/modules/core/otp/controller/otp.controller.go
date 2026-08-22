@@ -6,7 +6,7 @@ import (
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/otp/models"
 	"auth_service/app/modules/core/otp/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"

@@ -9,9 +9,11 @@ import (
 	"time"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
+	otpDto "auth_service/app/modules/core/otp/models"
 	"auth_service/app/modules/login/controller"
+	dto "auth_service/app/modules/login/models"
 	entity "auth_service/infra/entities"
+	sharedDto "auth_service/shared/models"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
@@ -95,7 +97,7 @@ func (this *LoginControllerTestSuite) TestLoginWithPassword_Success() {
 	}
 
 	// Mock service call
-	this.mockLoginService.On("LoginWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req dto.RequestInfo) bool {
+	this.mockLoginService.On("LoginWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req sharedDto.RequestInfo) bool {
 		return req.IpAddress != "" // Just verify it has an IP
 	})).Return(expectedResponse, nil)
 
@@ -230,7 +232,7 @@ func (this *LoginControllerTestSuite) TestLoginWithOtp_Success() {
 	// Arrange
 	payload := dto.LoginPayloadWithOtp{
 		Email: "test@example.com",
-		Otp: dto.PayloadOtpData{
+		Otp: otpDto.PayloadOtpData{
 			Id:   "otp-id",
 			Code: "123456",
 		},
@@ -271,7 +273,7 @@ func (this *LoginControllerTestSuite) TestLoginWithOtp_InvalidOtp_Error() {
 	// Arrange
 	payload := dto.LoginPayloadWithOtp{
 		Email: "test@example.com",
-		Otp: dto.PayloadOtpData{
+		Otp: otpDto.PayloadOtpData{
 			Id:   "otp-id",
 			Code: "wrong-code",
 		},
@@ -308,7 +310,7 @@ func (this *LoginControllerTestSuite) TestLogin_RequestInfoExtraction() {
 	}
 
 	// Mock with specific request info matcher
-	this.mockLoginService.On("LoginWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req dto.RequestInfo) bool {
+	this.mockLoginService.On("LoginWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req sharedDto.RequestInfo) bool {
 		// Verify that request info contains IP and User-Agent
 		return req.IpAddress != "" && req.UserAgent == "TestAgent/1.0"
 	})).Return(expectedResponse, nil)

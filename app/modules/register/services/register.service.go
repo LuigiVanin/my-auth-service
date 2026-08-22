@@ -6,19 +6,21 @@ import (
 	"slices"
 	"strings"
 
-	"auth_service/app/models/dto"
 	as "auth_service/app/modules/authorize/services"
+	otpDto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	"auth_service/app/modules/core/profile/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
 	us "auth_service/app/modules/core/user/services"
 	upr "auth_service/app/modules/core/user_pool/repository"
+	dto "auth_service/app/modules/register/models"
 	hs "auth_service/app/modules/utils/hash/services"
 
 	e "auth_service/app/errors"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	sharedDto "auth_service/shared/models"
 	"auth_service/shared/utils"
 
 	"github.com/google/uuid"
@@ -64,7 +66,7 @@ func NewRegisterService(
 	}
 }
 
-func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword, request dto.RequestInfo) (*dto.RegisterResponse, error) {
+func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword, request sharedDto.RequestInfo) (*dto.RegisterResponse, error) {
 
 	// TODO: move this logic to a permission guard or something like that
 	if !slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
@@ -168,7 +170,7 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 	}, nil
 }
 
-func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.RegisterPayloadWithOtp, request dto.RequestInfo) (*dto.RegisterResponse, error) {
+func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.RegisterPayloadWithOtp, request sharedDto.RequestInfo) (*dto.RegisterResponse, error) {
 	if !slices.Contains(app.LoginTypes, "WITH_OTP") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
 	}
@@ -289,8 +291,8 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 	}, nil
 }
 
-func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*dto.OtpRegisterActionMetadata, error) {
-	var metadata dto.OtpRegisterActionMetadata
+func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*otpDto.OtpRegisterActionMetadata, error) {
+	var metadata otpDto.OtpRegisterActionMetadata
 
 	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")

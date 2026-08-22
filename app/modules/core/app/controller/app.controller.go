@@ -5,11 +5,12 @@ import (
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/app/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
 
 	services "auth_service/app/modules/core/app/services"
+	userDto "auth_service/app/modules/core/user/models"
 	us "auth_service/app/modules/core/user/services"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
@@ -96,7 +97,7 @@ func (this *AppController) GetUsersFromApp(ctx fiber.Ctx) error {
 
 	targetAppId := ctx.Params("id")
 
-	var query dto.GetUsersAppQuery
+	var query userDto.GetUsersAppQuery
 	if err := ctx.Bind().Query(&query); err != nil {
 		return e.ThrowBadRequest("Invalid query parameters")
 	}
@@ -225,7 +226,7 @@ func (this *AppController) Register(server *fiber.App) {
 			AddQueryParam("email", openapi.String, openapi.Options{
 				Description: "Filters by user email, case insensitive",
 			}).
-			AddResponse(fiber.StatusOK, dto.GetUsersAppResponse{}, openapi.Options{
+			AddResponse(fiber.StatusOK, userDto.GetUsersAppResponse{}, openapi.Options{
 				Description: "Page of users",
 			}),
 	)

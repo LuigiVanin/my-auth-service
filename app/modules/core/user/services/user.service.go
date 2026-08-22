@@ -1,7 +1,7 @@
 package services
 
 import (
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
 	"errors"
 	"strings"

@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
 	"auth_service/app/modules/authorize/services"
+	dto "auth_service/app/modules/register/models"
 	rs "auth_service/app/modules/register/services"
 	entity "auth_service/infra/entities"
+	sharedDto "auth_service/shared/models"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -71,7 +72,7 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_AppDo
 		Name:     "Test User",
 		Metadata: metadata,
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	// Act
 	response, err := this.registerService.RegisterWithPassword(app, payload, requestInfo)
@@ -112,7 +113,7 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_AppRe
 		Name:     "Test User",
 		Metadata: metadata,
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	profile := &entity.Profile{
 		ID:   "profile-id",
@@ -176,7 +177,7 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_UserA
 		Name:     "Test User",
 		Metadata: metadata,
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	// Mock user already exists
 	this.mockUserService.On("IsAlreadyCreated", "test@example.com", app).Return(true, nil)
@@ -205,7 +206,7 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_Succe
 		Name:     "Test User",
 		Metadata: metadata,
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	profile := &entity.Profile{
 		ID:   "profile-id",
@@ -265,7 +266,7 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_HashP
 		Name:     "Test User",
 		Metadata: metadata,
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	// Mocks
 	this.mockUserService.On("IsAlreadyCreated", "test@example.com", app).Return(false, nil)
@@ -295,7 +296,7 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_Profi
 		Name:     "Test User",
 		Metadata: metadata,
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	// Mocks
 	this.mockUserService.On("IsAlreadyCreated", "test@example.com", app).Return(false, nil)

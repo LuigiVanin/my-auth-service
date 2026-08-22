@@ -7,7 +7,7 @@ import (
 	"time"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/otp/models"
 	"auth_service/app/modules/core/otp/repository"
 	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"

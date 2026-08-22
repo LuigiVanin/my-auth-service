@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/utils/jwt/models"
 	"errors"
 	"time"
 

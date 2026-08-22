@@ -7,14 +7,16 @@ import (
 	"strings"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
 	as "auth_service/app/modules/authorize/services"
+	otpDto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
+	dto "auth_service/app/modules/login/models"
 	hs "auth_service/app/modules/utils/hash/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	sharedDto "auth_service/shared/models"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -50,7 +52,7 @@ func NewLoginService(
 	}
 }
 
-func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginPayloadWithPassoword, request dto.RequestInfo) (*dto.LoginResponse, error) {
+func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginPayloadWithPassoword, request sharedDto.RequestInfo) (*dto.LoginResponse, error) {
 	// TODO: move this logic to a permission guard or something like that
 	if !slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
@@ -111,7 +113,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	}, nil
 }
 
-func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloadWithOtp, request dto.RequestInfo) (*dto.LoginResponse, error) {
+func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloadWithOtp, request sharedDto.RequestInfo) (*dto.LoginResponse, error) {
 	if !slices.Contains(app.LoginTypes, "WITH_OTP") {
 		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
 	}
@@ -172,7 +174,7 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 }
 
 func (this *LoginService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.LoginPayloadWithOtp) error {
-	var metadata dto.OtpLoginActionMetadata
+	var metadata otpDto.OtpLoginActionMetadata
 
 	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
 		return e.ThrowInternalServerError("Failed to parse OTP metadata")

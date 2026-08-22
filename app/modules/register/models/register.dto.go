@@ -1,9 +1,10 @@
-package dto
+package models
 
 import (
 	"encoding/json"
 	"time"
 
+	otpDto "auth_service/app/modules/core/otp/models"
 	entity "auth_service/infra/entities"
 )
 
@@ -25,7 +26,7 @@ type RegisterPayloadWithOtp struct {
 
 	Password string `json:"password,omitempty" validate:"omitempty,min=8"`
 
-	Otp PayloadOtpData `json:"otp" validate:"required"`
+	Otp otpDto.PayloadOtpData `json:"otp" validate:"required"`
 }
 
 type RegisterResponse struct {

@@ -2,7 +2,7 @@ package services
 
 import (
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/app/models"
 	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user_pool/repository"
 	"auth_service/app/modules/utils/cipher"

@@ -46,7 +46,7 @@ func (this *LoginControllerTestSuite) SetupTest() {
 	// Setup fiber app with custom error handler
 	this.app = fiber.New(fiber.Config{
 		ErrorHandler: func(c fiber.Ctx, err error) error {
-			if ge, ok := err.(*e.GlobalError); ok {
+			if ge, ok := err.(*e.AppError); ok {
 				return c.Status(ge.Code.Second).JSON(ge)
 			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

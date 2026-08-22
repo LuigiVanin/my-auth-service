@@ -13,7 +13,7 @@ import (
 // fiberErrorCodes maps the status of a *fiber.Error onto the error code pair of
 // the service. Fiber raises these around the handlers instead of inside them -
 // a request to a path no route matches, a method a route does not register, a
-// body over BodyLimit - so they never carry a GlobalError and would otherwise
+// body over BodyLimit - so they never carry an AppError and would otherwise
 // fall into the unexpected error branch of the handler and answer 500.
 var fiberErrorCodes = map[int]ErrorCodePair{
 	fiber.StatusBadRequest:          BadRequestCode,
@@ -36,12 +36,12 @@ func codeFromStatus(status int) ErrorCodePair {
 	}
 
 	return ErrorCodePair{
-		First:  GlobalErrorCode(strings.ToUpper(strings.ReplaceAll(text, " ", "_"))),
+		First:  AppErrorCode(strings.ToUpper(strings.ReplaceAll(text, " ", "_"))),
 		Second: status,
 	}
 }
 
-func FromFiberError(fiberError *fiber.Error, detail string) *GlobalError {
+func FromFiberError(fiberError *fiber.Error, detail string) *AppError {
 	code, mapped := fiberErrorCodes[fiberError.Code]
 
 	if !mapped {
@@ -58,7 +58,7 @@ func FromFiberError(fiberError *fiber.Error, detail string) *GlobalError {
 		title = "Unexpected Error"
 	}
 
-	return NewGlobalError(
+	return NewAppError(
 		title,
 		detail,
 		code,
@@ -69,12 +69,12 @@ func FromFiberError(fiberError *fiber.Error, detail string) *GlobalError {
 	)
 }
 
-// FromBindError turns a binding failure into a GlobalError. Every binding source
+// FromBindError turns a binding failure into an AppError. Every binding source
 // - body, query, header, cookie, uri - is caller input, so a payload the binder
 // cannot read is a bad request and not an internal error. Without this the raw
 // *fiber.BindError would reach the unexpected error branch of the handler and
 // answer 500 to a caller that simply sent a malformed body.
-func FromBindError(bindError *fiber.BindError) *GlobalError {
+func FromBindError(bindError *fiber.BindError) *AppError {
 	source := bindError.Source
 
 	if source == "" {

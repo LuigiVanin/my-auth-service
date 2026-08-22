@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type ErrorCodePair = utils.Pair[GlobalErrorCode, int]
+type ErrorCodePair = utils.Pair[AppErrorCode, int]
 
 var (
 	// Internal Server 500

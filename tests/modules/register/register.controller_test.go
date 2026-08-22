@@ -46,7 +46,7 @@ func (this *RegisterControllerTestSuite) SetupTest() {
 	// Setup fiber app with custom error handler
 	this.app = fiber.New(fiber.Config{
 		ErrorHandler: func(c fiber.Ctx, err error) error {
-			if ge, ok := err.(*e.GlobalError); ok {
+			if ge, ok := err.(*e.AppError); ok {
 				return c.Status(ge.Code.Second).JSON(ge)
 			}
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -181,7 +181,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithPassword_ServiceError_E
 	metadata := json.RawMessage(`{"plan":"free"}`) // No spaces in JSON
 	payload := dto.RegisterPayloadWithPassoword{
 		Email:    "newuser@example.com",
-		Password:  "password123",
+		Password: "password123",
 		Name:     "New User",
 		Metadata: metadata,
 	}

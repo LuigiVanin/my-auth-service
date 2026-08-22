@@ -133,7 +133,7 @@ func TestNotFoundRaisedByHandlerKeepsItsOwnMessage(t *testing.T) {
 	assert.NotContains(t, problemDetail.Detail, "does not exist")
 }
 
-func TestGlobalErrorIsStillHandled(t *testing.T) {
+func TestAppErrorIsStillHandled(t *testing.T) {
 	app := newTestApp()
 
 	resp, problemDetail := request(t, app, "GET", "/unauthorized", "", "")

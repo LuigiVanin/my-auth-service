@@ -25,7 +25,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 	return func(ctx fiber.Ctx, requestError error) error {
 		instance := ctx.OriginalURL()
 
-		if appErr, ok := requestError.(*e.GlobalError); ok {
+		if appErr, ok := requestError.(*e.AppError); ok {
 			problemDetail := appErr.IntoProblemDetail(instance)
 
 			logError(logger, ctx, fmt.Sprintf("Request error: %s", problemDetail.Detail),
@@ -39,7 +39,7 @@ func NewErrorHandler(logger *zap.Logger) fiber.ErrorHandler {
 				JSON(problemDetail)
 		}
 
-		// LEGACY: Now the validator middleware throw a GlobalError, there is no need to
+		// LEGACY: Now the validator middleware throw an AppError, there is no need to
 		// treat this differentally
 		// if validationErr, ok := requestError.(ValidationError); ok {
 		// 	logError(logger, ctx, "Validation error",

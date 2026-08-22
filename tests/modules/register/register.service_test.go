@@ -81,9 +81,9 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_AppDo
 	assert.Error(this.T(), err)
 	assert.IsType(this.T(), e.ThrowNotAllowed(""), err)
 
-	if ge, ok := err.(*e.GlobalError); ok {
+	if ge, ok := err.(*e.AppError); ok {
 		assert.Equal(this.T(), 405, ge.Code.Second)
-		assert.Equal(this.T(), e.GlobalErrorCode("NOT_ALLOWED"), ge.Code.First)
+		assert.Equal(this.T(), e.AppErrorCode("NOT_ALLOWED"), ge.Code.First)
 	}
 }
 

@@ -8,9 +8,9 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-type GlobalErrorCode string
+type AppErrorCode string
 
-type GlobalError struct {
+type AppError struct {
 	Title  string
 	Code   ErrorCodePair
 	Detail string
@@ -18,7 +18,7 @@ type GlobalError struct {
 	Extra  utils.JSON
 }
 
-func NewGlobalError(title string, detail string, code ErrorCodePair, type_ string, extra ...utils.JSON) *GlobalError {
+func NewAppError(title string, detail string, code ErrorCodePair, type_ string, extra ...utils.JSON) *AppError {
 
 	extraInfo := make(utils.JSON)
 
@@ -26,7 +26,7 @@ func NewGlobalError(title string, detail string, code ErrorCodePair, type_ strin
 		maps.Copy(extraInfo, extra)
 	}
 
-	return &GlobalError{
+	return &AppError{
 		Title:  title,
 		Code:   code,
 		Detail: detail,
@@ -35,8 +35,8 @@ func NewGlobalError(title string, detail string, code ErrorCodePair, type_ strin
 	}
 }
 
-func ThrowNotAllowed(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowNotAllowed(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Not Allowed",
 		detail,
 		NotAllowedErrorCode,
@@ -45,8 +45,8 @@ func ThrowNotAllowed(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowTooManyRequests(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowTooManyRequests(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Too Many Requests",
 		detail,
 		TooManyRequestsErrorCode,
@@ -55,8 +55,8 @@ func ThrowTooManyRequests(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowBadRequest(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowBadRequest(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Bad Request",
 		detail,
 		BadRequestCode,
@@ -65,8 +65,8 @@ func ThrowBadRequest(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowValidationError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowValidationError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Bad Request",
 		detail,
 		BadRequestCode,
@@ -75,8 +75,8 @@ func ThrowValidationError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowInvalidOtpCode(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowInvalidOtpCode(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Invalid OTP Code",
 		detail,
 		InvalidOtpCodeErrorCode,
@@ -85,8 +85,8 @@ func ThrowInvalidOtpCode(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowConflict(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowConflict(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Conflict",
 		detail,
 		ConflictErrorCode,
@@ -95,8 +95,8 @@ func ThrowConflict(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowUserAlreadyExists(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowUserAlreadyExists(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Conflict",
 		detail,
 		UserAlreadyExistsCode,
@@ -105,8 +105,8 @@ func ThrowUserAlreadyExists(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowNotFound(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowNotFound(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Not Found",
 		detail,
 		NotFoundErrorCode,
@@ -115,8 +115,8 @@ func ThrowNotFound(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowUnauthorizedError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowUnauthorizedError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Unauthorized",
 		detail,
 		UnauthorizedErrorCode,
@@ -125,8 +125,8 @@ func ThrowUnauthorizedError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowPermissionDeniedError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowPermissionDeniedError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Permission Denied",
 		detail,
 		PermissionDeniedErrorCode,
@@ -135,8 +135,8 @@ func ThrowPermissionDeniedError(detail string, extra ...utils.JSON) *GlobalError
 	)
 }
 
-func ThrowTokenExpiredError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowTokenExpiredError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Token Expired",
 		detail,
 		TokenExpiredErrorCode,
@@ -145,8 +145,8 @@ func ThrowTokenExpiredError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowInvalidFormatError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowInvalidFormatError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Invalid Format",
 		detail,
 		InvalidFormatErrorCode,
@@ -155,8 +155,8 @@ func ThrowInvalidFormatError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowSignatureFaildError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowSignatureFaildError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Signature Failed",
 		detail,
 		SignatureFailErrorCode,
@@ -165,8 +165,8 @@ func ThrowSignatureFaildError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowUnprocessableEntity(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowUnprocessableEntity(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Unprocessable Entity",
 		detail,
 		UnprocessableEntityErrorCode,
@@ -175,8 +175,8 @@ func ThrowUnprocessableEntity(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowInternalServerError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowInternalServerError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Internal Server Error",
 		detail,
 		InternalServerErrorCode,
@@ -185,8 +185,8 @@ func ThrowInternalServerError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func ThrowNotImplementedError(detail string, extra ...utils.JSON) *GlobalError {
-	return NewGlobalError(
+func ThrowNotImplementedError(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
 		"Not Implemented",
 		detail,
 		NotImplementedErrorCode,
@@ -195,12 +195,12 @@ func ThrowNotImplementedError(detail string, extra ...utils.JSON) *GlobalError {
 	)
 }
 
-func (e *GlobalError) Error() string {
+func (e *AppError) Error() string {
 
-	return fmt.Sprintf("GlobalError: %s, Code: %s, Detail: %s", e.Title, e.Code.First, e.Detail)
+	return fmt.Sprintf("AppError: %s, Code: %s, Detail: %s", e.Title, e.Code.First, e.Detail)
 }
 
-func (e *GlobalError) IntoProblemDetail(instance string) *ProblemDetail {
+func (e *AppError) IntoProblemDetail(instance string) *ProblemDetail {
 	status := e.Code.Second
 
 	if status == 0 {

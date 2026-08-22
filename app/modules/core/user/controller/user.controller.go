@@ -8,7 +8,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -37,7 +37,7 @@ func NewUserController(
 	}
 }
 
-func (this *UserController) GetSelf(ctx *fiber.Ctx) error {
+func (this *UserController) GetSelf(ctx fiber.Ctx) error {
 	return e.ThrowNotImplementedError("GetSelf endpoint not implemented yet")
 }
 

@@ -15,7 +15,7 @@ import (
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	testifymock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -45,7 +45,7 @@ func (this *LoginControllerTestSuite) SetupTest() {
 
 	// Setup fiber app with custom error handler
 	this.app = fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
+		ErrorHandler: func(c fiber.Ctx, err error) error {
 			if ge, ok := err.(*e.GlobalError); ok {
 				return c.Status(ge.Code.Second).JSON(ge)
 			}
@@ -64,7 +64,7 @@ func (this *LoginControllerTestSuite) SetupTest() {
 	}
 
 	// Add middleware to inject app entity into context
-	this.app.Use(func(c *fiber.Ctx) error {
+	this.app.Use(func(c fiber.Ctx) error {
 		c.Locals("app", this.appEntity)
 		return c.Next()
 	})
@@ -197,7 +197,7 @@ func (this *LoginControllerTestSuite) TestLoginWithPassword_InvalidJSON_Error() 
 	// Assert
 	assert.NoError(this.T(), err)
 	// Note: Fiber returns 500 for JSON parsing errors when it can't parse the body
-	// This is expected behavior as the controller's BodyParser catches the error
+	// This is expected behavior as the controller's body binder catches the error
 	assert.True(this.T(), resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusInternalServerError)
 }
 

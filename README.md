@@ -18,7 +18,7 @@ A robust y authentication and authorization service built with Go, designed to h
 ## Tech Stack
 
 - **Language**: Go 1.25.3
-- **Web Framework**: [Fiber v2](https://github.com/gofiber/fiber)
+- **Web Framework**: [Fiber v3](https://github.com/gofiber/fiber)
 - **Database**: PostgreSQL with [GORM](https://gorm.io/)
 - **Dependency Injection**: [Uber FX](https://github.com/uber-go/fx)
 - **Logging**: [Zap](https://github.com/uber-go/zap)

@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -75,7 +75,7 @@ func NewPermissionsGuard(logger *zap.Logger) *PermissionsGuard {
 }
 
 // Act checks if the current user has the necessary permissions to access the requested resource
-func (this *PermissionsGuard) Act(ctx *fiber.Ctx) error {
+func (this *PermissionsGuard) Act(ctx fiber.Ctx) error {
 	this.logger.Info("Permissions Guard Triggered")
 
 	app, ok := ctx.Locals("app").(*entity.App)
@@ -181,7 +181,7 @@ func (this *PermissionsGuard) isMethodAllowed(method string, allowedMethods []st
 	return false
 }
 
-func (this *PermissionsGuard) isQueryAllowed(ctx *fiber.Ctx, allowedQuery map[string]string) bool {
+func (this *PermissionsGuard) isQueryAllowed(ctx fiber.Ctx, allowedQuery map[string]string) bool {
 	if len(allowedQuery) == 0 {
 		return true
 	}

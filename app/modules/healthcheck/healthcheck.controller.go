@@ -5,7 +5,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 var _ interfaces.IController = &HealthCheckController{}
@@ -26,7 +26,7 @@ func NewHealthCheckController(builder *openapi.Builder) *HealthCheckController {
 	}
 }
 
-func (this *HealthCheckController) Status(ctx *fiber.Ctx) error {
+func (this *HealthCheckController) Status(ctx fiber.Ctx) error {
 
 	return ctx.JSON(fiber.Map{
 		"status": "ok",

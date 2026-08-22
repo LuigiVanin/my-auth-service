@@ -6,7 +6,7 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/global"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -22,7 +22,7 @@ func NewAuthGuard(authService services.IAuthorizeService, logger *zap.Logger) *A
 	}
 }
 
-func (this *AuthGuard) Act(ctx *fiber.Ctx) error {
+func (this *AuthGuard) Act(ctx fiber.Ctx) error {
 	this.logger.Info("Auth Guard Triggered")
 
 	app, ok := ctx.Locals("app").(*entity.App)

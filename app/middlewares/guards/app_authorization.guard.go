@@ -12,7 +12,7 @@ import (
 
 	i "auth_service/shared/interfaces"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -41,7 +41,7 @@ func validateKeyFormat(key string) error {
 	return nil
 }
 
-func (this *AppGuard) Act(ctx *fiber.Ctx) error {
+func (this *AppGuard) Act(ctx fiber.Ctx) error {
 	global.Logger.Info("App Guard Triggered")
 	appKey := ctx.Get("X-Public-Key")
 	poolKey := ctx.Get("X-Pool-Key")

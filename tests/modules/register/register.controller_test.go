@@ -15,7 +15,7 @@ import (
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	testifymock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
@@ -45,7 +45,7 @@ func (this *RegisterControllerTestSuite) SetupTest() {
 
 	// Setup fiber app with custom error handler
 	this.app = fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
+		ErrorHandler: func(c fiber.Ctx, err error) error {
 			if ge, ok := err.(*e.GlobalError); ok {
 				return c.Status(ge.Code.Second).JSON(ge)
 			}
@@ -64,7 +64,7 @@ func (this *RegisterControllerTestSuite) SetupTest() {
 	}
 
 	// Add middleware to inject app entity into context
-	this.app.Use(func(c *fiber.Ctx) error {
+	this.app.Use(func(c fiber.Ctx) error {
 		c.Locals("app", this.appEntity)
 		return c.Next()
 	})

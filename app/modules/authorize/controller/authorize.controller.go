@@ -11,7 +11,7 @@ import (
 	"auth_service/shared/utils"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // resetPasswordResponse mirrors the body returned by ForgotPassword - it only
@@ -42,7 +42,7 @@ func NewAuthorizeController(
 	}
 }
 
-func (this *AuthorizeController) AuthorizeRequest(ctx *fiber.Ctx) error {
+func (this *AuthorizeController) AuthorizeRequest(ctx fiber.Ctx) error {
 	app := ctx.Locals("app").(*entity.App)
 	authorization := ctx.Get("Authorization")
 
@@ -59,7 +59,7 @@ func (this *AuthorizeController) AuthorizeRequest(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (this *AuthorizeController) RefreshAuthorization(ctx *fiber.Ctx) error {
+func (this *AuthorizeController) RefreshAuthorization(ctx fiber.Ctx) error {
 	app := ctx.Locals("app").(*entity.App)
 	authorization := ctx.Get("Authorization")
 
@@ -80,9 +80,9 @@ func (this *AuthorizeController) RefreshAuthorization(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (this *AuthorizeController) ForgotPassword(ctx *fiber.Ctx) error {
+func (this *AuthorizeController) ForgotPassword(ctx fiber.Ctx) error {
 	var payload dto.ResetPasswordPayload
-	if err := ctx.BodyParser(&payload); err != nil {
+	if err := ctx.Bind().Body(&payload); err != nil {
 		return e.ThrowBadRequest("Invalid request body")
 	}
 

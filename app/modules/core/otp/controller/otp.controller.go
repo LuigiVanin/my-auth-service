@@ -13,7 +13,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 var _ interfaces.IController = &OtpController{}
@@ -40,7 +40,7 @@ func NewOtpController(
 	}
 }
 
-func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
+func (this *OtpController) GenerateConsumable(ctx fiber.Ctx) error {
 
 	app := ctx.Locals("app").(*entity.App)
 
@@ -52,7 +52,7 @@ func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 
 	// Parse the entire body as the payload
 	var bodyPayload map[string]any
-	if err := ctx.BodyParser(&bodyPayload); err != nil {
+	if err := ctx.Bind().Body(&bodyPayload); err != nil {
 		return e.ThrowBadRequest("Invalid request body")
 	}
 
@@ -79,14 +79,14 @@ func (this *OtpController) GenerateConsumable(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(res)
 }
 
-func (this *OtpController) VerifyConsumable(ctx *fiber.Ctx) error {
+func (this *OtpController) VerifyConsumable(ctx fiber.Ctx) error {
 	otpId := ctx.Params("otp_id")
 	if otpId == "" {
 		return e.ThrowBadRequest("OTP id is required")
 	}
 
 	var payload dto.VerifyConsumableOtpPayload
-	if err := ctx.BodyParser(&payload); err != nil {
+	if err := ctx.Bind().Body(&payload); err != nil {
 		return e.ThrowBadRequest("Invalid request body")
 	}
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type GlobalErrorCode string
@@ -56,6 +56,16 @@ func ThrowTooManyRequests(detail string, extra ...utils.JSON) *GlobalError {
 }
 
 func ThrowBadRequest(detail string, extra ...utils.JSON) *GlobalError {
+	return NewGlobalError(
+		"Bad Request",
+		detail,
+		BadRequestCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/400",
+		extra...,
+	)
+}
+
+func ThrowValidationError(detail string, extra ...utils.JSON) *GlobalError {
 	return NewGlobalError(
 		"Bad Request",
 		detail,

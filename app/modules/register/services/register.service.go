@@ -71,9 +71,10 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
 	}
 
-	if app.VerifyEmail {
-		return nil, e.ThrowNotAllowed("This app requires email verification, to do that you will need to register with OTP!")
-	}
+	// LEGACY: the logic will change dramatically, email verification will be guard now
+	// if app.VerifyEmail {
+	// 	return nil, e.ThrowNotAllowed("This app requires email verification, to do that you will need to register with OTP!")
+	// }
 
 	// Check if user already exists
 	exists, err := this.userService.IsAlreadyCreated(userData.Email, app)
@@ -168,9 +169,9 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 }
 
 func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.RegisterPayloadWithOtp, request dto.RequestInfo) (*dto.RegisterResponse, error) {
-	// if !slices.Contains(app.LoginTypes, "WITH_OTP") {
-	// 	return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
-	// }
+	if !slices.Contains(app.LoginTypes, "WITH_OTP") {
+		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
+	}
 
 	if userData.Password == "" && slices.Contains(app.LoginTypes, "WITH_PASSWORD") {
 		return nil, e.ThrowUnprocessableEntity("Password is required to register with OTP",

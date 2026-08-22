@@ -2,9 +2,10 @@ package middleware
 
 import (
 	e "auth_service/app/errors"
+	"auth_service/shared/utils"
 
 	v "github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type ValidationFieldError struct {
@@ -28,9 +29,9 @@ func Validate[T any](payload T) error {
 			return e.ThrowUnprocessableEntity(err.Error())
 		}
 
-		errors := []ValidationFieldError{}
+		fields := []ValidationFieldError{}
 		for _, err := range err.(v.ValidationErrors) {
-			errors = append(errors, ValidationFieldError{
+			fields = append(fields, ValidationFieldError{
 				Field: err.Field(),
 				Tag:   err.Tag(),
 				Param: err.Param(),
@@ -38,21 +39,22 @@ func Validate[T any](payload T) error {
 			})
 		}
 
-		return ValidationError{
-			error: err,
-			List:  errors,
-		}
+		// return ValidationError{
+		// 	error: err,
+		// 	List:  errors,
+		// }
+		return e.ThrowValidationError(err.Error(), utils.JSON{"fields": fields})
 	}
 
 	return nil
 }
 
-func BodyValidator[T any]() func(ctx *fiber.Ctx) error {
+func BodyValidator[T any]() func(ctx fiber.Ctx) error {
 
-	return func(ctx *fiber.Ctx) error {
+	return func(ctx fiber.Ctx) error {
 
 		var payload T
-		if err := ctx.BodyParser(&payload); err != nil {
+		if err := ctx.Bind().Body(&payload); err != nil {
 			return err
 		}
 		err := Validate(payload)

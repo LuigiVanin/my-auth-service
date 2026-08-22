@@ -6,10 +6,10 @@ import (
 	"auth_service/app/models/dto"
 	"auth_service/shared/constants"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func OtpValidator(ctx *fiber.Ctx) error {
+func OtpValidator(ctx fiber.Ctx) error {
 	// Extract action from query params
 	action := ctx.Query("action")
 	if action == "" {

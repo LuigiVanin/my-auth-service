@@ -19,7 +19,7 @@ import (
 	e "auth_service/app/errors"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // Tags group the endpoints in the Swagger UI sidebar.

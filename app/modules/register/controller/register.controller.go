@@ -11,7 +11,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +39,7 @@ func NewRegisterController(
 	}
 }
 
-func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
+func (this *RegisterController) RegisterUser(ctx fiber.Ctx) error {
 
 	this.logger.Info("Register Controller Triggered")
 
@@ -56,7 +56,7 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 	if method == "otp" || method == "" {
 		var payload dto.RegisterPayloadWithOtp
 
-		if err := ctx.BodyParser(&payload); err != nil {
+		if err := ctx.Bind().Body(&payload); err != nil {
 			return e.ThrowBadRequest(err.Error())
 		}
 
@@ -72,7 +72,7 @@ func (this *RegisterController) RegisterUser(ctx *fiber.Ctx) error {
 	if method == "password" {
 		var payload dto.RegisterPayloadWithPassoword
 
-		if err := ctx.BodyParser(&payload); err != nil {
+		if err := ctx.Bind().Body(&payload); err != nil {
 			return e.ThrowBadRequest(err.Error())
 		}
 

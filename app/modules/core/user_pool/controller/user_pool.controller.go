@@ -12,7 +12,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // createUserPoolResponse mirrors the body returned by CreateUserPool - it only
@@ -47,10 +47,10 @@ func NewUserPoolController(
 	}
 }
 
-func (this *UserPoolController) CreateUserPool(ctx *fiber.Ctx) error {
+func (this *UserPoolController) CreateUserPool(ctx fiber.Ctx) error {
 	var payload dto.CreateUserPool
 
-	if err := ctx.BodyParser(&payload); err != nil {
+	if err := ctx.Bind().Body(&payload); err != nil {
 		return e.ThrowBadRequest(err.Error())
 	}
 

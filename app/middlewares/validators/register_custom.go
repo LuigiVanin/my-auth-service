@@ -5,10 +5,10 @@ import (
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/models/dto"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func RegisterValidator(ctx *fiber.Ctx) error {
+func RegisterValidator(ctx fiber.Ctx) error {
 	registerMethod := ctx.Queries()["method"]
 	validatorMiddleware := middleware.BodyValidator[dto.RegisterPayloadWithPassoword]()
 

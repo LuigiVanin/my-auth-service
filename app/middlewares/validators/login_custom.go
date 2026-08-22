@@ -5,10 +5,10 @@ import (
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/models/dto"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func LoginValidator(ctx *fiber.Ctx) error {
+func LoginValidator(ctx fiber.Ctx) error {
 	loginMethod := ctx.Queries()["method"]
 	validatorMiddleware := middleware.BodyValidator[dto.LoginPayloadWithPassoword]()
 

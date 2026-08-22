@@ -4,11 +4,11 @@ import (
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
-func MethodValidator[PasswordValidator any, OtpValidator any]() func(ctx *fiber.Ctx) error {
-	return func(ctx *fiber.Ctx) error {
+func MethodValidator[PasswordValidator any, OtpValidator any]() func(ctx fiber.Ctx) error {
+	return func(ctx fiber.Ctx) error {
 		loginMethod := ctx.Queries()["method"]
 		validatorMiddleware := middleware.BodyValidator[PasswordValidator]()
 

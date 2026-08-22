@@ -24,7 +24,7 @@ import (
 	"auth_service/infra/config"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )

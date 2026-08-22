@@ -169,13 +169,14 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 
 	if payload.Contact != "" {
 		sentId, err := this.emailManager.Sender().Send(email.EmailPayload{
-			From:    "No Reply <contact@ac-server.space>",
+			From:    "No Reply <contact@vanin.dev>",
 			To:      []string{payload.Contact},
 			Subject: fmt.Sprintf("OTP Code - %s", action),
 			Body:    fmt.Sprintf("Your OTP is Here: %s", otp.Code),
 		})
 
 		if err != nil {
+			fmt.Println(err.Error())
 			return nil, e.ThrowInternalServerError("Failed to send email")
 		}
 

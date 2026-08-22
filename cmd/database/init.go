@@ -98,6 +98,8 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			TokenType:           "JWT",
 			TokenExpirationTime: 3600,
 			Metadata:            emptyJson,
+
+			Enabled2FA: false,
 		}
 
 		if err := tx.Create(&app).Error; err != nil {

@@ -11,7 +11,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +39,7 @@ func NewLoginController(
 	}
 }
 
-func (this *LoginController) LoginUser(ctx *fiber.Ctx) error {
+func (this *LoginController) LoginUser(ctx fiber.Ctx) error {
 	this.logger.Info("Register Controller Triggered")
 
 	app := ctx.Locals("app").(*entity.App)
@@ -113,9 +113,9 @@ func (this *LoginController) Register(server *fiber.App) {
 	)
 }
 
-func parseLoginBody[T any](ctx *fiber.Ctx) (T, error) {
+func parseLoginBody[T any](ctx fiber.Ctx) (T, error) {
 	var payload T
-	if err := ctx.BodyParser(&payload); err != nil {
+	if err := ctx.Bind().Body(&payload); err != nil {
 		return payload, e.ThrowBadRequest(err.Error())
 	}
 	return payload, nil

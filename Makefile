@@ -5,7 +5,7 @@ CMD_CIPHER := ./cmd/helpers/chipher.go
 
 .PHONY: run dev build migrate seed cipher
 
-run:
+start:
 	go run $(CMD_MAIN)
 
 dev:
@@ -28,6 +28,9 @@ migrate:
 # Usage: make seed init [environment] | make seed reset [environment]
 seed:
 	go run $(CMD_SEED) $(filter-out $@,$(MAKECMDGOALS))
+
+fresh:
+	make seed reset && make migrate && make seed init
 
 cipher:
 	go run $(CMD_CIPHER) $(filter-out $@,$(MAKECMDGOALS))

@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"auth_service/app/middlewares/guards"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func RegisterGuards(server *fiber.App, appGuard *guards.AppGuard) {

@@ -13,7 +13,7 @@ import (
 	us "auth_service/app/modules/core/user/services"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -53,10 +53,10 @@ func NewAppController(
 	}
 }
 
-func (this *AppController) CreateApp(ctx *fiber.Ctx) error {
+func (this *AppController) CreateApp(ctx fiber.Ctx) error {
 	var payload dto.CreateAppPayload
 
-	if err := ctx.BodyParser(&payload); err != nil {
+	if err := ctx.Bind().Body(&payload); err != nil {
 		return e.ThrowBadRequest(err.Error())
 	}
 
@@ -72,12 +72,12 @@ func (this *AppController) CreateApp(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusCreated).JSON(app)
 }
 
-func (this *AppController) GetApps(ctx *fiber.Ctx) error {
+func (this *AppController) GetApps(ctx fiber.Ctx) error {
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentApp := ctx.Locals("app").(*entity.App)
 
 	var query dto.GetAppsQuery
-	if err := ctx.QueryParser(&query); err != nil {
+	if err := ctx.Bind().Query(&query); err != nil {
 		return e.ThrowBadRequest("Invalid query parameters")
 	}
 
@@ -90,14 +90,14 @@ func (this *AppController) GetApps(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(apps)
 }
 
-func (this *AppController) GetUsersFromApp(ctx *fiber.Ctx) error {
+func (this *AppController) GetUsersFromApp(ctx fiber.Ctx) error {
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentApp := ctx.Locals("app").(*entity.App)
 
 	targetAppId := ctx.Params("id")
 
 	var query dto.GetUsersAppQuery
-	if err := ctx.QueryParser(&query); err != nil {
+	if err := ctx.Bind().Query(&query); err != nil {
 		return e.ThrowBadRequest("Invalid query parameters")
 	}
 
@@ -110,16 +110,16 @@ func (this *AppController) GetUsersFromApp(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(response)
 }
 
-func (this *AppController) GetApp(ctx *fiber.Ctx) error {
+func (this *AppController) GetApp(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message": "App fetched successfully",
 	})
 }
 
-func (this *AppController) UpdateApp(ctx *fiber.Ctx) error {
+func (this *AppController) UpdateApp(ctx fiber.Ctx) error {
 	var payload dto.UpdateApp
 
-	if err := ctx.BodyParser(&payload); err != nil {
+	if err := ctx.Bind().Body(&payload); err != nil {
 		return e.ThrowBadRequest(err.Error())
 	}
 

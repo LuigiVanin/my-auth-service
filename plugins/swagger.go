@@ -7,8 +7,8 @@ import (
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/flowchartsman/swaggerui"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
@@ -37,9 +37,12 @@ func NewSwagger(url string, document openapi.Document) Swagger {
 		),
 	}
 
-	swagger.Handler = func(ctx *fiber.Ctx) error {
+	swagger.Handler = func(ctx fiber.Ctx) error {
 		if ctx.Path() == url {
-			return ctx.Redirect(fmt.Sprintf("%s/", url))
+			return ctx.
+				Redirect().
+				Status(fiber.StatusFound).
+				To(fmt.Sprintf("%s/", url))
 		}
 
 		return swagger.adapter(ctx)

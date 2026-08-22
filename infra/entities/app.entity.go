@@ -26,8 +26,11 @@ type App struct {
 	RefreshTokenExpirationTime int64          `gorm:"not null;default:1296000" json:"refresh_token_expiration_time"` // 15 days
 
 	Private bool `gorm:"default:false;not null" json:"private"`
-	// VerifiedEmailDate *time.Time `gorm:"column:verified_email_date"`
-	VerifyEmail bool `gorm:"default:true;not null" json:"verify_email"`
+
+	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date"`
+	VerifyEmail       bool       `gorm:"default:true;not null" json:"verify_email"`
+
+	Enabled2FA bool `gorm:"default:true;not null" json:"enabled_2fa"`
 
 	Metadata json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`
 

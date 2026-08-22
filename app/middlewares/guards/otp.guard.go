@@ -7,7 +7,7 @@ import (
 	i "auth_service/shared/interfaces"
 	"slices"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
 
@@ -25,7 +25,7 @@ func NewOtpGuard(authGuard *AuthGuard, logger *zap.Logger) *OtpGuard {
 	}
 }
 
-func (this *OtpGuard) Act(ctx *fiber.Ctx) error {
+func (this *OtpGuard) Act(ctx fiber.Ctx) error {
 	this.logger.Info("Otp Guard Triggered")
 
 	app, ok := ctx.Locals("app").(*entity.App)

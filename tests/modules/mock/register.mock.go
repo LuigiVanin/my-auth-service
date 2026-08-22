@@ -1,8 +1,9 @@
 package mock
 
 import (
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/register/models"
 	entity "auth_service/infra/entities"
+	sharedDto "auth_service/shared/models"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -19,7 +20,7 @@ func (this *MockRegisterService) Register() error {
 func (this *MockRegisterService) RegisterWithPassword(
 	app *entity.App,
 	userData dto.RegisterPayloadWithPassoword,
-	request dto.RequestInfo,
+	request sharedDto.RequestInfo,
 ) (*dto.RegisterResponse, error) {
 	args := this.Called(app, userData, request)
 	if args.Get(0) == nil {
@@ -31,7 +32,7 @@ func (this *MockRegisterService) RegisterWithPassword(
 func (this *MockRegisterService) RegisterWithOtp(
 	app *entity.App,
 	payload dto.RegisterPayloadWithOtp,
-	request dto.RequestInfo,
+	request sharedDto.RequestInfo,
 ) (*dto.RegisterResponse, error) {
 	args := this.Called(app, payload, request)
 	if args.Get(0) == nil {

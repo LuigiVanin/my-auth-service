@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"

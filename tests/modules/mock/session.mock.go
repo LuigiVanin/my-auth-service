@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"auth_service/app/models/dto"
 	entity "auth_service/infra/entities"
+	dto "auth_service/shared/models"
 
 	"github.com/stretchr/testify/mock"
 )

@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/utils/jwt/models"
 
 	"github.com/stretchr/testify/mock"
 )

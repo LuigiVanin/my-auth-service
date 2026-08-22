@@ -1,6 +1,7 @@
-package dto
+package models
 
 import (
+	otpDto "auth_service/app/modules/core/otp/models"
 	entity "auth_service/infra/entities"
 	"time"
 )
@@ -13,18 +14,13 @@ type LoginPayloadWithPassoword struct {
 type LoginPayloadWithOtp struct {
 	Email string `json:"email" validate:"required,email"`
 
-	Otp PayloadOtpData `json:"otp"`
+	Otp otpDto.PayloadOtpData `json:"otp"`
 }
 
 // type OtpPayload struct {
 // 	OtpCode string `json:"otp_code" validate:"required"`
 // 	OtpId   string `json:"otp_id" validate:"required"`
 // }
-
-type RequestInfo struct {
-	IpAddress string `json:"ip_address"`
-	UserAgent string `json:"user_agent"`
-}
 
 type LoginResponse struct {
 	SessionId        string    `json:"session_id"`

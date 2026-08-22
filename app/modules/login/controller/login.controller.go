@@ -5,10 +5,11 @@ import (
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/login/models"
 	"auth_service/app/modules/login/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
+	sharedDto "auth_service/shared/models"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v3"
@@ -48,7 +49,7 @@ func (this *LoginController) LoginUser(ctx fiber.Ctx) error {
 
 	var response *dto.LoginResponse
 	var err error
-	requestInfo := dto.RequestInfo{
+	requestInfo := sharedDto.RequestInfo{
 		IpAddress: ctx.IP(),
 		UserAgent: ctx.Get("User-Agent"),
 	}

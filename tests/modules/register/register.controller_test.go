@@ -9,9 +9,11 @@ import (
 	"time"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
+	otpDto "auth_service/app/modules/core/otp/models"
 	"auth_service/app/modules/register/controller"
+	dto "auth_service/app/modules/register/models"
 	entity "auth_service/infra/entities"
+	sharedDto "auth_service/shared/models"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
@@ -98,7 +100,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithPassword_Success() {
 	}
 
 	// Mock service call
-	this.mockRegisterService.On("RegisterWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req dto.RequestInfo) bool {
+	this.mockRegisterService.On("RegisterWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req sharedDto.RequestInfo) bool {
 		return req.IpAddress != ""
 	})).Return(expectedResponse, nil)
 
@@ -213,7 +215,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_Success() {
 		Phone:    &phone,
 		Password: "password123",
 		Metadata: map[string]any{"plan": "premium"},
-		Otp: dto.PayloadOtpData{
+		Otp: otpDto.PayloadOtpData{
 			Id:   "otp-id",
 			Code: "123456",
 		},
@@ -259,7 +261,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_DefaultMethod_Succe
 		Email:    "newuser@example.com",
 		Name:     "New User",
 		Metadata: map[string]any{"plan": "free"},
-		Otp: dto.PayloadOtpData{
+		Otp: otpDto.PayloadOtpData{
 			Id:   "otp-id",
 			Code: "123456",
 		},
@@ -293,7 +295,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_InvalidOtp_Error() 
 		Email:    "newuser@example.com",
 		Name:     "New User",
 		Metadata: map[string]any{"plan": "free"},
-		Otp: dto.PayloadOtpData{
+		Otp: otpDto.PayloadOtpData{
 			Id:   "otp-id",
 			Code: "wrong-code",
 		},
@@ -322,7 +324,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_OtpExpired_Error() 
 		Email:    "newuser@example.com",
 		Name:     "New User",
 		Metadata: map[string]any{"plan": "free"},
-		Otp: dto.PayloadOtpData{
+		Otp: otpDto.PayloadOtpData{
 			Id:   "expired-otp-id",
 			Code: "123456",
 		},
@@ -362,7 +364,7 @@ func (this *RegisterControllerTestSuite) TestRegister_RequestInfoExtraction() {
 	}
 
 	// Mock with specific request info matcher
-	this.mockRegisterService.On("RegisterWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req dto.RequestInfo) bool {
+	this.mockRegisterService.On("RegisterWithPassword", this.appEntity, payload, testifymock.MatchedBy(func(req sharedDto.RequestInfo) bool {
 		// Verify that request info contains IP and User-Agent
 		return req.IpAddress != "" && req.UserAgent == "TestAgent/1.0"
 	})).Return(expectedResponse, nil)

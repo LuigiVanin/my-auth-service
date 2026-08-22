@@ -1,4 +1,4 @@
-package dto
+package models
 
 import (
 	"auth_service/shared/constants"

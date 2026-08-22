@@ -7,15 +7,18 @@ import (
 	"time"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/authorize/models"
+	otpDto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	sr "auth_service/app/modules/core/session/repository"
 	ss "auth_service/app/modules/core/session/services"
 	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"
 	jm "auth_service/app/modules/utils/jwt"
+	jwtDto "auth_service/app/modules/utils/jwt/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	sharedDto "auth_service/shared/models"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -176,7 +179,7 @@ func (this *AuthorizeService) Refresh(
 	}
 
 	// Session Rotation: Create a new session
-	reqInfo := dto.RequestInfo{
+	reqInfo := sharedDto.RequestInfo{
 		IpAddress: ip,
 		UserAgent: session.UserAgent,
 	}
@@ -217,8 +220,8 @@ func (this *AuthorizeService) CreateAuthorizationCredentials(app *entity.App, se
 	switch app.TokenType {
 	case "JWT":
 		accessToken, err = this.jwtService.CreateAuthToken(
-			dto.AuthPayload{
-				User: dto.JwtUser{
+			jwtDto.AuthPayload{
+				User: jwtDto.JwtUser{
 					Email: session.User.Email,
 					Name:  session.User.Name,
 					Id:    session.User.ID,
@@ -332,7 +335,7 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 		return nil, err
 	}
 
-	var metadata dto.OtpStoredMetadata
+	var metadata otpDto.OtpStoredMetadata
 
 	if err := json.Unmarshal(otpResponse.Metadata, &metadata); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")

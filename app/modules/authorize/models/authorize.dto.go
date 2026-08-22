@@ -1,6 +1,7 @@
-package dto
+package models
 
 import (
+	otpDto "auth_service/app/modules/core/otp/models"
 	entity "auth_service/infra/entities"
 	"time"
 )
@@ -28,7 +29,7 @@ type RefreshResponse struct {
 }
 
 type ResetPasswordPayload struct {
-	Email       string         `json:"email" validate:"required,email"`
-	NewPassword string         `json:"new_password" validate:"required"`
-	Otp         PayloadOtpData `json:"otp" validate:"required"`
+	Email       string                `json:"email" validate:"required,email"`
+	NewPassword string                `json:"new_password" validate:"required"`
+	Otp         otpDto.PayloadOtpData `json:"otp" validate:"required"`
 }

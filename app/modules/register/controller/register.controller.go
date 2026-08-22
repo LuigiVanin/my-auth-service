@@ -5,10 +5,11 @@ import (
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/register/models"
 	"auth_service/app/modules/register/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
+	sharedDto "auth_service/shared/models"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v3"
@@ -46,7 +47,7 @@ func (this *RegisterController) RegisterUser(ctx fiber.Ctx) error {
 	app := ctx.Locals("app").(*entity.App)
 
 	// Extract request information
-	requestInfo := dto.RequestInfo{
+	requestInfo := sharedDto.RequestInfo{
 		IpAddress: ctx.IP(),
 		UserAgent: ctx.Get("User-Agent"),
 	}

@@ -1,8 +1,9 @@
 package services
 
 import (
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/register/models"
 	entity "auth_service/infra/entities"
+	sharedDto "auth_service/shared/models"
 )
 
 type IRegisterService interface {
@@ -11,12 +12,12 @@ type IRegisterService interface {
 	RegisterWithPassword(
 		app *entity.App,
 		userData dto.RegisterPayloadWithPassoword,
-		request dto.RequestInfo,
+		request sharedDto.RequestInfo,
 	) (*dto.RegisterResponse, error)
 
 	RegisterWithOtp(
 		app *entity.App,
 		payload dto.RegisterPayloadWithOtp,
-		request dto.RequestInfo,
+		request sharedDto.RequestInfo,
 	) (*dto.RegisterResponse, error)
 }

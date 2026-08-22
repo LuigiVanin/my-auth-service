@@ -4,7 +4,7 @@ import (
 	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/authorize/models"
 	"auth_service/app/modules/authorize/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"

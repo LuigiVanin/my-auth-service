@@ -5,7 +5,7 @@ import (
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
-	"auth_service/app/models/dto"
+	dto "auth_service/app/modules/core/user_pool/models"
 	ur "auth_service/app/modules/core/user_pool/repository"
 	entity "auth_service/infra/entities"
 

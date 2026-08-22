@@ -4,10 +4,11 @@ import (
 	"testing"
 
 	e "auth_service/app/errors"
-	"auth_service/app/models/dto"
 	"auth_service/app/modules/authorize/services"
+	dto "auth_service/app/modules/login/models"
 	ls "auth_service/app/modules/login/services"
 	entity "auth_service/infra/entities"
+	sharedDto "auth_service/shared/models"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginOnAppWithoutPasswordLogi
 		LoginTypes: []string{"WITH_OTP"},
 	}
 	userData := dto.LoginPayloadWithPassoword{}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	response, err := this.loginService.LoginWithPassword(app, userData, requestInfo)
 
@@ -81,7 +82,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginWithNonExistentUserOnThe
 		Email:    "nonexistent@example.com",
 		Password: "password",
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	// Mock - user not found
 	expectedWhere := entity.User{
@@ -109,7 +110,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLogin_Success() {
 		Email:    "test@example.com",
 		Password: "password",
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	user := &entity.User{
 		ID:           1,
@@ -153,7 +154,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginWithPassword_InvalidPass
 		Email:    "test@example.com",
 		Password: "wrongpassword",
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	user := &entity.User{
 		ID:           1,
@@ -189,7 +190,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginWithPassword_HashService
 		Email:    "test@example.com",
 		Password: "password",
 	}
-	requestInfo := dto.RequestInfo{}
+	requestInfo := sharedDto.RequestInfo{}
 
 	user := &entity.User{
 		ID:           1,

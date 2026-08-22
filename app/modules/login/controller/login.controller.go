@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
@@ -87,11 +87,11 @@ func (this *LoginController) Register(server *fiber.App) {
 	// one of the default `password` method, `otp` expects LoginPayloadWithOtp
 	// (`email` plus the `otp` id/code pair) instead.
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.AppRoute(this.swagger, "POST", "/auth/login", openapi.Options{
+		docs.Validated(
+			docs.AppRoute(this.swagger, "POST", "/auth/login", openapi.Options{
 				Summary:     "Log a user in",
 				Description: "Opens a session for a user of the application users pool and returns the access and refresh tokens.",
-				Tags:        []string{apidocs.TagAuth},
+				Tags:        []string{docs.TagAuth},
 			}),
 		).
 			AddQueryParam("method", openapi.String, openapi.Options{

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
@@ -140,11 +140,11 @@ func (this *AppController) Register(server *fiber.App) {
 	group := server.Group("/core")
 
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.PermissionedRoute(this.swagger, "POST", "/core/apps", openapi.Options{
+		docs.Validated(
+			docs.PermissionedRoute(this.swagger, "POST", "/core/apps", openapi.Options{
 				Summary:     "Create an application",
 				Description: "Creates an application owned by the authenticated user, as a child of the application the request is made with. The users pool is either an existing one, by id, or a new one, by name.",
-				Tags:        []string{apidocs.TagApps},
+				Tags:        []string{docs.TagApps},
 			}),
 		).
 			AddBody(dto.CreateAppPayload{}, openapi.Options{
@@ -164,10 +164,10 @@ func (this *AppController) Register(server *fiber.App) {
 	)
 
 	this.swagger.Add(
-		apidocs.PermissionedRoute(this.swagger, "GET", "/core/apps", openapi.Options{
+		docs.PermissionedRoute(this.swagger, "GET", "/core/apps", openapi.Options{
 			Summary:     "List applications",
 			Description: "Lists the applications owned by the authenticated user. An ADMIN also sees the children of the application the request is made with, and can list the applications of another owner through `owner_user_id`.",
-			Tags:        []string{apidocs.TagApps},
+			Tags:        []string{docs.TagApps},
 		}).
 			AddQueryParam("skip", openapi.Integer, openapi.Options{
 				Description: "Applications to skip - defaults to 0",
@@ -188,10 +188,10 @@ func (this *AppController) Register(server *fiber.App) {
 	group.Get("/apps", this.authGuard.Act, this.permissionsGuard.Act, this.GetApps)
 
 	this.swagger.Add(
-		apidocs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}", openapi.Options{
+		docs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}", openapi.Options{
 			Summary:     "Get an application",
 			Description: "Reads a single application. Not implemented yet - answers a placeholder message.",
-			Tags:        []string{apidocs.TagApps},
+			Tags:        []string{docs.TagApps},
 		}).
 			AddPathParam("id", openapi.String, openapi.Options{
 				Required:    true,
@@ -204,10 +204,10 @@ func (this *AppController) Register(server *fiber.App) {
 	group.Get("/apps/:id", this.authGuard.Act, this.permissionsGuard.Act, this.GetApp)
 
 	this.swagger.Add(
-		apidocs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}/users", openapi.Options{
+		docs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}/users", openapi.Options{
 			Summary:     "List the users of an application",
 			Description: "Lists the users of the pool the application belongs to.",
-			Tags:        []string{apidocs.TagApps},
+			Tags:        []string{docs.TagApps},
 		}).
 			AddPathParam("id", openapi.String, openapi.Options{
 				Required:    true,
@@ -232,11 +232,11 @@ func (this *AppController) Register(server *fiber.App) {
 	group.Get("/apps/:id/users", this.authGuard.Act, this.permissionsGuard.Act, this.GetUsersFromApp)
 
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.PermissionedRoute(this.swagger, "PUT", "/core/apps/{id}", openapi.Options{
+		docs.Validated(
+			docs.PermissionedRoute(this.swagger, "PUT", "/core/apps/{id}", openapi.Options{
 				Summary:     "Update an application",
 				Description: "Updates the settings of an application owned by the authenticated user. Not implemented yet - always answers 500.",
-				Tags:        []string{apidocs.TagApps},
+				Tags:        []string{docs.TagApps},
 			}),
 		).
 			AddPathParam("id", openapi.String, openapi.Options{

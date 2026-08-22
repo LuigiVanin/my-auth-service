@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	entity "auth_service/infra/entities"
@@ -45,10 +45,10 @@ func (this *UserController) Register(server *fiber.App) {
 	group := server.Group("/core/users")
 
 	this.swagger.Add(
-		apidocs.AuthRoute(this.swagger, "GET", "/core/users/{id}", openapi.Options{
+		docs.AuthRoute(this.swagger, "GET", "/core/users/{id}", openapi.Options{
 			Summary:     "Get a user",
 			Description: "Reads a single user of the application users pool. Not implemented yet - always answers 501.",
-			Tags:        []string{apidocs.TagUsers},
+			Tags:        []string{docs.TagUsers},
 		}).
 			AddPathParam("id", openapi.String, openapi.Options{
 				Required:    true,

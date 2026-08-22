@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/middlewares/validators"
@@ -97,11 +97,11 @@ func (this *RegisterController) Register(server *fiber.App) {
 	// one of the default `otp` method, `password` expects
 	// RegisterPayloadWithPassoword (a `password` instead of the `otp` pair).
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.AppRoute(this.swagger, "POST", "/auth/register", openapi.Options{
+		docs.Validated(
+			docs.AppRoute(this.swagger, "POST", "/auth/register", openapi.Options{
 				Summary:     "Register a user",
 				Description: "Creates a user inside the users pool of the application and already opens a session for it.",
-				Tags:        []string{apidocs.TagAuth},
+				Tags:        []string{docs.TagAuth},
 			}),
 		).
 			AddQueryParam("method", openapi.String, openapi.Options{

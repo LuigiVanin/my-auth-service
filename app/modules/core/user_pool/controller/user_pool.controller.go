@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
@@ -77,11 +77,11 @@ func (this *UserPoolController) Register(server *fiber.App) {
 	group := server.Group("/core/users_pool")
 
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.PermissionedRoute(this.swagger, "POST", "/core/users_pool", openapi.Options{
+		docs.Validated(
+			docs.PermissionedRoute(this.swagger, "POST", "/core/users_pool", openapi.Options{
 				Summary:     "Create a users pool",
 				Description: "Creates a users pool owned by the authenticated user. The pool isolates the users of the applications created inside it.",
-				Tags:        []string{apidocs.TagUserPools},
+				Tags:        []string{docs.TagUserPools},
 			}),
 		).
 			AddBody(dto.CreateUserPool{}, openapi.Options{

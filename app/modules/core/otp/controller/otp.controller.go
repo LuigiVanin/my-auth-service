@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
@@ -106,11 +106,11 @@ func (this *OtpController) Register(server *fiber.App) {
 	// The body of the route depends on `action`: the documented schema is the
 	// one of `REGISTER`, `LOGIN` only takes the `email` field.
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.AppRoute(this.swagger, "POST", "/otp/generate_consumable", openapi.Options{
+		docs.Validated(
+			docs.AppRoute(this.swagger, "POST", "/otp/generate_consumable", openapi.Options{
 				Summary:     "Generate an OTP",
 				Description: "Generates a one time password for an action and sends it to the contact of the payload. The code is then consumed by the endpoint owning the action - /auth/register, /auth/login or /auth/forgot_password.",
-				Tags:        []string{apidocs.TagOtp},
+				Tags:        []string{docs.TagOtp},
 			}),
 		).
 			AddQueryParam("action", openapi.String, openapi.Options{
@@ -137,11 +137,11 @@ func (this *OtpController) Register(server *fiber.App) {
 	)
 
 	this.swagger.Add(
-		apidocs.Validated(
-			apidocs.AppRoute(this.swagger, "PUT", "/otp/verify/{otp_id}", openapi.Options{
+		docs.Validated(
+			docs.AppRoute(this.swagger, "PUT", "/otp/verify/{otp_id}", openapi.Options{
 				Summary:     "Verify an OTP",
 				Description: "Checks the code of a generated OTP and returns the metadata stored with it. The OTP is only consumed later, by the endpoint owning its action.",
-				Tags:        []string{apidocs.TagOtp},
+				Tags:        []string{docs.TagOtp},
 			}),
 		).
 			AddPathParam("otp_id", openapi.String, openapi.Options{

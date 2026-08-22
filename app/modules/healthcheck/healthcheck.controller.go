@@ -1,7 +1,7 @@
 package healthcheck
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	"auth_service/shared/interfaces"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
@@ -35,10 +35,10 @@ func (this *HealthCheckController) Status(ctx fiber.Ctx) error {
 
 func (this *HealthCheckController) Register(ctx *fiber.App) {
 	this.swagger.Add(
-		apidocs.PublicRoute(this.swagger, "GET", "/health-check", openapi.Options{
+		docs.PublicRoute(this.swagger, "GET", "/health-check", openapi.Options{
 			Summary:     "Health check",
 			Description: "Tells whether the service is up. Open endpoint - no application credentials required.",
-			Tags:        []string{apidocs.TagHealth},
+			Tags:        []string{docs.TagHealth},
 		}).
 			AddResponse(fiber.StatusOK, healthCheckResponse{}, openapi.Options{
 				Description: "Service is up",

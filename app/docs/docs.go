@@ -13,7 +13,7 @@
 //
 // The endpoint specific parts (query, body and success response) are chained by
 // the controller on top of the returned route.
-package apidocs
+package docs
 
 import (
 	e "auth_service/app/errors"
@@ -22,7 +22,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// Tags group the endpoints in the Swagger UI sidebar.
 const (
 	TagAuth      = "Auth"
 	TagOtp       = "OTP"
@@ -32,7 +31,6 @@ const (
 	TagHealth    = "Health"
 )
 
-// PublicRoute documents a route that no guard protects.
 func PublicRoute(
 	builder *openapi.Builder,
 	method string,
@@ -46,9 +44,6 @@ func PublicRoute(
 		})
 }
 
-// AppRoute documents a route behind AppGuard - every route under /auth, /otp
-// and /core. The keys are the ciphered ids handed out by `make seed init` or by
-// POST /core/apps, not the raw uuids.
 func AppRoute(
 	builder *openapi.Builder,
 	method string,
@@ -75,7 +70,6 @@ func AppRoute(
 		})
 }
 
-// AuthRoute documents a route behind AppGuard and AuthGuard.
 func AuthRoute(
 	builder *openapi.Builder,
 	method string,
@@ -89,9 +83,6 @@ func AuthRoute(
 		})
 }
 
-// PermissionedRoute documents a route behind AppGuard, AuthGuard and
-// PermissionsGuard - the profile of the authenticated user decides whether the
-// method and the query it carries are allowed.
 func PermissionedRoute(
 	builder *openapi.Builder,
 	method string,
@@ -104,8 +95,6 @@ func PermissionedRoute(
 		})
 }
 
-// Validated documents the two failures produced by a route whose body goes
-// through the body validator middleware.
 func Validated(route *openapi.RouteBuilder) *openapi.RouteBuilder {
 	return route.
 		AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{

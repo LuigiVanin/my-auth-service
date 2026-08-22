@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"auth_service/app/apidocs"
+	"auth_service/app/docs"
 	e "auth_service/app/errors"
 	"auth_service/app/middlewares/guards"
 	"auth_service/app/models/dto"
@@ -105,10 +105,10 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 	group := server.Group("/auth")
 
 	this.swagger.Add(
-		apidocs.AuthRoute(this.swagger, "POST", "/auth/authorize", openapi.Options{
+		docs.AuthRoute(this.swagger, "POST", "/auth/authorize", openapi.Options{
 			Summary:     "Authorize an access token",
 			Description: "Validates the access token against the application and the ip of the caller, answering who the token belongs to. This is the endpoint the guards of the service rely on.",
-			Tags:        []string{apidocs.TagAuth},
+			Tags:        []string{docs.TagAuth},
 		}).
 			AddResponse(fiber.StatusOK, dto.AuthorizeResponse{}, openapi.Options{
 				Description: "Token is valid - carries the user and the session behind it",
@@ -120,10 +120,10 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 	group.Post("/authorize", this.AuthorizeRequest)
 
 	this.swagger.Add(
-		apidocs.AppRoute(this.swagger, "POST", "/auth/refresh", openapi.Options{
+		docs.AppRoute(this.swagger, "POST", "/auth/refresh", openapi.Options{
 			Summary:     "Refresh a session",
 			Description: "Exchanges a refresh token for a new pair of tokens. The refresh token is read from the Authorization header and falls back to the `refresh_token` cookie.",
-			Tags:        []string{apidocs.TagAuth},
+			Tags:        []string{docs.TagAuth},
 		}).
 			AddHeaderParam("Authorization", openapi.String, openapi.Options{
 				Description: "Refresh token returned by /auth/login, /auth/register or a previous refresh - optional when the `refresh_token` cookie is sent",
@@ -138,10 +138,10 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 	group.Post("/refresh", this.RefreshAuthorization)
 
 	this.swagger.Add(
-		apidocs.AppRoute(this.swagger, "PUT", "/auth/forgot_password", openapi.Options{
+		docs.AppRoute(this.swagger, "PUT", "/auth/forgot_password", openapi.Options{
 			Summary:     "Reset a password",
 			Description: "Sets a new password for a user of the pool. Requires an OTP generated with the `FORGOT_PASSWORD` action through /otp/generate_consumable.",
-			Tags:        []string{apidocs.TagAuth},
+			Tags:        []string{docs.TagAuth},
 		}).
 			AddBody(dto.ResetPasswordPayload{}, openapi.Options{
 				Required:    true,

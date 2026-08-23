@@ -1,115 +1,59 @@
 package repository
 
 import (
+	dto "auth_service/app/modules/core/app/models"
 	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 
 	"gorm.io/gorm"
 )
 
 type AppRepository struct {
-	client *gorm.DB
+	repo.BaseRepository[entity.App, dto.AppUpdateDao]
 }
 
 var _ IAppRepository = &AppRepository{}
 
 func NewAppRepository(client *gorm.DB) *AppRepository {
 	return &AppRepository{
-		client: client,
+		BaseRepository: repo.NewBaseRepository[entity.App, dto.AppUpdateDao](client),
 	}
 }
 
-func (this *AppRepository) FindAppbyIdWithPool(id string) (*entity.App, error) {
-	var result entity.App
-
-	err := this.client.Preload("UsersPool").Where("id = ?", id).First(&result).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-func (this *AppRepository) Create(app *entity.App) (*entity.App, error) {
-	err := this.client.Create(app).Error
-	if err != nil {
-		return nil, err
-	}
-	return app, nil
-}
-
-func (this *AppRepository) FindWhere(where entity.App, with ...string) (*entity.App, error) {
-	var result entity.App
-
-	err := this.client.Where(where).First(&result).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-func (this *AppRepository) FindManyWhere(where any, args []any, with ...string) (*[]entity.App, error) {
-	var result []entity.App
-
-	query := this.client.Where(where, args...)
-
-	if len(with) > 0 {
-		for _, relation := range with {
-			query = query.Preload(relation)
+// searchScope is the single definition of the listing predicate, shared by
+// FindSearch and FindSearchCount so the two can never drift apart.
+func searchScope(search AppSearch) func(*gorm.DB) *gorm.DB {
+	return func(query *gorm.DB) *gorm.DB {
+		if search.OrChildrenOfAppId != nil {
+			query = query.Where(
+				"(apps.owner_user_id = ? OR apps.parent_app_id = ?)",
+				search.OwnerUserId,
+				*search.OrChildrenOfAppId,
+			)
+		} else {
+			query = query.Where("apps.owner_user_id = ?", search.OwnerUserId)
 		}
+
+		if search.Name != "" {
+			query = query.Where("apps.name ILIKE ?", "%"+search.Name+"%")
+		}
+
+		return query
 	}
-
-	err := query.Find(&result).Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
 }
 
-func (this *AppRepository) FindManyWhereAndCount(
-	where any,
-	args []any,
-	skip int,
-	limit int,
-	with ...string,
-) ([]entity.App, int64, error) {
+func (this *AppRepository) FindSearch(search AppSearch, options ...repo.Option) ([]entity.App, error) {
+	result := []entity.App{}
 
-	var result []entity.App
+	err := this.ListQuery(options...).Scopes(searchScope(search)).Find(&result).Error
+
+	return result, err
+}
+
+func (this *AppRepository) FindSearchCount(search AppSearch, options ...repo.Option) (int64, error) {
 	var count int64
 
-	query := this.client.Model(&entity.App{}).Where(where, args...)
+	err := this.Query(options...).Scopes(searchScope(search)).Count(&count).Error
 
-	if len(with) > 0 {
-		for _, relation := range with {
-			query = query.Preload(relation)
-		}
-	}
-
-	err := query.Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if limit > 0 {
-		query = query.Limit(limit)
-	}
-	if skip >= 0 {
-		query = query.Offset(skip)
-	}
-
-	err = query.Find(&result).Error
-
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return result, count, nil
-}
-
-func (this *AppRepository) Update(id string, app entity.App) (*entity.App, error) {
-	return nil, nil
+	return count, err
 }

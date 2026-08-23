@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	as "auth_service/app/modules/authorize/services"
-	otpDto "auth_service/app/modules/core/otp/models"
+	odto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	"auth_service/app/modules/core/profile/services"
 	ss "auth_service/app/modules/core/session/services"
@@ -16,6 +16,7 @@ import (
 	upr "auth_service/app/modules/core/user_pool/repository"
 	dto "auth_service/app/modules/register/models"
 	hs "auth_service/app/modules/utils/hash/services"
+	repo "auth_service/shared/repository"
 
 	e "auth_service/app/errors"
 	entity "auth_service/infra/entities"
@@ -125,20 +126,24 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		ProfileId:    profile.ID,
 	})
 
-	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))
-
 	if err != nil {
 		this.logger.Error("Failed to create user", zap.Error(err))
 		return nil, e.ThrowInternalServerError("Failed to create user")
 	}
 
-	createdUser, err := this.userRepository.FindWhere(entity.User{
+	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))
+
+	createdUser, err := this.userRepository.FindOne(entity.User{
 		ID: user.ID,
-	}, "Profile")
+	}, repo.Option{With: []string{"Profile"}})
 
 	if err != nil {
 		this.logger.Error("Failed to find user", zap.Error(err))
 		return nil, e.ThrowInternalServerError("Failed to find user")
+	}
+
+	if createdUser == nil {
+		return nil, e.ThrowInternalServerError("User disappeared right after being created")
 	}
 
 	// Create session for the newly registered user
@@ -246,20 +251,24 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		PasswordHash: hashedPassword,
 	})
 
-	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))
-
 	if err != nil {
 		this.logger.Error("Failed to create user", zap.Error(err))
 		return nil, e.ThrowInternalServerError("Failed to create user")
 	}
 
-	createdUser, err := this.userRepository.FindWhere(entity.User{
+	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))
+
+	createdUser, err := this.userRepository.FindOne(entity.User{
 		ID: user.ID,
-	}, "Profile")
+	}, repo.Option{With: []string{"Profile"}})
 
 	if err != nil {
 		this.logger.Error("Failed to find user", zap.Error(err))
 		return nil, e.ThrowInternalServerError("Failed to find user")
+	}
+
+	if createdUser == nil {
+		return nil, e.ThrowInternalServerError("User disappeared right after being created")
 	}
 
 	// Create session for the newly registered user
@@ -291,8 +300,8 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 	}, nil
 }
 
-func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*otpDto.OtpRegisterActionMetadata, error) {
-	var metadata otpDto.OtpRegisterActionMetadata
+func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*odto.OtpRegisterActionMetadata, error) {
+	var metadata odto.OtpRegisterActionMetadata
 
 	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")

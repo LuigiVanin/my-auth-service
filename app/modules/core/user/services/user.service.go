@@ -3,14 +3,12 @@ package services
 import (
 	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
-	"errors"
 	"strings"
 
 	e "auth_service/app/errors"
 	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user/repository"
-
-	"gorm.io/gorm"
+	repo "auth_service/shared/repository"
 )
 
 type UserService struct {
@@ -28,31 +26,28 @@ func NewUserService(userRepository ur.IUserRepository, appRepository ar.IAppRepo
 }
 
 func (this *UserService) IsAlreadyCreated(email string, app *entity.App) (bool, error) {
-	_, err := this.userRepository.FindWhere(entity.User{
+	user, err := this.userRepository.FindOne(entity.User{
 		Email:       strings.ToLower(email),
 		UsersPoolId: app.UsersPool.ID,
 	})
 
-	if err == nil {
-		return true, nil
+	if err != nil {
+		return false, err
 	}
 
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil
-	}
-
-	return false, err
+	return user != nil, nil
 }
 
+// FindUserInPool returns nil, nil when the user is not in the pool.
 func (this *UserService) FindUserInPool(email string, usersPoolId string) (*entity.User, error) {
-	return this.userRepository.FindWhere(entity.User{
+	return this.userRepository.FindOne(entity.User{
 		Email:       strings.ToLower(email),
 		UsersPoolId: usersPoolId,
 	})
 }
 
-func (this *UserService) Update(user *entity.User) error {
-	return this.userRepository.Update(user)
+func (this *UserService) Update(where entity.User, data dto.UserUpdateDao) (int64, error) {
+	return this.userRepository.Update(where, data)
 }
 
 func (this *UserService) FindAllUsersFromApp(
@@ -72,7 +67,10 @@ func (this *UserService) FindAllUsersFromApp(
 		canAccess = true
 
 	} else if currentUser.Profile != nil && currentUser.Profile.Key == "MANAGER" {
-		app, err := this.appRepository.FindAppbyIdWithPool(targetAppId)
+		app, err := this.appRepository.FindOne(
+			entity.App{ID: targetAppId},
+			repo.Option{With: []string{"UsersPool"}},
+		)
 
 		if err != nil || app == nil {
 			return nil, e.ThrowBadRequest("The app doesnt exist")
@@ -94,28 +92,30 @@ func (this *UserService) FindAllUsersFromApp(
 		return nil, e.ThrowUnauthorizedError("User does not have permission to access users from this app")
 	}
 
-	skip := 0
-	limit := 10
+	option := repo.Option{With: []string{"Profile"}}
 
 	if query != nil {
-		if query.Skip > 0 {
-			skip = query.Skip
-		}
-		if query.Limit > 0 {
-			limit = query.Limit
-		}
+		option = option.Paginate(query.Skip, query.Limit)
 	}
 
-	users, count, err := this.userRepository.FindFromAppId(targetAppId, skip, limit, "Profile")
+	// NOTE: listing and counting are separate calls on purpose, combined here.
+	// FindFromAppIdCount ignores the pagination, so the total is the real total.
+	users, err := this.userRepository.FindFromAppId(targetAppId, option)
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to fetch users")
 	}
 
+	total, err := this.userRepository.FindFromAppIdCount(targetAppId, option)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to count users")
+	}
+
 	return &dto.GetUsersAppResponse{
-		Total:  count,
+		Total:  total,
 		Amount: len(users),
-		Skip:   skip,
+		Skip:   option.Skip,
 		Data:   users,
 	}, nil
 }

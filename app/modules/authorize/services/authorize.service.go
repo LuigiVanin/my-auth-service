@@ -8,22 +8,23 @@ import (
 
 	e "auth_service/app/errors"
 	dto "auth_service/app/modules/authorize/models"
-	otpDto "auth_service/app/modules/core/otp/models"
+	odto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	sr "auth_service/app/modules/core/session/repository"
 	ss "auth_service/app/modules/core/session/services"
+	udto "auth_service/app/modules/core/user/models"
 	us "auth_service/app/modules/core/user/services"
 	hs "auth_service/app/modules/utils/hash/services"
 	jm "auth_service/app/modules/utils/jwt"
-	jwtDto "auth_service/app/modules/utils/jwt/models"
+	jdto "auth_service/app/modules/utils/jwt/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
+	repo "auth_service/shared/repository"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 var _ IAuthorizeService = &AuthorizeService{}
@@ -88,22 +89,17 @@ func (this *AuthorizeService) FindSessionByToken(token string, tokenType string,
 		}
 	}
 
-	session, err := this.sessionRepository.FindWhere(
-		entity.Session{
-			ID:          sessionId,
-			Invalidated: false,
-		},
-		"User",
-		"User.Profile",
+	session, err := this.sessionRepository.FindActive(
+		sessionId,
+		repo.Option{With: []string{"User", "User.Profile"}},
 	)
 
-	// utils.PrintObj(session)
-
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ThrowUnauthorizedError("Session doesnt exist")
-		}
 		return nil, e.ThrowInternalServerError("Unable to find session")
+	}
+
+	if session == nil {
+		return nil, e.ThrowUnauthorizedError("Session doesnt exist")
 	}
 
 	if session.Token != sessionToken {
@@ -120,20 +116,17 @@ func (this *AuthorizeService) FindSessionByRefreshToken(token string, tokenType 
 		return nil, e.ThrowBadRequest("Authorization token malformatted")
 	}
 
-	session, err := this.sessionRepository.FindWhere(
-		entity.Session{
-			ID:          sessionId,
-			Invalidated: false,
-		},
-		"User",
-		"User.Profile",
+	session, err := this.sessionRepository.FindActive(
+		sessionId,
+		repo.Option{With: []string{"User", "User.Profile"}},
 	)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ThrowUnauthorizedError("Session doesnt exist")
-		}
 		return nil, e.ThrowInternalServerError("Unable to find session")
+	}
+
+	if session == nil {
+		return nil, e.ThrowUnauthorizedError("Session doesnt exist")
 	}
 
 	if session.RefreshToken != sessionToken {
@@ -220,8 +213,8 @@ func (this *AuthorizeService) CreateAuthorizationCredentials(app *entity.App, se
 	switch app.TokenType {
 	case "JWT":
 		accessToken, err = this.jwtService.CreateAuthToken(
-			jwtDto.AuthPayload{
-				User: jwtDto.JwtUser{
+			jdto.AuthPayload{
+				User: jdto.JwtUser{
 					Email: session.User.Email,
 					Name:  session.User.Name,
 					Id:    session.User.ID,
@@ -319,11 +312,15 @@ func (this *AuthorizeService) SetPassword(user *entity.User, newPassword string)
 		return e.ThrowInternalServerError("Failed to hash password")
 	}
 
-	user.PasswordHash = hashedPassword
-
-	if err := this.userService.Update(user); err != nil {
+	if _, err := this.userService.Update(
+		entity.User{ID: user.ID},
+		udto.UserUpdateDao{PasswordHash: &hashedPassword},
+	); err != nil {
 		return e.ThrowInternalServerError("Failed to update user password")
 	}
+
+	// NOTE: keeps the in memory user consistent with the row that was just written.
+	user.PasswordHash = hashedPassword
 
 	return nil
 }
@@ -335,7 +332,7 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 		return nil, err
 	}
 
-	var metadata otpDto.OtpStoredMetadata
+	var metadata odto.OtpStoredMetadata
 
 	if err := json.Unmarshal(otpResponse.Metadata, &metadata); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")
@@ -352,6 +349,10 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 	user, err := this.userService.FindUserInPool(payload.Email, app.UsersPool.ID)
 
 	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to find user")
+	}
+
+	if user == nil {
 		return nil, e.ThrowNotFound("User not found")
 	}
 

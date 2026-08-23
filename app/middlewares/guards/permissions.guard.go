@@ -5,7 +5,6 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/utils"
 	"encoding/json"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -112,7 +111,6 @@ func (this *PermissionsGuard) Act(ctx fiber.Ctx) error {
 	// Check for a match in permissions
 	apiPerm, hasPerm := this.findMatchingPermission(ctx.Route().Path, permissions)
 
-	fmt.Print("hasPerm: ", hasPerm)
 	if !hasPerm {
 		this.logger.Warn("No matching permission found for path", zap.String("path", ctx.Route().Path))
 		return e.ThrowPermissionDeniedError(

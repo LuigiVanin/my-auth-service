@@ -8,7 +8,8 @@ import (
 	e "auth_service/app/errors"
 	ar "auth_service/app/modules/core/app/repository"
 	cipher "auth_service/app/modules/utils/cipher"
-	"auth_service/shared/global"
+	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 
 	i "auth_service/shared/interfaces"
 
@@ -42,7 +43,7 @@ func validateKeyFormat(key string) error {
 }
 
 func (this *AppGuard) Act(ctx fiber.Ctx) error {
-	global.Logger.Info("App Guard Triggered")
+	this.logger.Info("App Guard Triggered")
 	appKey := ctx.Get("X-Public-Key")
 	poolKey := ctx.Get("X-Pool-Key")
 	secretKey := ctx.Get("X-Secret-Key")
@@ -71,10 +72,17 @@ func (this *AppGuard) Act(ctx fiber.Ctx) error {
 		return e.ThrowUnauthorizedError("Invalid X-Pool-Key")
 	}
 
-	app, err := this.appRepository.FindAppbyIdWithPool(appUuid)
+	app, err := this.appRepository.FindOne(
+		entity.App{ID: appUuid},
+		repo.Option{With: []string{"UsersPool"}},
+	)
 
-	if err != nil || app == nil {
-		return e.ThrowNotFound(fmt.Sprintf("Error Searching for App: `%s`", err.Error()))
+	if err != nil {
+		return e.ThrowInternalServerError(fmt.Sprintf("Error Searching for App: `%s`", err.Error()))
+	}
+
+	if app == nil {
+		return e.ThrowNotFound("App not found for the given X-Public-Key")
 	}
 
 	if app.UsersPoolId != poolUuid {
@@ -93,7 +101,7 @@ func (this *AppGuard) Act(ctx fiber.Ctx) error {
 		ctx.Locals("secretKey", secretKey)
 	}
 
-	global.Logger.Info(
+	this.logger.Info(
 		"App found and User Pool found",
 		zap.Any("app_id", app.ID),
 		zap.Any("pool_id", app.UsersPool.ID),

@@ -2,7 +2,10 @@ package mock
 
 import (
 	dto "auth_service/app/modules/core/app/models"
+	ar "auth_service/app/modules/core/app/repository"
+	as "auth_service/app/modules/core/app/services"
 	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -12,56 +15,48 @@ type MockAppRepository struct {
 	mock.Mock
 }
 
-func (this *MockAppRepository) FindAppbyIdWithPool(id string) (*entity.App, error) {
-	args := this.Called(id)
+var _ ar.IAppRepository = &MockAppRepository{}
+
+func (this *MockAppRepository) FindOne(where entity.App, options ...repo.Option) (*entity.App, error) {
+	args := this.Called(where, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.App), args.Error(1)
 }
 
-func (this *MockAppRepository) Create(app *entity.App) (*entity.App, error) {
-	args := this.Called(app)
+func (this *MockAppRepository) Create(app entity.App, options ...repo.Option) (*entity.App, error) {
+	args := this.Called(app, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.App), args.Error(1)
 }
 
-func (this *MockAppRepository) FindWhere(where entity.App, with ...string) (*entity.App, error) {
-	args := this.Called(where, with)
+func (this *MockAppRepository) Update(where entity.App, data dto.AppUpdateDao, options ...repo.Option) (int64, error) {
+	args := this.Called(where, data, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockAppRepository) FindSearch(search ar.AppSearch, options ...repo.Option) ([]entity.App, error) {
+	args := this.Called(search, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*entity.App), args.Error(1)
+	return args.Get(0).([]entity.App), args.Error(1)
 }
 
-func (this *MockAppRepository) FindManyWhereAndCount(
-	where any,
-	args []any,
-	skip int,
-	limit int,
-	with ...string,
-) ([]entity.App, int64, error) {
-	mockArgs := this.Called(where, args, skip, limit, with)
-	if mockArgs.Get(0) == nil {
-		return nil, 0, mockArgs.Error(2)
-	}
-	return mockArgs.Get(0).([]entity.App), mockArgs.Get(1).(int64), mockArgs.Error(2)
-}
-
-func (this *MockAppRepository) Update(id string, app entity.App) (*entity.App, error) {
-	args := this.Called(id, app)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.App), args.Error(1)
+func (this *MockAppRepository) FindSearchCount(search ar.AppSearch, options ...repo.Option) (int64, error) {
+	args := this.Called(search, options)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 // MockAppService represents a mock implementation of IAppService
 type MockAppService struct {
 	mock.Mock
 }
+
+var _ as.IAppService = &MockAppService{}
 
 func (this *MockAppService) CreateWithUserPool(currentUser *entity.User, currentApp *entity.App, payload *dto.CreateAppPayload) (*entity.App, error) {
 	args := this.Called(currentUser, currentApp, payload)

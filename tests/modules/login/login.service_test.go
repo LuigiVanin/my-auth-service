@@ -9,6 +9,7 @@ import (
 	ls "auth_service/app/modules/login/services"
 	entity "auth_service/infra/entities"
 	sharedDto "auth_service/shared/models"
+	repo "auth_service/shared/repository"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -89,7 +90,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginWithNonExistentUserOnThe
 		Email:       "nonexistent@example.com",
 		UsersPoolId: "pool-id",
 	}
-	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(nil, e.ThrowNotFound("User not found"))
+	this.mockUserRepo.On("FindOne", expectedWhere, []repo.Option{{With: []string{"Profile"}}}).Return(nil, nil) // NOTE: FindOne reports "not found" as nil, nil
 
 	// Act
 	response, err := this.loginService.LoginWithPassword(app, payload, requestInfo)
@@ -128,7 +129,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLogin_Success() {
 		Email:       "test@example.com",
 		UsersPoolId: "pool-id",
 	}
-	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(user, nil)
+	this.mockUserRepo.On("FindOne", expectedWhere, []repo.Option{{With: []string{"Profile"}}}).Return(user, nil)
 	this.mockHashService.On("Compare", "password", "hashed_password").Return(true, nil)
 	this.mockSessionService.On("CreateNew", app, user, requestInfo, "WITH_PASSWORD").Return(session, nil)
 	this.mockAuthService.On("CreateAuthorizationCredentials", app, session).Return(credentials, nil)
@@ -167,7 +168,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginWithPassword_InvalidPass
 		Email:       "test@example.com",
 		UsersPoolId: "pool-id",
 	}
-	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(user, nil)
+	this.mockUserRepo.On("FindOne", expectedWhere, []repo.Option{{With: []string{"Profile"}}}).Return(user, nil)
 	this.mockHashService.On("Compare", "wrongpassword", "hashed_password").Return(false, nil)
 
 	// Act
@@ -203,7 +204,7 @@ func (this *LoginWithPasswordServiceTestSuite) TestLoginWithPassword_HashService
 		Email:       "test@example.com",
 		UsersPoolId: "pool-id",
 	}
-	this.mockUserRepo.On("FindWhere", expectedWhere, []string{"Profile"}).Return(user, nil)
+	this.mockUserRepo.On("FindOne", expectedWhere, []repo.Option{{With: []string{"Profile"}}}).Return(user, nil)
 	this.mockHashService.On("Compare", "password", "hashed_password").Return(false, assert.AnError)
 
 	// Act

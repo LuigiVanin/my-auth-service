@@ -2,13 +2,12 @@ package services
 
 import (
 	"encoding/json"
-	"errors"
 	"slices"
 	"strings"
 
 	e "auth_service/app/errors"
 	as "auth_service/app/modules/authorize/services"
-	otpDto "auth_service/app/modules/core/otp/models"
+	odto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
 	ss "auth_service/app/modules/core/session/services"
 	ur "auth_service/app/modules/core/user/repository"
@@ -17,9 +16,9 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
+	repo "auth_service/shared/repository"
 
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 var _ ILoginService = &LoginService{}
@@ -58,19 +57,19 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		return nil, e.ThrowNotAllowed("This app does not allow login with password")
 	}
 
-	user, err := this.userRepository.FindWhere(entity.User{
+	user, err := this.userRepository.FindOne(entity.User{
 		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
-	}, "Profile")
+	}, repo.Option{With: []string{"Profile"}})
 
-	if err != nil || user == nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// NOTE: If the user is not found in the User Pool, it means that the user is not registered in the app
-			// TODO: Maybe is not a great ideia to return 404 here, this could be a hint to badactors
-			return nil, e.ThrowNotFound("User not found in User Pool") // NOT FOUND
-		}
-
+	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to find user in User Pool")
+	}
+
+	if user == nil {
+		// NOTE: If the user is not found in the User Pool, it means that the user is not registered in the app
+		// TODO: Maybe is not a great ideia to return 404 here, this could be a hint to badactors
+		return nil, e.ThrowNotFound("User not found in User Pool") // NOT FOUND
 	}
 
 	this.logger.Info("User found in User Pool", zap.Any("user", user))
@@ -118,17 +117,17 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 		return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
 	}
 
-	user, err := this.userRepository.FindWhere(entity.User{
+	user, err := this.userRepository.FindOne(entity.User{
 		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
-	}, "Profile")
+	}, repo.Option{With: []string{"Profile"}})
 
-	if err != nil || user == nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ThrowNotFound("User not found in User Pool")
-		}
-
+	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to find user in User Pool")
+	}
+
+	if user == nil {
+		return nil, e.ThrowNotFound("User not found in User Pool")
 	}
 
 	this.logger.Info("User found in User Pool", zap.Any("user", user))
@@ -174,7 +173,7 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 }
 
 func (this *LoginService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.LoginPayloadWithOtp) error {
-	var metadata otpDto.OtpLoginActionMetadata
+	var metadata odto.OtpLoginActionMetadata
 
 	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
 		return e.ThrowInternalServerError("Failed to parse OTP metadata")

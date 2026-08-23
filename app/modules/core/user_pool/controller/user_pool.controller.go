@@ -6,7 +6,7 @@ import (
 	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
 	dto "auth_service/app/modules/core/user_pool/models"
-	ur "auth_service/app/modules/core/user_pool/repository"
+	ups "auth_service/app/modules/core/user_pool/services"
 	entity "auth_service/infra/entities"
 
 	"auth_service/shared/interfaces"
@@ -23,9 +23,9 @@ type createUserPoolResponse struct {
 }
 
 type UserPoolController struct {
-	authGuard          *guards.AuthGuard
-	permissionsGuard   *guards.PermissionsGuard
-	userPoolRepository ur.IUserPoolRepository
+	authGuard        *guards.AuthGuard
+	permissionsGuard *guards.PermissionsGuard
+	userPoolService  ups.IUserPoolService
 
 	swagger *openapi.Builder
 }
@@ -35,15 +35,15 @@ var _ interfaces.IController = &UserPoolController{}
 func NewUserPoolController(
 	authGuard *guards.AuthGuard,
 	permissionsGuard *guards.PermissionsGuard,
-	userPoolRepository ur.IUserPoolRepository,
+	userPoolService ups.IUserPoolService,
 	builder *openapi.Builder,
 
 ) *UserPoolController {
 	return &UserPoolController{
-		authGuard:          authGuard,
-		permissionsGuard:   permissionsGuard,
-		userPoolRepository: userPoolRepository,
-		swagger:            builder,
+		authGuard:        authGuard,
+		permissionsGuard: permissionsGuard,
+		userPoolService:  userPoolService,
+		swagger:          builder,
 	}
 }
 
@@ -57,14 +57,10 @@ func (this *UserPoolController) CreateUserPool(ctx fiber.Ctx) error {
 	// currentApp := ctx.Locals("app").(*entity.App)
 	currentUser := ctx.Locals("user").(*entity.User)
 
-	userPool, err := this.userPoolRepository.Create(&entity.UsersPool{
-		Name:        payload.Name,
-		OwnerUserId: &currentUser.ID,
-	})
+	userPool, err := this.userPoolService.Create(payload.Name, &currentUser.ID)
 
 	if err != nil {
-
-		return e.ThrowInternalServerError("Unable to create users pool")
+		return err
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{

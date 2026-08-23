@@ -25,7 +25,7 @@ func NewProfileService(profileRepository repository.IProfileRepository, logger *
 }
 
 func (s *ProfileService) GetProfileByAppRole(role string) (*entity.Profile, error) {
-	roleProfiles, err := s.profileRepository.FindProfileByAppRole(role)
+	roleProfiles, err := s.profileRepository.FindByAppRole(role)
 	if err != nil {
 		return nil, err
 	}

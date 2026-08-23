@@ -1,7 +1,10 @@
 package mock
 
 import (
+	pr "auth_service/app/modules/core/profile/repository"
+	ps "auth_service/app/modules/core/profile/services"
 	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -10,6 +13,8 @@ import (
 type MockProfileService struct {
 	mock.Mock
 }
+
+var _ ps.IProfileService = &MockProfileService{}
 
 func (this *MockProfileService) GetProfileByAppRole(role string) (*entity.Profile, error) {
 	args := this.Called(role)
@@ -24,8 +29,10 @@ type MockProfileRepository struct {
 	mock.Mock
 }
 
-func (this *MockProfileRepository) FindProfileByAppRole(role string) ([]entity.AppRoleProfile, error) {
-	args := this.Called(role)
+var _ pr.IProfileRepository = &MockProfileRepository{}
+
+func (this *MockProfileRepository) FindByAppRole(role string, options ...repo.Option) ([]entity.AppRoleProfile, error) {
+	args := this.Called(role, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

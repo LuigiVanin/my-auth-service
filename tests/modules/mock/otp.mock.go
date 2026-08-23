@@ -2,9 +2,11 @@ package mock
 
 import (
 	dto "auth_service/app/modules/core/otp/models"
+	orep "auth_service/app/modules/core/otp/repository"
 	os "auth_service/app/modules/core/otp/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	repo "auth_service/shared/repository"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -47,36 +49,33 @@ type MockOtpRepository struct {
 	mock.Mock
 }
 
-func (this *MockOtpRepository) Create(otp *entity.Otp) (*entity.Otp, error) {
-	args := this.Called(otp)
+var _ orep.IOtpRepository = &MockOtpRepository{}
+
+func (this *MockOtpRepository) FindOne(where entity.Otp, options ...repo.Option) (*entity.Otp, error) {
+	args := this.Called(where, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.Otp), args.Error(1)
 }
 
-func (this *MockOtpRepository) FindById(otpId string) (*entity.Otp, error) {
-	args := this.Called(otpId)
+func (this *MockOtpRepository) Create(otp entity.Otp, options ...repo.Option) (*entity.Otp, error) {
+	args := this.Called(otp, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.Otp), args.Error(1)
 }
 
-func (this *MockOtpRepository) FindLastOneWhere(where entity.Otp, with ...string) (*entity.Otp, error) {
-	args := this.Called(where, with)
+func (this *MockOtpRepository) Update(where entity.Otp, data dto.OtpUpdateDao, options ...repo.Option) (int64, error) {
+	args := this.Called(where, data, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockOtpRepository) FindLast(where entity.Otp, options ...repo.Option) (*entity.Otp, error) {
+	args := this.Called(where, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.Otp), args.Error(1)
-}
-
-func (this *MockOtpRepository) Update(otp *entity.Otp) error {
-	args := this.Called(otp)
-	return args.Error(0)
-}
-
-func (this *MockOtpRepository) Invalidate(otpId string) error {
-	args := this.Called(otpId)
-	return args.Error(0)
 }

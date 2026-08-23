@@ -4,7 +4,6 @@ import (
 	e "auth_service/app/errors"
 	"auth_service/app/modules/authorize/services"
 	entity "auth_service/infra/entities"
-	"auth_service/shared/global"
 
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
@@ -48,7 +47,7 @@ func (this *AuthGuard) Act(ctx fiber.Ctx) error {
 		return e.ThrowUnauthorizedError("Unauthorized")
 	}
 
-	global.Logger.Info(
+	this.logger.Info(
 		"User authorized",
 		zap.Uint("user_id", res.User.ID),
 		zap.String("session_id", res.SessionId),

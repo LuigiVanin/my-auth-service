@@ -1,60 +1,69 @@
 package repository
 
 import (
-	entity "auth_service/infra/entities"
 	"time"
+
+	dto "auth_service/app/modules/core/session/models"
+	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 
 	"gorm.io/gorm"
 )
 
 type SessionRepository struct {
-	client *gorm.DB
+	repo.BaseRepository[entity.Session, dto.SessionUpdateDao]
 }
 
 var _ ISessionRepository = &SessionRepository{}
 
 func NewSessionRepository(client *gorm.DB) *SessionRepository {
 	return &SessionRepository{
-		client: client,
+		BaseRepository: repo.NewBaseRepository[entity.Session, dto.SessionUpdateDao](client),
 	}
 }
 
-func (this SessionRepository) Create(session entity.Session) (*entity.Session, error) {
-	err := this.client.Create(&session).Error
-	return &session, err
+// FindActive returns a session only while it is still valid.
+//
+// NOTE: this used to be FindWhere(entity.Session{ID: id, Invalidated: false}),
+// which silently matched invalidated sessions too: gorm drops zero valued
+// fields from a struct condition, so `Invalidated: false` produced no SQL at
+// all. The predicate has to be explicit.
+func (this *SessionRepository) FindActive(sessionId string, options ...repo.Option) (*entity.Session, error) {
+	query := this.ListQuery(options...).
+		Where("id = ? AND invalidated = ?", sessionId, false)
+
+	return repo.FirstOrNil[entity.Session](query)
 }
 
-func (this SessionRepository) FindWhere(where entity.Session, with ...string) (*entity.Session, error) {
-	var result entity.Session
+// InvalidateAllExcept closes every other session of the user on the app.
+//
+// NOTE: a mistake in this predicate logs people out, so it stays a dedicated
+// method with named parameters instead of a condition assembled by a caller.
+func (this *SessionRepository) InvalidateAllExcept(
+	userId uint,
+	appId string,
+	currentSessionId string,
+	options ...repo.Option,
+) (int64, error) {
+	invalidated := true
 
-	// NOTE: I am sorting by created_at in descending order to get the latest session ALWAYS
-	whereClause := this.client.Where(where).Order("created_at desc")
+	result := this.Query(options...).
+		Where(
+			"user_id = ? AND app_id = ? AND invalidated = ? AND id != ?",
+			userId, appId, false, currentSessionId,
+		).
+		Updates(repo.BuildUpdateMap(dto.SessionUpdateDao{Invalidated: &invalidated}))
 
-	if len(with) > 0 {
-		for _, relation := range with {
-			whereClause = whereClause.Preload(relation)
-		}
-	}
-
-	err := whereClause.First(&result).Error
-	return &result, err
+	return result.RowsAffected, result.Error
 }
 
-// NOTE: This is a very specific query because if a mistake is made in the parameter or implementation it can invalidate
-func (this SessionRepository) BatchInvalidateAll(userId uint, appId string, currentSessionId string) error {
-	return this.
-		client.
-		Model(&entity.Session{}).
-		Where("user_id = ? AND app_id = ? AND invalidated = ? AND id != ?", userId, appId, false, currentSessionId).
-		Update("invalidated", true).
-		Error
-}
+// TouchLastUsedAt stamps the session, refusing to revive an invalidated one.
+func (this *SessionRepository) TouchLastUsedAt(sessionId string, options ...repo.Option) (int64, error) {
+	now := time.Now()
 
-func (this SessionRepository) UpdateLastUsedAt(sessionId string) error {
-	return this.
-		client.
-		Model(&entity.Session{}).
-		Where("id = ? AND invalidated = false", sessionId).
-		Update("last_used_at", time.Now()).
-		Error
+	result := this.Query(options...).
+		Where("id = ? AND invalidated = ?", sessionId, false).
+		Updates(repo.BuildUpdateMap(dto.SessionUpdateDao{LastUsedAt: &now}))
+
+	return result.RowsAffected, result.Error
 }

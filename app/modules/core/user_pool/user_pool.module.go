@@ -3,6 +3,7 @@ package user_pool
 import (
 	"auth_service/app/modules/core/user_pool/controller"
 	"auth_service/app/modules/core/user_pool/repository"
+	"auth_service/app/modules/core/user_pool/services"
 	"auth_service/shared/interfaces"
 
 	"go.uber.org/fx"
@@ -16,10 +17,10 @@ var Module = fx.Module(
 		fx.As(new(repository.IUserPoolRepository)),
 	)),
 
-	// fx.Provide(fx.Annotate(
-	// 	repository.NewUserPoolService,
-	// 	fx.As(new(repository.IUserPoolService)),
-	// )),
+	fx.Provide(fx.Annotate(
+		services.NewUserPoolService,
+		fx.As(new(services.IUserPoolService)),
+	)),
 
 	fx.Provide(
 		fx.Annotate(

@@ -54,7 +54,7 @@ func (this *SessionService) CreateNew(app *entity.App, user *entity.User, reques
 		return nil, e.ThrowInternalServerError("Failed to create session")
 	}
 
-	session, err = this.repository.FindWhere(entity.Session{
+	session, err = this.repository.FindOne(entity.Session{
 		ID: session.ID,
 	})
 
@@ -63,7 +63,7 @@ func (this *SessionService) CreateNew(app *entity.App, user *entity.User, reques
 	}
 
 	go func() {
-		err = this.repository.BatchInvalidateAll(user.ID, app.ID, session.ID)
+		_, err := this.repository.InvalidateAllExcept(user.ID, app.ID, session.ID)
 
 		if err != nil {
 			this.logger.Error(
@@ -111,5 +111,7 @@ func (this *SessionService) DecryptSessionToken(tokenString string, secretKey st
 }
 
 func (this *SessionService) UseSession(sessionId string) error {
-	return this.repository.UpdateLastUsedAt(sessionId)
+	_, err := this.repository.TouchLastUsedAt(sessionId)
+
+	return err
 }

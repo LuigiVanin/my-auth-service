@@ -2,7 +2,10 @@ package mock
 
 import (
 	dto "auth_service/app/modules/core/user/models"
+	ur "auth_service/app/modules/core/user/repository"
+	us "auth_service/app/modules/core/user/services"
 	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -12,47 +15,66 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (this *MockUserRepository) FindWhere(where entity.User, with ...string) (*entity.User, error) {
-	args := this.Called(where, with)
+var _ ur.IUserRepository = &MockUserRepository{}
+
+func (this *MockUserRepository) Find(where entity.User, options ...repo.Option) ([]entity.User, error) {
+	args := this.Called(where, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]entity.User), args.Error(1)
+}
+
+func (this *MockUserRepository) FindCount(where entity.User, options ...repo.Option) (int64, error) {
+	args := this.Called(where, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockUserRepository) FindOne(where entity.User, options ...repo.Option) (*entity.User, error) {
+	args := this.Called(where, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (this *MockUserRepository) FindManyWhere(where entity.User, skip int, limit int, with ...string) (*[]entity.User, int64, error) {
-	args := this.Called(where, skip, limit, with)
-	if args.Get(0) == nil {
-		return nil, 0, args.Error(2)
-	}
-	return args.Get(0).(*[]entity.User), args.Get(1).(int64), args.Error(2)
-}
-
-func (this *MockUserRepository) Create(user entity.User) (*entity.User, error) {
-	args := this.Called(user)
+func (this *MockUserRepository) Create(user entity.User, options ...repo.Option) (*entity.User, error) {
+	args := this.Called(user, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (this *MockUserRepository) Update(user *entity.User) error {
-	args := this.Called(user)
-	return args.Error(0)
+func (this *MockUserRepository) Update(where entity.User, data dto.UserUpdateDao, options ...repo.Option) (int64, error) {
+	args := this.Called(where, data, options)
+	return args.Get(0).(int64), args.Error(1)
 }
 
-func (this *MockUserRepository) FindFromAppId(id string, skip int, limit int, with ...string) ([]entity.User, int64, error) {
-	args := this.Called(id, skip, limit, with)
+func (this *MockUserRepository) Delete(where entity.User, options ...repo.Option) (int64, error) {
+	args := this.Called(where, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockUserRepository) FindFromAppId(appId string, options ...repo.Option) ([]entity.User, error) {
+	args := this.Called(appId, options)
 	if args.Get(0) == nil {
-		return nil, 0, args.Error(2)
+		return nil, args.Error(1)
 	}
-	return args.Get(0).([]entity.User), args.Get(1).(int64), args.Error(2)
+	return args.Get(0).([]entity.User), args.Error(1)
+}
+
+func (this *MockUserRepository) FindFromAppIdCount(appId string, options ...repo.Option) (int64, error) {
+	args := this.Called(appId, options)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 // MockUserService represents a mock implementation of IUserService
 type MockUserService struct {
 	mock.Mock
 }
+
+var _ us.IUserService = &MockUserService{}
 
 func (this *MockUserService) IsAlreadyCreated(email string, app *entity.App) (bool, error) {
 	args := this.Called(email, app)
@@ -67,9 +89,9 @@ func (this *MockUserService) FindUserInPool(email string, usersPoolId string) (*
 	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (this *MockUserService) Update(user *entity.User) error {
-	args := this.Called(user)
-	return args.Error(0)
+func (this *MockUserService) Update(where entity.User, data dto.UserUpdateDao) (int64, error) {
+	args := this.Called(where, data)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func (this *MockUserService) FindAllUsersFromApp(targetAppId string, currentUser *entity.User, targetApp *entity.App, query *dto.GetUsersAppQuery) (*dto.GetUsersAppResponse, error) {

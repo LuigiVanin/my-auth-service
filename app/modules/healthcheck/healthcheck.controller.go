@@ -3,33 +3,40 @@ package healthcheck
 import (
 	"auth_service/app/docs"
 	"auth_service/shared/interfaces"
+	"auth_service/shared/utils"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 )
 
 var _ interfaces.IController = &HealthCheckController{}
 
-// healthCheckResponse mirrors the body returned by Status - it only exists to
-// describe the payload in the OpenAPI document.
 type healthCheckResponse struct {
 	Status string `json:"status"`
+
+	Database utils.DatabaseInfo `json:"database"`
 }
 
 type HealthCheckController struct {
 	swagger *openapi.Builder
+	client  *gorm.DB
 }
 
-func NewHealthCheckController(builder *openapi.Builder) *HealthCheckController {
+func NewHealthCheckController(builder *openapi.Builder, client *gorm.DB) *HealthCheckController {
 	return &HealthCheckController{
 		swagger: builder,
+		client:  client,
 	}
 }
 
 func (this *HealthCheckController) Status(ctx fiber.Ctx) error {
 
-	return ctx.JSON(fiber.Map{
-		"status": "ok",
+	dbInfo := utils.GetDatabaseInfo(this.client)
+
+	return ctx.JSON(utils.JSON{
+		"status":   utils.OK,
+		"database": dbInfo.ToJSON(),
 	})
 }
 

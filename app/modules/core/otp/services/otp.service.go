@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 var _ IOtpService = &OtpService{}
@@ -28,6 +26,8 @@ const (
 	OtpExpirationDuration = 5 * time.Minute
 	OtpRateLimitDuration  = time.Minute / 3
 	OtpLength             = 6
+
+	MaxOtpVerificationAttempts = 5
 )
 
 type OtpService struct {
@@ -115,13 +115,18 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 	}
 
 	// Check if there was a recent OTP request for this contact, app, and action
-	lastOtp, err := this.otpRepository.FindLastOneWhere(entity.Otp{
+	lastOtp, err := this.otpRepository.FindLast(entity.Otp{
 		Contact: payload.Contact,
 		AppId:   app.ID,
 		Action:  string(action),
 	})
 
-	if err == nil && lastOtp != nil {
+	if err != nil {
+		this.logger.Error("Failed to look up the last OTP", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to check OTP rate limit")
+	}
+
+	if lastOtp != nil {
 		// Check if the last OTP was created within the last minute
 		timeSinceLastOtp := time.Since(lastOtp.CreatedAt)
 
@@ -151,7 +156,7 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 		}
 	}
 
-	otp, err := this.otpRepository.Create(&entity.Otp{
+	otp, err := this.otpRepository.Create(entity.Otp{
 		UserId:   nil,
 		Action:   string(action),
 		Metadata: jsonMetadata,
@@ -206,16 +211,14 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 }
 
 func (this *OtpService) ValidateConsumable(payload dto.PayloadOtpData, appId string, action constants.AuthAction) (*entity.Otp, error) {
-	otp, err := this.otpRepository.FindById(payload.Id)
+	otp, err := this.otpRepository.FindOne(entity.Otp{ID: payload.Id})
 
 	if err != nil {
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-
-			return nil, e.ThrowNotFound("Otp not found")
-		}
-
 		return nil, e.ThrowInternalServerError("Failed to find otp")
+	}
+
+	if otp == nil {
+		return nil, e.ThrowNotFound("Otp not found")
 	}
 
 	if otp.Action != string(action) {
@@ -254,12 +257,14 @@ func (this *OtpService) ValidateConsumable(payload dto.PayloadOtpData, appId str
 }
 
 func (this *OtpService) VerifyConsumable(otpId string, code string, appId string) (*VerifyConsumableOtpResponse, error) {
-	otp, err := this.otpRepository.FindById(otpId)
+	otp, err := this.otpRepository.FindOne(entity.Otp{ID: otpId})
+
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ThrowNotFound("Otp not found")
-		}
 		return nil, e.ThrowInternalServerError("Failed to find otp")
+	}
+
+	if otp == nil {
+		return nil, e.ThrowNotFound("Otp not found")
 	}
 
 	if otp.AppId != appId {
@@ -274,12 +279,11 @@ func (this *OtpService) VerifyConsumable(otpId string, code string, appId string
 		return nil, e.ThrowBadRequest("Otp expired")
 	}
 
-	if otp.VerificationCount >= 5 {
-		// Invalidate OTP if max attempts reached?
-		// For now, just return error as per requirement "max count of 5 verification"
-		// Optionally we can invalidate it here to prevent further spam.
-		otp.Invalidated = true
-		_ = this.otpRepository.Update(otp)
+	if otp.VerificationCount >= MaxOtpVerificationAttempts {
+		if err := this.invalidate(otp.ID); err != nil {
+			this.logger.Error("Failed to invalidate otp", zap.Error(err), zap.String("otp_id", otp.ID))
+		}
+
 		return nil, e.ThrowBadRequest("Max verification attempts reached")
 	}
 
@@ -296,16 +300,20 @@ func (this *OtpService) VerifyConsumable(otpId string, code string, appId string
 	}
 
 	if !valid {
-		otp.VerificationCount++
-		if err := this.otpRepository.Update(otp); err != nil {
+		attempts := otp.VerificationCount + 1
+
+		if _, err := this.otpRepository.Update(
+			entity.Otp{ID: otp.ID},
+			dto.OtpUpdateDao{VerificationCount: &attempts},
+		); err != nil {
 			this.logger.Error("Failed to update otp verification count", zap.Error(err))
 		}
+
 		return nil, e.ThrowInvalidOtpCode("Invalid OTP code")
 	}
 
 	// Success
-	otp.Invalidated = true
-	if err := this.otpRepository.Update(otp); err != nil {
+	if err := this.invalidate(otp.ID); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to invalidate otp")
 	}
 
@@ -323,10 +331,21 @@ func (this *OtpService) VerifyConsumable(otpId string, code string, appId string
 }
 
 func (this *OtpService) Invalidate(otpId string) {
-	err := this.otpRepository.Invalidate(otpId)
-
-	if err != nil {
+	if err := this.invalidate(otpId); err != nil {
 		this.logger.Error("Failed to invalidate otp", zap.Error(err), zap.String("otp_id", otpId))
 	}
+}
 
+// invalidate flips a single column. With the update dao a dedicated repository
+// method is no longer needed: `false` and `0` are written normally, so the
+// generic Update covers what Invalidate used to do by hand.
+func (this *OtpService) invalidate(otpId string) error {
+	invalidated := true
+
+	_, err := this.otpRepository.Update(
+		entity.Otp{ID: otpId},
+		dto.OtpUpdateDao{Invalidated: &invalidated},
+	)
+
+	return err
 }

@@ -10,6 +10,7 @@ import (
 	rs "auth_service/app/modules/register/services"
 	entity "auth_service/infra/entities"
 	sharedDto "auth_service/shared/models"
+	repo "auth_service/shared/repository"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -146,8 +147,8 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_AppRe
 	// service that flagged it as verified would not match and the call would fail.
 	this.mockUserRepo.On("Create", testifymock.MatchedBy(func(user entity.User) bool {
 		return !user.VerifyEmail
-	})).Return(createdUser, nil)
-	this.mockUserRepo.On("FindWhere", entity.User{ID: uint(1)}, []string{"Profile"}).Return(createdUser, nil)
+	}), []repo.Option(nil)).Return(createdUser, nil)
+	this.mockUserRepo.On("FindOne", entity.User{ID: uint(1)}, []repo.Option{{With: []string{"Profile"}}}).Return(createdUser, nil)
 	this.mockSessionService.On("CreateNew", app, createdUser, requestInfo, "WITH_PASSWORD").Return(session, nil)
 	this.mockAuthService.On("CreateAuthorizationCredentials", app, session).Return(credentials, nil)
 
@@ -234,8 +235,8 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithPassword_Succe
 	this.mockUserService.On("IsAlreadyCreated", "test@example.com", app).Return(false, nil)
 	this.mockHashService.On("HashText", "password123", testifymock.Anything).Return("hashed_password", nil)
 	this.mockProfileService.On("GetProfileByAppRole", "USER").Return(profile, nil)
-	this.mockUserRepo.On("Create", testifymock.Anything).Return(createdUser, nil)
-	this.mockUserRepo.On("FindWhere", entity.User{ID: uint(1)}, []string{"Profile"}).Return(createdUser, nil)
+	this.mockUserRepo.On("Create", testifymock.Anything, []repo.Option(nil)).Return(createdUser, nil)
+	this.mockUserRepo.On("FindOne", entity.User{ID: uint(1)}, []repo.Option{{With: []string{"Profile"}}}).Return(createdUser, nil)
 	this.mockSessionService.On("CreateNew", app, createdUser, requestInfo, "WITH_PASSWORD").Return(session, nil)
 	this.mockAuthService.On("CreateAuthorizationCredentials", app, session).Return(credentials, nil)
 

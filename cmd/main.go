@@ -22,6 +22,7 @@ import (
 	"auth_service/app/modules/utils/jwt"
 	"auth_service/infra/bootstrap"
 	"auth_service/infra/config"
+	repo "auth_service/shared/repository"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v3"
@@ -30,7 +31,10 @@ import (
 )
 
 func main() {
+	fx.New(AppBootstrap()).Run()
+}
 
+func AppBootstrap() fx.Option {
 	swaggerOptions := plugins.SwaggerPluginOptions{
 		Path: "/api/docs",
 		Info: openapi.Info{
@@ -39,12 +43,19 @@ func main() {
 			Version:     "v1.0.0"},
 	}
 
-	fx.New(
+	return fx.Options(
 		fx.Provide(config.CreateEnvConfig),
 		fx.Provide(bootstrap.NewZapLogger),
 		fx.Provide(bootstrap.NewDatabase),
 		fx.Provide(bootstrap.NewHttpServer),
 		fx.Provide(bootstrap.NewEmailManager),
+
+		fx.Provide(
+			fx.Annotate(
+				repo.NewTransactionManager,
+				fx.As(new(repo.ITransactionManager)),
+			),
+		),
 
 		fx.Provide(guards.NewAppGuard),
 		fx.Provide(guards.NewAuthGuard),
@@ -89,5 +100,8 @@ func main() {
 			})
 		}),
 		fx.Invoke(bootstrap.StartServer),
-	).Run()
+
+		// Disabling Fx Logging - too verbose
+		fx.NopLogger,
+	)
 }

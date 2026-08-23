@@ -1,14 +1,17 @@
 package repository
 
 import (
+	dto "auth_service/app/modules/core/otp/models"
 	entity "auth_service/infra/entities"
+	repo "auth_service/shared/repository"
 )
 
 type IOtpRepository interface {
-	Create(otp *entity.Otp) (*entity.Otp, error)
-	FindById(otpId string) (*entity.Otp, error)
-	FindLastOneWhere(where entity.Otp, with ...string) (*entity.Otp, error)
+	FindOne(where entity.Otp, options ...repo.Option) (*entity.Otp, error)
+	Create(otp entity.Otp, options ...repo.Option) (*entity.Otp, error)
+	Update(where entity.Otp, data dto.OtpUpdateDao, options ...repo.Option) (int64, error)
 
-	Update(otp *entity.Otp) error
-	Invalidate(otpId string) error
+	// Dedicated query: "the most recent one" is an ordering decision that
+	// belongs to the repository, not to the caller.
+	FindLast(where entity.Otp, options ...repo.Option) (*entity.Otp, error)
 }

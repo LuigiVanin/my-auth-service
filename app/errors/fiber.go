@@ -10,11 +10,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// fiberErrorCodes maps the status of a *fiber.Error onto the error code pair of
-// the service. Fiber raises these around the handlers instead of inside them -
-// a request to a path no route matches, a method a route does not register, a
-// body over BodyLimit - so they never carry an AppError and would otherwise
-// fall into the unexpected error branch of the handler and answer 500.
 var fiberErrorCodes = map[int]ErrorCodePair{
 	fiber.StatusBadRequest:          BadRequestCode,
 	fiber.StatusUnauthorized:        UnauthorizedErrorCode,
@@ -83,8 +78,6 @@ func FromBindError(bindError *fiber.BindError) *AppError {
 
 	extra := utils.JSON{"source": source}
 
-	// Field is best effort - the binder fills it only when it can tell which key
-	// of the payload broke.
 	if bindError.Field != "" {
 		extra["field"] = bindError.Field
 	}

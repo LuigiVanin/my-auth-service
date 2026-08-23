@@ -4,29 +4,28 @@ import (
 	e "auth_service/app/errors"
 	dto "auth_service/app/modules/core/app/models"
 	ar "auth_service/app/modules/core/app/repository"
-	ur "auth_service/app/modules/core/user_pool/repository"
+	ups "auth_service/app/modules/core/user_pool/services"
 	"auth_service/app/modules/utils/cipher"
-	"errors"
+	repo "auth_service/shared/repository"
 
 	entity "auth_service/infra/entities"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type AppService struct {
-	appRepository      ar.IAppRepository
-	userPoolRepository ur.IUserPoolRepository
-	cipherService      cipher.ICipherService
+	appRepository   ar.IAppRepository
+	userPoolService ups.IUserPoolService
+	cipherService   cipher.ICipherService
 }
 
 var _ IAppService = &AppService{}
 
-func NewAppService(appRepository ar.IAppRepository, userPoolRepository ur.IUserPoolRepository, cipherService cipher.ICipherService) *AppService {
+func NewAppService(appRepository ar.IAppRepository, userPoolService ups.IUserPoolService, cipherService cipher.ICipherService) *AppService {
 	return &AppService{
-		appRepository:      appRepository,
-		userPoolRepository: userPoolRepository,
-		cipherService:      cipherService,
+		appRepository:   appRepository,
+		userPoolService: userPoolService,
+		cipherService:   cipherService,
 	}
 }
 
@@ -39,26 +38,22 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 	var targetUserPoolid string
 
 	if payload.UserPool.Id != "" {
-		userPool, err := this.userPoolRepository.FindById(payload.UserPool.Id)
+		userPool, err := this.userPoolService.FindById(payload.UserPool.Id)
 
-		if err != nil || userPool == nil {
+		if err != nil {
+			return nil, e.ThrowInternalServerError("Failed to find user pool")
+		}
+
+		if userPool == nil {
 			return nil, e.ThrowNotFound("User pool not found")
 		}
 
 		targetUserPoolid = userPool.ID
 	} else if payload.UserPool.Name != "" {
-
-		userPool, err := this.userPoolRepository.Create(&entity.UsersPool{
-			Name:        payload.UserPool.Name,
-			OwnerUserId: &currentUser.ID,
-		})
+		userPool, err := this.userPoolService.Create(payload.UserPool.Name, &currentUser.ID)
 
 		if err != nil {
-			return nil, e.ThrowInternalServerError("Failed to create user pool")
-		}
-
-		if userPool == nil {
-			return nil, e.ThrowInternalServerError("Failed to create user pool")
+			return nil, err
 		}
 
 		targetUserPoolid = userPool.ID
@@ -68,7 +63,7 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 
 	secretKey := uuid.New().String()
 
-	app, err := this.appRepository.Create(&entity.App{
+	app, err := this.appRepository.Create(entity.App{
 		UsersPoolId:                targetUserPoolid,
 		Name:                       payload.Name,
 		LoginTypes:                 payload.LoginTypes,
@@ -77,8 +72,7 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		RefreshTokenExpirationTime: payload.RefreshTokenExpirationTime,
 		Private:                    payload.Private,
 		VerifyEmail:                payload.VerifyEmail,
-		// PublicKey:                  secretKey,
-		SecretKey: secretKey,
+		SecretKey:                  secretKey,
 
 		OwnerUserId: &currentUser.ID,
 		ParentAppId: &currentApp.ID,
@@ -88,38 +82,22 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		return nil, e.ThrowInternalServerError("Failed to create app")
 	}
 
-	app, err = this.appRepository.FindWhere(entity.App{
-		ID: app.ID,
-	})
-
-	if err != nil {
-		return nil, e.ThrowInternalServerError("Failed to create app")
-	}
-
-	encryptKey, err := this.cipherService.EncryptUuidIntoToken(app.ID)
-	app.PublicKey = encryptKey
+	// NOTE: the public key is derived from the id, so it can only be written
+	// after the insert.
+	publicKey, err := this.cipherService.EncryptUuidIntoToken(app.ID)
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to encrypt public key")
 	}
 
-	_, err = this.appRepository.Update(
-		app.ID,
-		*app,
-	)
-
-	if err != nil {
+	if _, err := this.appRepository.Update(
+		entity.App{ID: app.ID},
+		dto.AppUpdateDao{PublicKey: &publicKey},
+	); err != nil {
 		return nil, e.ThrowInternalServerError("Unable to update app after creation")
 	}
 
-	// app.PublicKey, err = this.cipherService.EncryptUuidIntoToken(secretKey)
-	// if err != nil {
-	// 	return nil, e.ThrowInternalServerError("Failed to encrypt public key")
-	// }
-	// app.SecretKey, err = this.cipherService.EncryptUuidIntoToken(publicKey)
-	// if err != nil {
-	// 	return nil, e.ThrowInternalServerError("Failed to encrypt secret key")
-	// }
+	app.PublicKey = publicKey
 
 	return app, nil
 }
@@ -129,47 +107,51 @@ func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App
 		return nil, e.ThrowInternalServerError("Current user or current app is required")
 	}
 
-	var queryString string
-	var args []interface{}
+	profileKey := ""
 
-	if currentUser.Profile != nil && currentUser.Profile.Key == "ADMIN" {
+	if currentUser.Profile != nil {
+		profileKey = currentUser.Profile.Key
+	}
 
-		// If there is a "OwnerUserId" on the query string it should be used if the currentUser is an ADMIN user
-		if query.OwnerUserId != 0 {
-			queryString = "owner_user_id = ?"
-			args = append(args, query.OwnerUserId)
+	search := ar.AppSearch{}
+
+	switch profileKey {
+	case "ADMIN":
+		// An ADMIN may target another owner explicitly, otherwise it sees its
+		// own apps plus everything under the current app.
+		if query != nil && query.OwnerUserId != 0 {
+			search.OwnerUserId = uint(query.OwnerUserId)
 		} else {
-			queryString = "(parent_app_id = ? OR owner_user_id = ?)"
-			args = append(args, currentApp.ID, currentUser.ID)
+			search.OwnerUserId = currentUser.ID
+			search.OrChildrenOfAppId = &currentApp.ID
 		}
 
-		// If the user is manager, the OwnerUserId field will always be equal to the current user
-	} else if currentUser.Profile != nil && currentUser.Profile.Key == "MANAGER" {
-		queryString = "owner_user_id = ?"
-		args = append(args, currentUser.ID)
+	case "MANAGER":
+		search.OwnerUserId = currentUser.ID
+
+	default:
+		// NOTE: the previous version left the condition empty here, which
+		// listed every app in the database to any authenticated user.
+		return nil, e.ThrowUnauthorizedError("User does not have permission to list apps")
 	}
 
-	if query != nil && query.Name != "" {
-		queryString += " AND name ILIKE ?"
-		args = append(args, "%"+query.Name+"%")
-	}
-
-	skip := 0
-	limit := 10 // Default limit
+	option := repo.Option{With: []string{"UsersPool"}}
 
 	if query != nil {
-		if query.Skip > 0 {
-			skip = query.Skip
-		}
-		if query.Limit > 0 {
-			limit = query.Limit
-		}
+		search.Name = query.Name
+		option = option.Paginate(query.Skip, query.Limit)
 	}
 
-	apps, count, err := this.appRepository.FindManyWhereAndCount(queryString, args, skip, limit, "UsersPool")
+	apps, err := this.appRepository.FindSearch(search, option)
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to fetch apps")
+	}
+
+	total, err := this.appRepository.FindSearchCount(search, option)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to count apps")
 	}
 
 	for idx := range apps {
@@ -179,10 +161,10 @@ func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App
 	}
 
 	return &dto.GetAppsResponse{
-		Total:  count,
+		Total:  total,
 		Amount: len(apps),
-		Skip:   skip,
-		Limit:  limit,
+		Skip:   option.Skip,
+		Limit:  option.Size(),
 		Data:   apps,
 	}, nil
 }
@@ -196,25 +178,19 @@ func (this *AppService) FindAllUserApps(userId string) ([]entity.App, error) {
 }
 
 func (this *AppService) Update(user *entity.User, app *entity.App) (*entity.App, error) {
-	app, err := this.appRepository.FindWhere(entity.App{ID: app.ID})
+	stored, err := this.appRepository.FindOne(entity.App{ID: app.ID})
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, e.ThrowNotFound("App with this Id was not found")
-		}
-
 		return nil, e.ThrowInternalServerError("Unable to query app")
 	}
 
-	if *app.OwnerUserId != user.ID && user.Profile.Key != "ADMIN" {
+	if stored == nil {
+		return nil, e.ThrowNotFound("App with this Id was not found")
+	}
+
+	if stored.OwnerUserId == nil || (*stored.OwnerUserId != user.ID && user.Profile.Key != "ADMIN") {
 		return nil, e.ThrowUnauthorizedError("User does not own the app")
 	}
 
-	_, err = this.appRepository.Update(app.ID, *app)
-
-	if err != nil {
-		return nil, e.ThrowInternalServerError("Could not update app")
-	}
-
-	return app, e.ThrowInternalServerError("Not Implemented Yet")
+	return stored, e.ThrowInternalServerError("Not Implemented Yet")
 }

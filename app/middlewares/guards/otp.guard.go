@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var _ i.IGuard = &AppGuard{}
+var _ i.IGuard = &OtpGuard{}
 
 type OtpGuard struct {
 	logger    *zap.Logger

@@ -1,117 +1,47 @@
 package repository
 
 import (
+	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
-	"errors"
+	repo "auth_service/shared/repository"
 
 	"gorm.io/gorm"
 )
 
 type UserRepository struct {
-	client *gorm.DB
+	repo.BaseRepository[entity.User, dto.UserUpdateDao]
 }
 
 var _ IUserRepository = &UserRepository{}
 
 func NewUserRepository(client *gorm.DB) *UserRepository {
 	return &UserRepository{
-		client: client,
+		BaseRepository: repo.NewBaseRepository[entity.User, dto.UserUpdateDao](client),
 	}
 }
 
-func (r *UserRepository) FindWhere(where entity.User, with ...string) (*entity.User, error) {
-	var result entity.User
+// NOTE: a user belongs to an app through the pool the app points to, so this
+// cannot be expressed by the typed `where` argument.
+const userFromAppJoin = "JOIN apps ON apps.users_pool_id = users.users_pool_id"
 
-	query := r.client.Where(where)
+func (this *UserRepository) FindFromAppId(appId string, options ...repo.Option) ([]entity.User, error) {
+	result := []entity.User{}
 
-	if len(with) > 0 {
-		for _, relation := range with {
-			query = query.Preload(relation)
-		}
-	}
+	err := this.ListQuery(options...).
+		Joins(userFromAppJoin).
+		Where("apps.id = ?", appId).
+		Find(&result).Error
 
-	err := query.First(&result).Error
-
-	return &result, err
+	return result, err
 }
 
-func (r *UserRepository) FindManyWhere(where entity.User, skip int, limit int, with ...string) (*[]entity.User, int64, error) {
-	var result []entity.User
+func (this *UserRepository) FindFromAppIdCount(appId string, options ...repo.Option) (int64, error) {
 	var count int64
 
-	whereClause := r.client.Model(&entity.User{}).Where(where)
+	err := this.Query(options...).
+		Joins(userFromAppJoin).
+		Where("apps.id = ?", appId).
+		Count(&count).Error
 
-	if len(with) > 0 {
-		for _, relation := range with {
-			whereClause = whereClause.Preload(relation)
-		}
-	}
-
-	err := whereClause.Count(&count).Error
-
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if limit > 0 {
-		whereClause = whereClause.Limit(limit)
-	}
-
-	if skip >= 0 {
-		whereClause = whereClause.Offset(skip)
-	}
-
-	err = whereClause.Find(&result).Error
-
-	return &result, count, err
-}
-
-func (r *UserRepository) Create(user entity.User) (*entity.User, error) {
-	err := r.client.Create(&user).Error
-	return &user, err
-}
-
-func (r *UserRepository) Update(user *entity.User) error {
-
-	if user.ID == 0 {
-		return errors.New("user id is required")
-	}
-
-	return r.client.Save(user).Error
-}
-
-func (this *UserRepository) FindFromAppId(id string, skip int, limit int, with ...string) ([]entity.User, int64, error) {
-	var users []entity.User
-	var count int64
-
-	query := this.client.Model(&entity.User{}).
-		Joins("JOIN apps ON apps.users_pool_id = users.users_pool_id").
-		Where("apps.id = ?", id)
-
-	err := query.Count(&count).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Apply preloads
-	if len(with) > 0 {
-		for _, relation := range with {
-			query = query.Preload(relation)
-		}
-	}
-
-	// Apply pagination
-	if limit > 0 {
-		query = query.Limit(limit)
-	}
-	if skip >= 0 {
-		query = query.Offset(skip)
-	}
-
-	err = query.Find(&users).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return users, count, nil
+	return count, err
 }

@@ -6,7 +6,7 @@ import (
 
 // The permission algebra is not here: it is pure computation over two documents
 // and lives in shared/permissions, so a guard or an entity can reach it without a
-// dependency. See steering/profiles.md.
+// dependency. See docs/steering/modules/profiles.md.
 type IProfileService interface {
 	// FindById is how a profile is referenced everywhere a caller names one.
 	// Returns nil, nil when it does not exist.

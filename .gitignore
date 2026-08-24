@@ -17,6 +17,5 @@ migrate
 auth_service
 
 cmd/sandbox/
-CLAUDE.md
 .claude/
 ./docs/

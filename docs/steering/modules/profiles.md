@@ -12,6 +12,10 @@ different roles, and which one a row plays is decided by what points at it:
 `users.profile_id` does not exist. A user has no permissions of its own: it has
 permissions *in an organization*, through its participation.
 
+Every profile is global today: seeded, visible to everyone. Scoping a profile to a
+single organization, and the endpoint that creates one, are planned in
+[docs/specs/2026-08-23-scoped-profiles.md](../docs/specs/2026-08-23-scoped-profiles.md).
+
 ## The hierarchy
 
 ```
@@ -98,13 +102,40 @@ it is worth asking why.
 
 ### Authoring a document — clamp
 
-**There is no endpoint that creates a profile yet.** When one lands, it must not
-refuse: it must clamp. The permissions written are
-`permissions.Resolve(granterCeiling, requested)`, so a caller can never author a
-document that exceeds what its own organization holds, whatever it sends.
+**There is no endpoint that creates a profile yet.** When one lands it must not
+refuse: it must clamp, and it must clamp on **create and update alike**. A clamp
+only on create is no clamp at all — you author a bounded document and then widen it
+with a `PUT`.
 
-The distinction is: picking a named thing that does not fit is a mistake worth
-reporting; authoring a document is a request to be bounded.
+What gets written is the resolved document, folding the whole chain above the
+caller in a single call:
+
+```go
+permissions.Resolve(
+    organization.Profile.Permissions,   // the ceiling of the organization
+    participant.Profile.Permissions,    // what the caller holds in it
+    payload.Permissions,                // what it is asking for
+)
+```
+
+The participant layer is not optional. Clamping only against the ceiling would let
+a member author a profile wider than the member itself holds.
+
+Note this cannot be written as `Resolve(Resolve(a, b), c)`: `Resolve` consumes
+`json.RawMessage` and returns `*Resolved`. Passing the three documents to one call
+is both the correct spelling and the same result.
+
+On update, a nil `Permissions` in the payload touches nothing and needs no clamp. A
+filled one is clamped against the ceiling **as it is now**, which means an update
+can narrow a row that was created under a wider ceiling. That is intended — nothing
+may hold more than its ceiling grants — and it is why the response returns the
+profile that was actually written.
+
+The distinction against the section above is: picking a named thing that does not
+fit is a mistake worth reporting; authoring a document is a request to be bounded.
+
+Planned in
+[docs/specs/2026-08-23-scoped-profiles.md](../docs/specs/2026-08-23-scoped-profiles.md).
 
 ## What is exposed
 
@@ -121,6 +152,11 @@ A raw profile document is misleading on its own, so responses carry resolved one
 
 Listings do not resolve. `GET /core/organizations` and `GET /core/apps` report no
 permissions at all.
+
+A profile listing will be the deliberate exception, because there the profile *is*
+the subject rather than a layer under something, and whoever is choosing which one
+to apply has to see the document as it is. Planned in
+[docs/specs/2026-08-23-scoped-profiles.md](../docs/specs/2026-08-23-scoped-profiles.md).
 
 ## The seeded profiles
 

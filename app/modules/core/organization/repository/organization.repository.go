@@ -38,7 +38,7 @@ func (this *OrganizationRepository) FindByParticipantUserId(
 }
 
 // NOTE: no Distinct. A count over a join normally over counts, which is the trap
-// steering/repository-pattern.md warns about. It is safe only because of the
+// docs/steering/repository-pattern.md warns about. It is safe only because of the
 // unique index on participants (organization_id, user_id).
 func (this *OrganizationRepository) FindByParticipantUserIdCount(
 	userId uint,

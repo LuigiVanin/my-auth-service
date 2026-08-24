@@ -22,7 +22,7 @@ Resolving is what makes the model work: a participant of
 collapses onto whatever its organization may do, and never onto more.
 
 Row level visibility is NOT decided here. This answers "may this profile call GET
-/core/apps", not "which apps may this user see". See steering/service-layer.md.
+/core/apps", not "which apps may this user see". See docs/steering/service-layer.md.
 */
 type PermissionsGuard struct {
 	logger *zap.Logger

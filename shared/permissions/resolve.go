@@ -45,7 +45,7 @@ func Resolve(documents ...json.RawMessage) (*Resolved, error) {
 // of an organization has to pass it.
 //
 // Where a caller authors a document rather than picking one, clamp it with Resolve
-// instead of refusing it - see steering/profiles.md.
+// instead of refusing it - see docs/steering/modules/profiles.md.
 func IsSubsetOf(child json.RawMessage, parent json.RawMessage) (bool, error) {
 	childDoc, err := Parse(child)
 

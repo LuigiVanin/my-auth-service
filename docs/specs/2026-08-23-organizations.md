@@ -61,7 +61,7 @@ Quatro regras que o código garante e que nada garantia antes:
 | `name`, `description` | `description` tem default `''` |
 | `metadata` jsonb | |
 
-`Profile` é `json:"-"` — o teto nunca é serializado. Ver `steering/profiles.md`.
+`Profile` é `json:"-"` — o teto nunca é serializado. Ver `docs/steering/modules/profiles.md`.
 
 **`participants`** — `infra/entities/participant.entity.go`
 
@@ -95,7 +95,7 @@ do pool seedado vive dentro dele (invariante 4).
 | `apps.role` + enum `app_role` | Sem consumidor. Único leitor era `GetProfileByAppRole`. Mantidos como metadado descritivo, com comentário na entidade |
 | `apps.parent_app_id` | Ainda gravado em `CreateWithUserPool`, nunca lido. O escopo virou `organization_id` |
 | `apps.owner_user_id`, `users_pool.owner_user_id` | Ainda gravados, não usados em nenhum filtro |
-| `profiles.parent_profile_id` | Nunca foi lido pelo código; só o seed preenche. Já era decorativo antes |
+| `profiles.parent_profile_id` | Nunca foi lido pelo código; só o seed preenche. **Remoção agendada** em [2026-08-23-scoped-profiles.md](2026-08-23-scoped-profiles.md) — um campo que parece significativo e não é vira armadilha justamente na feature de profiles escopados |
 
 ---
 
@@ -128,7 +128,7 @@ propósito: um warning no log não seria notado.
 
 ## Permissões
 
-Documentado por inteiro em **[steering/profiles.md](../../steering/profiles.md)**.
+Documentado por inteiro em **[docs/steering/modules/profiles.md](../../docs/steering/modules/profiles.md)**.
 Resumo do que existe:
 
 - `shared/permissions` — pacote sem dependências com `Document`, `Resolved`,
@@ -184,7 +184,7 @@ mesmo com o repositório de participante.
 O motivo é o `repo.Option`: passar a escrita pelo service do outro módulo obrigaria
 a atravessar a option por uma fronteira de service — ou, pior, a perder a transação
 silenciosamente. Regra registrada em
-[steering/service-layer.md](../../steering/service-layer.md).
+[docs/steering/service-layer.md](../../docs/steering/service-layer.md).
 
 `IOrganizationService.Create`, `SetOwner` e `IParticipantService.Create` continuam
 existindo mas **não são chamados por ninguém hoje**, e já não recebem
@@ -437,7 +437,7 @@ asserções `var _ I... = &Mock...{}` são o contrato em tempo de compilação.
    restrições concorrentes.
 3. **Sem endpoint de criação/edição de profile.** As cinco chaves seedadas são o
    universo. Quando o endpoint existir, ele deve **clampar** com `Resolve`, não
-   recusar — ver `steering/profiles.md`.
+   recusar — ver `docs/steering/modules/profiles.md`.
 4. **`AuthorizeResponse` sem profile**, por ser o contrato interno do `AuthGuard`.
 5. **`GetUsersAppResponse` não tem campo `Limit`**, ao contrário dos outros listings.
    Pré-existente.
@@ -447,12 +447,25 @@ asserções `var _ I... = &Mock...{}` são o contrato em tempo de compilação.
 
 ---
 
-## Próxima etapa
+## Próximas etapas
+
+Duas frentes, uma já planejada:
+
+**Profiles escopados por organização** —
+[2026-08-23-scoped-profiles.md](2026-08-23-scoped-profiles.md), plano completo com
+as decisões fechadas. Adiciona `profiles.organization_id`, o endpoint de criação com
+clamp nos dois verbos, e fecha o escopo de visibilidade. Também remove
+`profiles.parent_profile_id`, hoje código morto.
+
+**Convite de participante**
 
 Convite de participante — não é "adicionar usuário", precisa de aceite por email:
 
 - `POST /core/organizations/:id/participants/invite`
 - `PUT /core/organizations/:id/invite/resolve?answer=accept|decline`
+
+Depende de profiles escopados para valer a pena: sem profile próprio, uma
+organização só tem `MEMBER_PROFILE` para oferecer a quem convida.
 
 Puxa junto: entidade de convite com expiração, integração com o `EmailManager`, e
 como um usuário criado por convite define senha.

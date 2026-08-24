@@ -6,7 +6,7 @@
 // one, the services clamp what they write against one. Making it a service method
 // would force a dependency for what is pure computation over two JSON values.
 //
-// See steering/profiles.md.
+// See steering/modules/profiles.md.
 package permissions
 
 import "encoding/json"

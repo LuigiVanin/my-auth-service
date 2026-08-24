@@ -2,6 +2,7 @@ package models
 
 import (
 	entity "auth_service/infra/entities"
+	"auth_service/shared/permissions"
 	"encoding/json"
 )
 
@@ -28,4 +29,25 @@ type GetUsersAppResponse struct {
 	Amount int           `json:"amount"`
 	Skip   int           `json:"skip"`
 	Data   []entity.User `json:"data"`
+}
+
+// UserResponse is the authenticated user as login, register and refresh answer it.
+//
+// Profile is what the user holds in the organization it is currently scoped to: the
+// profile of its participation there. It sits here and not on entity.User because
+// the participations of a user are a list, and picking the one that matches the
+// current organization is a transport concern.
+type UserResponse struct {
+	entity.User
+	Profile *ProfileResponse `json:"profile,omitempty"`
+}
+
+// ProfileResponse is a profile whose permissions have already been resolved
+// against every ceiling above it, so a caller never has to stack documents itself.
+//
+// The embedded raw Permissions is shadowed on purpose: a participant profile read
+// on its own overstates whenever the ceiling above it is narrower.
+type ProfileResponse struct {
+	entity.Profile
+	Permissions *permissions.Resolved `json:"permissions"`
 }

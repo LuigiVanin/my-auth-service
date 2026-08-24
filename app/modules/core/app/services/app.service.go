@@ -29,16 +29,26 @@ func NewAppService(appRepository ar.IAppRepository, userPoolService ups.IUserPoo
 	}
 }
 
-func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp *entity.App, payload *dto.CreateAppPayload) (*entity.App, error) {
+func (this *AppService) CreateWithUserPool(
+	currentUser *entity.User,
+	currentApp *entity.App,
+	currentOrganization *entity.Organization,
+	payload *dto.CreateAppPayload,
+) (*entity.App, error) {
 
-	if currentUser == nil || currentApp == nil {
-		return nil, e.ThrowInternalServerError("Current user or current app is required")
+	if currentUser == nil || currentApp == nil || currentOrganization == nil {
+		return nil, e.ThrowInternalServerError("Current user, app and organization are required")
 	}
 
 	var targetUserPoolid string
 
 	if payload.UserPool.Id != "" {
-		userPool, err := this.userPoolService.FindById(payload.UserPool.Id)
+		// NOTE: scoped. Unscoped, an id from the payload let a caller attach its app
+		// to any pool in the database, including pools of other organizations.
+		userPool, err := this.userPoolService.FindByIdInOrganization(
+			payload.UserPool.Id,
+			currentOrganization.ID,
+		)
 
 		if err != nil {
 			return nil, e.ThrowInternalServerError("Failed to find user pool")
@@ -50,7 +60,12 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 
 		targetUserPoolid = userPool.ID
 	} else if payload.UserPool.Name != "" {
-		userPool, err := this.userPoolService.Create(payload.UserPool.Name, &currentUser.ID)
+		userPool, err := this.userPoolService.Create(ups.CreateUserPoolData{
+			Name:             payload.UserPool.Name,
+			OwnerUserId:      &currentUser.ID,
+			OrganizationId:   &currentOrganization.ID,
+			DefaultProfileId: payload.UserPool.DefaultProfileId,
+		}, currentOrganization)
 
 		if err != nil {
 			return nil, err
@@ -74,8 +89,9 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 		VerifyEmail:                payload.VerifyEmail,
 		SecretKey:                  secretKey,
 
-		OwnerUserId: &currentUser.ID,
-		ParentAppId: &currentApp.ID,
+		OwnerUserId:    &currentUser.ID,
+		OrganizationId: &currentOrganization.ID,
+		ParentAppId:    &currentApp.ID,
 	})
 
 	if err != nil {
@@ -102,38 +118,20 @@ func (this *AppService) CreateWithUserPool(currentUser *entity.User, currentApp 
 	return app, nil
 }
 
-func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App, query *dto.GetAppsQuery) (*dto.GetAppsResponse, error) {
-	if currentUser == nil || currentApp == nil {
-		return nil, e.ThrowInternalServerError("Current user or current app is required")
+// NOTE: no branch per profile any more. It used to be "apps I own", plus the
+// children of the current app for an ADMIN, which approximated ownership before
+// organizations existed. An ADMIN now looks elsewhere by switching organization.
+func (this *AppService) FindAll(
+	currentUser *entity.User,
+	currentApp *entity.App,
+	currentOrganization *entity.Organization,
+	query *dto.GetAppsQuery,
+) (*dto.GetAppsResponse, error) {
+	if currentUser == nil || currentApp == nil || currentOrganization == nil {
+		return nil, e.ThrowInternalServerError("Current user, app and organization are required")
 	}
 
-	profileKey := ""
-
-	if currentUser.Profile != nil {
-		profileKey = currentUser.Profile.Key
-	}
-
-	search := ar.AppSearch{}
-
-	switch profileKey {
-	case "ADMIN":
-		// An ADMIN may target another owner explicitly, otherwise it sees its
-		// own apps plus everything under the current app.
-		if query != nil && query.OwnerUserId != 0 {
-			search.OwnerUserId = uint(query.OwnerUserId)
-		} else {
-			search.OwnerUserId = currentUser.ID
-			search.OrChildrenOfAppId = &currentApp.ID
-		}
-
-	case "MANAGER":
-		search.OwnerUserId = currentUser.ID
-
-	default:
-		// NOTE: the previous version left the condition empty here, which
-		// listed every app in the database to any authenticated user.
-		return nil, e.ThrowUnauthorizedError("User does not have permission to list apps")
-	}
+	search := ar.AppSearch{OrganizationId: currentOrganization.ID}
 
 	option := repo.Option{With: []string{"UsersPool"}}
 
@@ -169,15 +167,23 @@ func (this *AppService) FindAll(currentUser *entity.User, currentApp *entity.App
 	}, nil
 }
 
-func (this *AppService) FindById(id string) (*entity.App, error) {
+func (this *AppService) FindById(id string, currentOrganization *entity.Organization) (*entity.App, error) {
 	return nil, e.ThrowInternalServerError("Not Implemented Yet")
 }
 
-func (this *AppService) FindAllUserApps(userId string) ([]entity.App, error) {
+func (this *AppService) FindAllUserApps(userId string, currentOrganization *entity.Organization) ([]entity.App, error) {
 	return []entity.App{}, e.ThrowInternalServerError("Not Implemented Yet")
 }
 
-func (this *AppService) Update(user *entity.User, app *entity.App) (*entity.App, error) {
+func (this *AppService) Update(
+	user *entity.User,
+	app *entity.App,
+	currentOrganization *entity.Organization,
+) (*entity.App, error) {
+	if currentOrganization == nil {
+		return nil, e.ThrowInternalServerError("Current organization is required")
+	}
+
 	stored, err := this.appRepository.FindOne(entity.App{ID: app.ID})
 
 	if err != nil {
@@ -188,8 +194,8 @@ func (this *AppService) Update(user *entity.User, app *entity.App) (*entity.App,
 		return nil, e.ThrowNotFound("App with this Id was not found")
 	}
 
-	if stored.OwnerUserId == nil || (*stored.OwnerUserId != user.ID && user.Profile.Key != "ADMIN") {
-		return nil, e.ThrowUnauthorizedError("User does not own the app")
+	if stored.OrganizationId == nil || *stored.OrganizationId != currentOrganization.ID {
+		return nil, e.ThrowUnauthorizedError("The app does not belong to the current organization")
 	}
 
 	return stored, e.ThrowInternalServerError("Not Implemented Yet")

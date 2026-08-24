@@ -135,6 +135,16 @@ func ThrowPermissionDeniedError(detail string, extra ...utils.JSON) *AppError {
 	)
 }
 
+func ThrowNotAParticipant(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
+		"Permission Denied",
+		detail,
+		NotAParticipantErrorCode,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/403",
+		extra...,
+	)
+}
+
 func ThrowTokenExpiredError(detail string, extra ...utils.JSON) *AppError {
 	return NewAppError(
 		"Token Expired",

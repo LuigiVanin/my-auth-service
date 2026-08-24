@@ -1,9 +1,7 @@
 package services
 
 import (
-	"encoding/json"
-	"math"
-
+	e "auth_service/app/errors"
 	"auth_service/app/modules/core/profile/repository"
 	entity "auth_service/infra/entities"
 
@@ -24,29 +22,24 @@ func NewProfileService(profileRepository repository.IProfileRepository, logger *
 	}
 }
 
-func (s *ProfileService) GetProfileByAppRole(role string) (*entity.Profile, error) {
-	roleProfiles, err := s.profileRepository.FindByAppRole(role)
+func (this *ProfileService) FindById(id string) (*entity.Profile, error) {
+	profile, err := this.profileRepository.FindOne(entity.Profile{ID: id})
+
 	if err != nil {
-		return nil, err
+		this.logger.Error("Failed to look up a profile by id", zap.String("id", id), zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to find profile")
 	}
 
-	var profile entity.Profile
-	maxPriority := math.MaxInt
+	return profile, nil
+}
 
-	for _, rp := range roleProfiles {
-		permissions := make(map[string]any)
+func (this *ProfileService) FindByKey(key string) (*entity.Profile, error) {
+	profile, err := this.profileRepository.FindByKey(key)
 
-		err := json.Unmarshal(rp.Permission, &permissions)
-		if err != nil {
-			s.logger.Error("Failed to unmarshal permissions", zap.Error(err))
-			continue
-		}
-
-		if canRegister, ok := permissions["register"].(bool); ok && canRegister && rp.Priority < maxPriority {
-			maxPriority = rp.Priority
-			profile = rp.Profile
-		}
+	if err != nil {
+		this.logger.Error("Failed to look up a profile by key", zap.String("key", key), zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to find profile")
 	}
 
-	return &profile, nil
+	return profile, nil
 }

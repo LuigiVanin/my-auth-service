@@ -1,0 +1,7 @@
+- Testar via interface implementação de organização
+- Garantir Profiles intransigentes
+- Criar profiles de organização e globois
+- Separar rota de users/me e users/uuid , alguns users podem buscar e editar a si mesmo e outros podem modificar a todos os outros que tem visibilidade.
+- Rota de verificação de email
+- Fluxo de 2fa (Não prioritário)
+- Visibilidade em cascata - possibilidade de ver todos os itens associados abaixo da organização em forma de cascata

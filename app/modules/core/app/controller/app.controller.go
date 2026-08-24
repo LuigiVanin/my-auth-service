@@ -25,11 +25,12 @@ type getAppResponse struct {
 }
 
 type AppController struct {
-	appService       services.IAppService
-	userService      us.IUserService
-	authGuard        *guards.AuthGuard
-	permissionsGuard *guards.PermissionsGuard
-	logger           *zap.Logger
+	appService        services.IAppService
+	userService       us.IUserService
+	authGuard         *guards.AuthGuard
+	organizationGuard *guards.OrganizationGuard
+	permissionsGuard  *guards.PermissionsGuard
+	logger            *zap.Logger
 
 	swagger *openapi.Builder
 }
@@ -38,6 +39,7 @@ var _ interfaces.IController = &AppController{}
 
 func NewAppController(
 	authGuard *guards.AuthGuard,
+	organizationGuard *guards.OrganizationGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	appService services.IAppService,
 	userService us.IUserService,
@@ -45,12 +47,13 @@ func NewAppController(
 	builder *openapi.Builder,
 ) *AppController {
 	return &AppController{
-		authGuard:        authGuard,
-		appService:       appService,
-		userService:      userService,
-		permissionsGuard: permissionsGuard,
-		logger:           logger,
-		swagger:          builder,
+		authGuard:         authGuard,
+		organizationGuard: organizationGuard,
+		appService:        appService,
+		userService:       userService,
+		permissionsGuard:  permissionsGuard,
+		logger:            logger,
+		swagger:           builder,
 	}
 }
 
@@ -63,8 +66,9 @@ func (this *AppController) CreateApp(ctx fiber.Ctx) error {
 
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentApp := ctx.Locals("app").(*entity.App)
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
 
-	app, err := this.appService.CreateWithUserPool(currentUser, currentApp, &payload)
+	app, err := this.appService.CreateWithUserPool(currentUser, currentApp, currentOrganization, &payload)
 
 	if err != nil {
 		return err
@@ -76,13 +80,14 @@ func (this *AppController) CreateApp(ctx fiber.Ctx) error {
 func (this *AppController) GetApps(ctx fiber.Ctx) error {
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentApp := ctx.Locals("app").(*entity.App)
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
 
 	var query dto.GetAppsQuery
 	if err := ctx.Bind().Query(&query); err != nil {
 		return e.ThrowBadRequest("Invalid query parameters")
 	}
 
-	apps, err := this.appService.FindAll(currentUser, currentApp, &query)
+	apps, err := this.appService.FindAll(currentUser, currentApp, currentOrganization, &query)
 
 	if err != nil {
 		return err
@@ -94,6 +99,7 @@ func (this *AppController) GetApps(ctx fiber.Ctx) error {
 func (this *AppController) GetUsersFromApp(ctx fiber.Ctx) error {
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentApp := ctx.Locals("app").(*entity.App)
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
 
 	targetAppId := ctx.Params("id")
 
@@ -102,7 +108,7 @@ func (this *AppController) GetUsersFromApp(ctx fiber.Ctx) error {
 		return e.ThrowBadRequest("Invalid query parameters")
 	}
 
-	response, err := this.userService.FindAllUsersFromApp(targetAppId, currentUser, currentApp, &query)
+	response, err := this.userService.FindAllUsersFromApp(targetAppId, currentUser, currentApp, currentOrganization, &query)
 
 	if err != nil {
 		return err
@@ -126,8 +132,9 @@ func (this *AppController) UpdateApp(ctx fiber.Ctx) error {
 
 	currentApp := ctx.Locals("app").(*entity.App)
 	currentUser := ctx.Locals("user").(*entity.User)
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
 
-	app, err := this.appService.Update(currentUser, currentApp)
+	app, err := this.appService.Update(currentUser, currentApp, currentOrganization)
 
 	if err != nil {
 		return err
@@ -160,6 +167,7 @@ func (this *AppController) Register(server *fiber.App) {
 		"/apps",
 		middleware.BodyValidator[dto.CreateAppPayload](),
 		this.authGuard.Act,
+		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.CreateApp,
 	)
@@ -167,7 +175,7 @@ func (this *AppController) Register(server *fiber.App) {
 	this.swagger.Add(
 		docs.PermissionedRoute(this.swagger, "GET", "/core/apps", openapi.Options{
 			Summary:     "List applications",
-			Description: "Lists the applications owned by the authenticated user. An ADMIN also sees the children of the application the request is made with, and can list the applications of another owner through `owner_user_id`.",
+			Description: "Lists the applications of the organization the authenticated user is currently in. The scope is the same for every profile - to look at another organization, switch to it with `PUT /core/organizations/switch`.",
 			Tags:        []string{docs.TagApps},
 		}).
 			AddQueryParam("skip", openapi.Integer, openapi.Options{
@@ -179,14 +187,11 @@ func (this *AppController) Register(server *fiber.App) {
 			AddQueryParam("name", openapi.String, openapi.Options{
 				Description: "Filters by application name, case insensitive",
 			}).
-			AddQueryParam("owner_user_id", openapi.Integer, openapi.Options{
-				Description: "Filters by owner - ADMIN profiles only",
-			}).
 			AddResponse(fiber.StatusOK, dto.GetAppsResponse{}, openapi.Options{
 				Description: "Page of applications - the keys of each application are omitted from the listing",
 			}),
 	)
-	group.Get("/apps", this.authGuard.Act, this.permissionsGuard.Act, this.GetApps)
+	group.Get("/apps", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetApps)
 
 	this.swagger.Add(
 		docs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}", openapi.Options{
@@ -202,7 +207,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Description: "Placeholder answer",
 			}),
 	)
-	group.Get("/apps/:id", this.authGuard.Act, this.permissionsGuard.Act, this.GetApp)
+	group.Get("/apps/:id", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetApp)
 
 	this.swagger.Add(
 		docs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}/users", openapi.Options{
@@ -230,7 +235,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Description: "Page of users",
 			}),
 	)
-	group.Get("/apps/:id/users", this.authGuard.Act, this.permissionsGuard.Act, this.GetUsersFromApp)
+	group.Get("/apps/:id/users", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetUsersFromApp)
 
 	this.swagger.Add(
 		docs.Validated(
@@ -252,5 +257,5 @@ func (this *AppController) Register(server *fiber.App) {
 				Description: "The updated application",
 			}),
 	)
-	group.Put("/apps/:id", this.authGuard.Act, this.permissionsGuard.Act, this.UpdateApp)
+	group.Put("/apps/:id", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.UpdateApp)
 }

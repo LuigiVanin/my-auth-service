@@ -43,6 +43,13 @@ var (
 		Second: fiber.StatusForbidden,
 	}
 
+	// Distinct from PERMISSION_DENIED because the client reacts differently: the
+	// scope is the problem, not the profile, so the fix is to switch organization.
+	NotAParticipantErrorCode ErrorCodePair = ErrorCodePair{
+		First:  "NOT_A_PARTICIPANT",
+		Second: fiber.StatusForbidden,
+	}
+
 	TokenExpiredErrorCode ErrorCodePair = ErrorCodePair{
 		First:  "TOKEN_EXPIRED",
 		Second: fiber.StatusUnauthorized,

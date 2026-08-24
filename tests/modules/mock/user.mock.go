@@ -94,8 +94,8 @@ func (this *MockUserService) Update(where entity.User, data dto.UserUpdateDao) (
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (this *MockUserService) FindAllUsersFromApp(targetAppId string, currentUser *entity.User, targetApp *entity.App, query *dto.GetUsersAppQuery) (*dto.GetUsersAppResponse, error) {
-	args := this.Called(targetAppId, currentUser, targetApp, query)
+func (this *MockUserService) FindAllUsersFromApp(targetAppId string, currentUser *entity.User, targetApp *entity.App, currentOrganization *entity.Organization, query *dto.GetUsersAppQuery) (*dto.GetUsersAppResponse, error) {
+	args := this.Called(targetAppId, currentUser, targetApp, currentOrganization, query)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

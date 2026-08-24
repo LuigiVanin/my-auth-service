@@ -6,22 +6,16 @@ import (
 	repo "auth_service/shared/repository"
 )
 
-// AppSearch describes the set of apps a listing is allowed to see.
+// AppSearch describes the set of apps a listing is allowed to see, so the SQL
+// stays in the repository while the service still says what it wants.
 //
-// It exists so the SQL stays in the repository while the service still says
-// what it wants. OwnerUserId is not a pointer on purpose: the previous version
-// assembled the condition as a raw string in the service and produced an empty
-// WHERE for users that were neither ADMIN nor MANAGER, which listed every app
-// in the database.
+// OrganizationId is not a pointer on purpose: an earlier version assembled the
+// condition in the service and produced an empty WHERE for anyone who was neither
+// ADMIN nor MANAGER, which listed every app in the database.
 type AppSearch struct {
-	// OwnerUserId restricts the listing to apps owned by this user.
-	OwnerUserId uint
+	OrganizationId string
 
-	// OrChildrenOfAppId widens the listing to also include the apps under this
-	// app, which is the ADMIN case: "apps I own, plus apps under my app".
-	OrChildrenOfAppId *string
-
-	// Name is an optional case insensitive partial match.
+	// Optional case insensitive partial match.
 	Name string
 }
 

@@ -50,49 +50,34 @@ func (this *UserService) Update(where entity.User, data dto.UserUpdateDao) (int6
 	return this.userRepository.Update(where, data)
 }
 
+// NOTE: visibility used to branch on the profile of the caller - ADMIN saw
+// everything, MANAGER saw the apps it owned. It is now one question, the same one
+// everywhere: does the app belong to the current organization.
 func (this *UserService) FindAllUsersFromApp(
 	targetAppId string,
 	currentUser *entity.User,
 	currentApp *entity.App,
+	currentOrganization *entity.Organization,
 	query *dto.GetUsersAppQuery,
 ) (*dto.GetUsersAppResponse, error) {
 
-	if currentUser == nil || currentApp == nil {
-		return nil, e.ThrowInternalServerError("Current user or target app is required")
+	if currentUser == nil || currentApp == nil || currentOrganization == nil {
+		return nil, e.ThrowInternalServerError("Current user, app and organization are required")
 	}
 
-	canAccess := false
+	app, err := this.appRepository.FindOne(entity.App{ID: targetAppId})
 
-	if currentUser.Profile != nil && currentUser.Profile.Key == "ADMIN" {
-		canAccess = true
-
-	} else if currentUser.Profile != nil && currentUser.Profile.Key == "MANAGER" {
-		app, err := this.appRepository.FindOne(
-			entity.App{ID: targetAppId},
-			repo.Option{With: []string{"UsersPool"}},
-		)
-
-		if err != nil || app == nil {
-			return nil, e.ThrowBadRequest("The app doesnt exist")
-		}
-
-		var appOwnerUserId uint = 0
-
-		if app.OwnerUserId != nil {
-			appOwnerUserId = *app.OwnerUserId
-		}
-
-		if appOwnerUserId == currentUser.ID {
-			canAccess = true
-		}
-
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to find the app")
 	}
 
-	if !canAccess {
-		return nil, e.ThrowUnauthorizedError("User does not have permission to access users from this app")
+	// Folded together: telling "does not exist" apart from "belongs to someone
+	// else" turns this into a probe for app ids.
+	if app == nil || app.OrganizationId == nil || *app.OrganizationId != currentOrganization.ID {
+		return nil, e.ThrowNotFound("App not found in the current organization")
 	}
 
-	option := repo.Option{With: []string{"Profile"}}
+	option := repo.Option{With: []string{"CurrentOrganization", "CurrentOrganization.Profile"}}
 
 	if query != nil {
 		option = option.Paginate(query.Skip, query.Limit)

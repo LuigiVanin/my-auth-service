@@ -6,7 +6,8 @@ import "encoding/json"
 // Every field is a pointer: nil means "do not touch", a filled pointer is
 // written as is, including false / 0 / "".
 type UserUpdateDao struct {
-	ProfileId        *string
+	CurrentOrganizationId *string
+
 	Name             *string
 	Email            *string
 	Phone            *string

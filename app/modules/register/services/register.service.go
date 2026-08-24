@@ -7,13 +7,16 @@ import (
 	"strings"
 
 	as "auth_service/app/modules/authorize/services"
-	odto "auth_service/app/modules/core/otp/models"
+	odto "auth_service/app/modules/core/organization/models"
+	orep "auth_service/app/modules/core/organization/repository"
+	otpdto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
-	"auth_service/app/modules/core/profile/services"
+	prep "auth_service/app/modules/core/participant/repository"
+	ps "auth_service/app/modules/core/participant/services"
 	ss "auth_service/app/modules/core/session/services"
+	udto "auth_service/app/modules/core/user/models"
 	ur "auth_service/app/modules/core/user/repository"
 	us "auth_service/app/modules/core/user/services"
-	upr "auth_service/app/modules/core/user_pool/repository"
 	dto "auth_service/app/modules/register/models"
 	hs "auth_service/app/modules/utils/hash/services"
 	repo "auth_service/shared/repository"
@@ -30,41 +33,160 @@ import (
 
 var _ IRegisterService = &RegisterService{}
 
+// NOTE: the three writes of a provisioning go straight to the repositories, not
+// through the organization and participant services. Those services wrap the same
+// calls one to one, and the unit of work needs every one of them on the same
+// repo.Option - the layer that owns it. The services stay for the routes that will
+// perform these mutations on their own.
 type RegisterService struct {
-	userPoolRepository upr.IUserPoolRepository
-	userRepository     ur.IUserRepository
-	userService        us.IUserService
-	logger             *zap.Logger
-	hashService        hs.IHashService
-	profileService     services.IProfileService
-	otpService         os.IOtpService
-	sessionService     ss.ISessionService
-	authorizeService   as.IAuthorizeService
+	userRepository         ur.IUserRepository
+	organizationRepository orep.IOrganizationRepository
+	participantRepository  prep.IParticipantRepository
+	userService            us.IUserService
+	participantService     ps.IParticipantService
+	logger                 *zap.Logger
+	hashService            hs.IHashService
+	otpService             os.IOtpService
+	sessionService         ss.ISessionService
+	authorizeService       as.IAuthorizeService
+	txManager              repo.ITransactionManager
 }
 
 func NewRegisterService(
-	userPoolRepository upr.IUserPoolRepository,
 	userRepository ur.IUserRepository,
+	organizationRepository orep.IOrganizationRepository,
+	participantRepository prep.IParticipantRepository,
 	userService us.IUserService,
-	profileService services.IProfileService,
+	participantService ps.IParticipantService,
 	logger *zap.Logger,
 	hashService hs.IHashService,
 	otpService os.IOtpService,
 	sessionService ss.ISessionService,
 	authorizeService as.IAuthorizeService,
+	txManager repo.ITransactionManager,
 ) *RegisterService {
 
 	return &RegisterService{
-		userPoolRepository: userPoolRepository,
-		userRepository:     userRepository,
-		userService:        userService,
-		profileService:     profileService,
-		logger:             logger,
-		hashService:        hashService,
-		otpService:         otpService,
-		sessionService:     sessionService,
-		authorizeService:   authorizeService,
+		userRepository:         userRepository,
+		organizationRepository: organizationRepository,
+		participantRepository:  participantRepository,
+		userService:            userService,
+		participantService:     participantService,
+		logger:                 logger,
+		hashService:            hashService,
+		otpService:             otpService,
+		sessionService:         sessionService,
+		authorizeService:       authorizeService,
+		txManager:              txManager,
 	}
+}
+
+// ProvisionUser writes a user together with the organization it owns. The order is
+// the only one the cycle between the two tables allows: organization with no owner,
+// user pointing at it, owner stamped, participation created.
+//
+// NOTE: the session stays out of this transaction and is created by the caller.
+// SessionService.CreateNew takes no repo.Option and already fires the invalidation
+// of the other sessions in a loose goroutine, so it cannot join a unit of work.
+func (this *RegisterService) ProvisionUser(
+	app *entity.App,
+	user entity.User,
+) (*ProvisionedUser, error) {
+	if app.UsersPool.DefaultProfileId == "" {
+		return nil, e.ThrowInternalServerError("The users pool of this app has no default profile")
+	}
+
+	tx, err := this.txManager.Tx()
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to open transaction")
+	}
+
+	defer tx.Rollback()
+
+	option := repo.Option{Tx: tx}
+
+	organization, err := this.organizationRepository.Create(entity.Organization{
+		UsersPoolId: app.UsersPool.ID,
+		ProfileId:   app.UsersPool.DefaultProfileId,
+		Name:        fmt.Sprintf("%s's organization", user.Name),
+	}, option)
+
+	if err != nil {
+		this.logger.Error("Failed to create organization", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to create organization")
+	}
+
+	user.UsersPoolId = app.UsersPool.ID
+	user.CurrentOrganizationId = organization.ID
+
+	created, err := this.userRepository.Create(user, option)
+
+	if err != nil {
+		this.logger.Error("Failed to create user", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to create user")
+	}
+
+	affected, err := this.organizationRepository.Update(
+		entity.Organization{ID: organization.ID},
+		odto.OrganizationUpdateDao{OwnerUserId: &created.ID},
+		option,
+	)
+
+	if err != nil || affected == 0 {
+		this.logger.Error("Failed to set the organization owner", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to set the organization owner")
+	}
+
+	// The owner participates on the very profile that is the ceiling of its
+	// organization, so it holds the most that organization can hold and not a
+	// token more. What a signup actually gets is decided in one place:
+	// users_pool.default_profile_id.
+	if _, err := this.participantRepository.Create(entity.Participant{
+		OrganizationId: organization.ID,
+		UserId:         created.ID,
+		ProfileId:      app.UsersPool.DefaultProfileId,
+	}, option); err != nil {
+		this.logger.Error("Failed to create participant", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to create participant")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, e.ThrowInternalServerError("Failed to commit transaction")
+	}
+
+	this.logger.Info(
+		"User created Successfully!",
+		zap.Uint("userID", created.ID),
+		zap.String("email", created.Email),
+		zap.String("organizationID", organization.ID),
+	)
+
+	createdUser, err := this.userRepository.FindOne(
+		entity.User{ID: created.ID},
+		repo.Option{With: []string{"CurrentOrganization", "CurrentOrganization.Profile"}},
+	)
+
+	if err != nil {
+		this.logger.Error("Failed to find user", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to find user")
+	}
+
+	if createdUser == nil {
+		return nil, e.ThrowInternalServerError("User disappeared right after being created")
+	}
+
+	participation, err := this.participantService.FindForCurrentOrganization(createdUser)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ProvisionedUser{
+		User:        createdUser,
+		Participant: participation.Participant,
+		Permissions: participation.Permissions,
+	}, nil
 }
 
 func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.RegisterPayloadWithPassoword, request sharedDto.RequestInfo) (*dto.RegisterResponse, error) {
@@ -100,54 +222,26 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return nil, e.ThrowInternalServerError("Failed to hash password")
 	}
 
-	profile, err := this.profileService.GetProfileByAppRole(app.Role)
-
-	if err != nil || profile == nil {
-		return nil, e.ThrowInternalServerError("Failed to find profile")
-	}
-
-	if profile.ID == "" {
-		return nil, e.ThrowBadRequest(fmt.Sprintf("No profile found for this Role and App. (ROLE: %s)", app.Role))
-	}
-
 	var phone string
 
 	if userData.Phone != nil {
 		phone = *userData.Phone
 	}
 
-	user, err := this.userRepository.Create(entity.User{
+	provisioned, err := this.ProvisionUser(app, entity.User{
 		Email:        strings.ToLower(userData.Email),
 		PasswordHash: hashedPassword,
 		Name:         userData.Name,
 		Phone:        phone,
 		Metadata:     userData.Metadata,
-		UsersPoolId:  app.UsersPool.ID,
-		ProfileId:    profile.ID,
 	})
 
 	if err != nil {
-		this.logger.Error("Failed to create user", zap.Error(err))
-		return nil, e.ThrowInternalServerError("Failed to create user")
-	}
-
-	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))
-
-	createdUser, err := this.userRepository.FindOne(entity.User{
-		ID: user.ID,
-	}, repo.Option{With: []string{"Profile"}})
-
-	if err != nil {
-		this.logger.Error("Failed to find user", zap.Error(err))
-		return nil, e.ThrowInternalServerError("Failed to find user")
-	}
-
-	if createdUser == nil {
-		return nil, e.ThrowInternalServerError("User disappeared right after being created")
+		return nil, err
 	}
 
 	// Create session for the newly registered user
-	session, err := this.sessionService.CreateNew(app, createdUser, request, "WITH_PASSWORD")
+	session, err := this.sessionService.CreateNew(app, provisioned.User, request, "WITH_PASSWORD")
 	if err != nil {
 		this.logger.Error("Failed to create session", zap.Error(err))
 		return nil, err
@@ -156,7 +250,7 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
 
 	// Populate User field in session for CreateAuthorizationCredentials
-	session.User = *createdUser
+	session.User = *provisioned.User
 
 	// Generate authorization credentials
 	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
@@ -171,7 +265,13 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		RefreshToken:     credentials.RefreshToken,
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
-		User:             *createdUser,
+		User: udto.UserResponse{
+			User: *provisioned.User,
+			Profile: &udto.ProfileResponse{
+				Profile:     *provisioned.Participant.Profile,
+				Permissions: provisioned.Permissions,
+			},
+		},
 	}, nil
 }
 
@@ -203,16 +303,6 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		return nil, e.ThrowBadRequest("User already exists")
 	}
 
-	profile, err := this.profileService.GetProfileByAppRole(app.Role)
-
-	if err != nil || profile == nil {
-		return nil, e.ThrowInternalServerError("Failed to find profile")
-	}
-
-	if profile.ID == "" {
-		return nil, e.ThrowBadRequest(fmt.Sprintf("No profile found for this Role and App. (ROLE: %s)", app.Role))
-	}
-
 	var phone string
 
 	if userData.Phone != nil {
@@ -241,38 +331,20 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		}
 	}
 
-	user, err := this.userRepository.Create(entity.User{
-		Email:        userData.Email,
+	provisioned, err := this.ProvisionUser(app, entity.User{
+		Email:        strings.ToLower(userData.Email),
 		Name:         userData.Name,
 		Phone:        phone,
-		UsersPoolId:  app.UsersPool.ID,
 		VerifyEmail:  true,
-		ProfileId:    profile.ID,
 		PasswordHash: hashedPassword,
 	})
 
 	if err != nil {
-		this.logger.Error("Failed to create user", zap.Error(err))
-		return nil, e.ThrowInternalServerError("Failed to create user")
-	}
-
-	this.logger.Info("User created Successfully!", zap.Uint("userID", user.ID), zap.String("email", user.Email))
-
-	createdUser, err := this.userRepository.FindOne(entity.User{
-		ID: user.ID,
-	}, repo.Option{With: []string{"Profile"}})
-
-	if err != nil {
-		this.logger.Error("Failed to find user", zap.Error(err))
-		return nil, e.ThrowInternalServerError("Failed to find user")
-	}
-
-	if createdUser == nil {
-		return nil, e.ThrowInternalServerError("User disappeared right after being created")
+		return nil, err
 	}
 
 	// Create session for the newly registered user
-	session, err := this.sessionService.CreateNew(app, createdUser, request, "WITH_OTP")
+	session, err := this.sessionService.CreateNew(app, provisioned.User, request, "WITH_OTP")
 	if err != nil {
 		this.logger.Error("Failed to create session", zap.Error(err))
 		return nil, err
@@ -281,7 +353,7 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
 
 	// Populate User field in session for CreateAuthorizationCredentials
-	session.User = *createdUser
+	session.User = *provisioned.User
 
 	// Generate authorization credentials
 	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
@@ -296,12 +368,18 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		RefreshToken:     credentials.RefreshToken,
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
-		User:             *createdUser,
+		User: udto.UserResponse{
+			User: *provisioned.User,
+			Profile: &udto.ProfileResponse{
+				Profile:     *provisioned.Participant.Profile,
+				Permissions: provisioned.Permissions,
+			},
+		},
 	}, nil
 }
 
-func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*odto.OtpRegisterActionMetadata, error) {
-	var metadata odto.OtpRegisterActionMetadata
+func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*otpdto.OtpRegisterActionMetadata, error) {
+	var metadata otpdto.OtpRegisterActionMetadata
 
 	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")

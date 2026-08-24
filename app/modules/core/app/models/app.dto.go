@@ -5,6 +5,9 @@ import entity "auth_service/infra/entities"
 type CreateAppPayloadUserPool struct {
 	Id   string `json:"id" validate:"required_without=Name"`
 	Name string `json:"name" validate:"required_without=Id"`
+
+	// Only read when the pool is created by name.
+	DefaultProfileId string `json:"default_profile_id" validate:"omitempty,uuid4"`
 }
 
 type UpdateAppUserPool struct {
@@ -41,12 +44,11 @@ type UpdateApp struct {
 	UserPool UpdateAppUserPool `json:"user_pool"`
 }
 
+// No owner filter: the listing is already scoped to the current organization.
 type GetAppsQuery struct {
 	Skip  int    `query:"skip"`
 	Limit int    `query:"limit"`
 	Name  string `query:"name"`
-
-	OwnerUserId int64 `query:"owner_user_id"`
 }
 
 type GetAppsResponse struct {

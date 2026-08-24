@@ -16,8 +16,9 @@ import (
 var seededTables = []any{
 	&entity.Otp{},
 	&entity.Session{},
-	&entity.AppRoleProfile{},
+	&entity.Participant{},
 	&entity.App{},
+	&entity.Organization{},
 	&entity.User{},
 	&entity.Profile{},
 	&entity.UsersPool{},

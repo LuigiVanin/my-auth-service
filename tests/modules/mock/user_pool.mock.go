@@ -45,8 +45,8 @@ type MockUserPoolService struct {
 
 var _ ups.IUserPoolService = &MockUserPoolService{}
 
-func (this *MockUserPoolService) Create(name string, ownerUserId *uint) (*entity.UsersPool, error) {
-	args := this.Called(name, ownerUserId)
+func (this *MockUserPoolService) Create(data ups.CreateUserPoolData, granter *entity.Organization) (*entity.UsersPool, error) {
+	args := this.Called(data, granter)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -55,6 +55,14 @@ func (this *MockUserPoolService) Create(name string, ownerUserId *uint) (*entity
 
 func (this *MockUserPoolService) FindById(id string) (*entity.UsersPool, error) {
 	args := this.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.UsersPool), args.Error(1)
+}
+
+func (this *MockUserPoolService) FindByIdInOrganization(id string, organizationId string) (*entity.UsersPool, error) {
+	args := this.Called(id, organizationId)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

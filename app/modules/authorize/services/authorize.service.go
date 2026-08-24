@@ -10,6 +10,7 @@ import (
 	dto "auth_service/app/modules/authorize/models"
 	odto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
+	ps "auth_service/app/modules/core/participant/services"
 	sr "auth_service/app/modules/core/session/repository"
 	ss "auth_service/app/modules/core/session/services"
 	udto "auth_service/app/modules/core/user/models"
@@ -30,13 +31,14 @@ import (
 var _ IAuthorizeService = &AuthorizeService{}
 
 type AuthorizeService struct {
-	jwtService        jm.IJwtService
-	sessionRepository sr.ISessionRepository
-	sessionService    ss.ISessionService
-	userService       us.IUserService
-	otpService        os.IOtpService
-	hashService       hs.IHashService
-	logger            *zap.Logger
+	jwtService         jm.IJwtService
+	sessionRepository  sr.ISessionRepository
+	sessionService     ss.ISessionService
+	userService        us.IUserService
+	otpService         os.IOtpService
+	hashService        hs.IHashService
+	participantService ps.IParticipantService
+	logger             *zap.Logger
 }
 
 func NewAuthorizeService(
@@ -46,16 +48,18 @@ func NewAuthorizeService(
 	userService us.IUserService,
 	otpService os.IOtpService,
 	hashService hs.IHashService,
+	participantService ps.IParticipantService,
 	logger *zap.Logger,
 ) IAuthorizeService {
 	return &AuthorizeService{
-		jwtService:        jwtService,
-		sessionRepository: sessionRepository,
-		sessionService:    sessionService,
-		userService:       userService,
-		otpService:        otpService,
-		hashService:       hashService,
-		logger:            logger,
+		jwtService:         jwtService,
+		sessionRepository:  sessionRepository,
+		sessionService:     sessionService,
+		userService:        userService,
+		otpService:         otpService,
+		hashService:        hashService,
+		participantService: participantService,
+		logger:             logger,
 	}
 }
 
@@ -91,7 +95,7 @@ func (this *AuthorizeService) FindSessionByToken(token string, tokenType string,
 
 	session, err := this.sessionRepository.FindActive(
 		sessionId,
-		repo.Option{With: []string{"User", "User.Profile"}},
+		repo.Option{With: []string{"User", "User.CurrentOrganization", "User.CurrentOrganization.Profile"}},
 	)
 
 	if err != nil {
@@ -118,7 +122,7 @@ func (this *AuthorizeService) FindSessionByRefreshToken(token string, tokenType 
 
 	session, err := this.sessionRepository.FindActive(
 		sessionId,
-		repo.Option{With: []string{"User", "User.Profile"}},
+		repo.Option{With: []string{"User", "User.CurrentOrganization", "User.CurrentOrganization.Profile"}},
 	)
 
 	if err != nil {
@@ -188,13 +192,25 @@ func (this *AuthorizeService) Refresh(
 		return nil, err
 	}
 
+	participation, err := this.participantService.FindForCurrentOrganization(&session.User)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &dto.RefreshResponse{
 		SessionId:        newSession.ID,
 		AccessToken:      credentials.AccessToken,
 		RefreshToken:     credentials.RefreshToken,
 		ExpiresAt:        newSession.ExpiresAt,
 		RefreshExpiresAt: newSession.RefreshExpiresAt,
-		User:             session.User,
+		User: udto.UserResponse{
+			User: session.User,
+			Profile: &udto.ProfileResponse{
+				Profile:     *participation.Participant.Profile,
+				Permissions: participation.Permissions,
+			},
+		},
 	}, nil
 }
 

@@ -208,7 +208,7 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return nil, e.ThrowInternalServerError("Failed to check user existence")
 	}
 	if exists {
-		return nil, e.ThrowBadRequest("User already exists")
+		return nil, e.ThrowUserAlreadyExists("User already exists")
 	}
 
 	// NOTE: Here I am using a random uuid as Salt. The Salt is stored inside the hashed password in argon2

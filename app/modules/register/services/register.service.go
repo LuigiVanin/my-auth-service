@@ -300,7 +300,7 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		return nil, e.ThrowInternalServerError("Failed to check user existence")
 	}
 	if exists {
-		return nil, e.ThrowBadRequest("User already exists")
+		return nil, e.ThrowUserAlreadyExists("User already exists")
 	}
 
 	var phone string

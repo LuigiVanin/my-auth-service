@@ -336,10 +336,18 @@ func (this *OtpService) VerifyConsumable(otpId string, code string, appId string
 		return nil, e.ThrowInvalidOtpCode("Invalid OTP code")
 	}
 
-	// Success
-	if err := this.invalidate(otp.ID); err != nil {
-		return nil, e.ThrowInternalServerError("Failed to invalidate otp")
-	}
+	// Success.
+	//
+	// NOTE: the OTP is deliberately NOT invalidated here. This route only proves
+	// possession of the code; the endpoint owning the action (/auth/register,
+	// /auth/login, /auth/forgot_password) consumes it later through
+	// ValidateConsumable and invalidates it there. Invalidating on success would
+	// make "verify then consume" fail with "Otp already used" - which is exactly
+	// what blocked the password reset flow from checking the code before asking
+	// for the new password.
+	//
+	// The brute force ceiling is unaffected: VerificationCount only counts
+	// failures, and MaxOtpVerificationAttempts is still enforced above.
 
 	// Parse metadata to return payload
 	var metadata dto.OtpStoredMetadata

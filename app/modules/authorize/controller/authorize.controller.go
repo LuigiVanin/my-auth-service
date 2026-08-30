@@ -3,6 +3,7 @@ package controller
 import (
 	"auth_service/app/docs"
 	e "auth_service/app/errors"
+	middleware "auth_service/app/middlewares"
 	"auth_service/app/middlewares/guards"
 	dto "auth_service/app/modules/authorize/models"
 	"auth_service/app/modules/authorize/services"
@@ -156,6 +157,11 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 	)
 	group.Put(
 		"/forgot_password",
+		// Without this the `validate` tags on ResetPasswordPayload are dead:
+		// fiber's Bind().Body() only unmarshals, so an empty new_password was
+		// accepted and hashed, and an empty otp.id reached the repository as an
+		// unconstrained lookup.
+		middleware.BodyValidator[dto.ResetPasswordPayload](),
 		this.ForgotPassword,
 	)
 }

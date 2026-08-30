@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	e "auth_service/app/errors"
@@ -55,6 +56,8 @@ func NewOtpService(otpRepository repository.IOtpRepository, hashService hs.IHash
 func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *entity.App, payload dto.ConsumableOtpPayload, ip string) (*dto.GenerateConsumableOtpResponse, error) {
 
 	data, _ := utils.MapToStruct[dto.OtpStoredMetadataPayload](payload.Payload)
+
+	data.Email = strings.ToLower(data.Email)
 
 	storedMetadata := dto.OtpStoredMetadata{
 		Ip:      ip,
@@ -110,9 +113,30 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 				return nil, e.ThrowNotFound("User not found in User Pool")
 			}
 		}
+	case constants.ActionForgotPassword:
+		if email, ok := payload.Payload["email"].(string); ok {
+			payload.Contact = email
+		} else {
+			return nil, e.ThrowBadRequest("Email is required for RESET PASSWORD action")
+		}
+
+		exists, err := this.userService.IsAlreadyCreated(payload.Contact, app)
+
+		if err != nil {
+			this.logger.Error("Failed to check if user exists", zap.Error(err))
+			return nil, e.ThrowInternalServerError("Failed to check user existence")
+		}
+		if !exists {
+			return nil, e.ThrowNotFound("User not found in User Pool")
+		}
 	default:
 		return nil, e.ThrowUnprocessableEntity("Invalid OTP action")
 	}
+
+	// The contact is the key of the rate limit below and of the metadata the
+	// consuming endpoints match against, so it is normalized the same way the
+	// user repository normalizes the column it is compared to.
+	payload.Contact = strings.ToLower(payload.Contact)
 
 	// Check if there was a recent OTP request for this contact, app, and action
 	lastOtp, err := this.otpRepository.FindLast(entity.Otp{
@@ -177,7 +201,7 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 			From:    "No Reply <contact@vanin.dev>",
 			To:      []string{payload.Contact},
 			Subject: fmt.Sprintf("OTP Code - %s", action),
-			Body:    fmt.Sprintf("Your OTP is Here: %s", otp.Code),
+			Body:    fmt.Sprintf("Your OTP is Here: %s", passwordCode),
 		})
 
 		if err != nil {

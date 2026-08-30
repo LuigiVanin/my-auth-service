@@ -358,7 +358,7 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 		return nil, e.ThrowBadRequest("Email is required in OTP metadata")
 	}
 
-	if metadata.Payload.Email != payload.Email {
+	if !strings.EqualFold(metadata.Payload.Email, payload.Email) {
 		return nil, e.ThrowUnauthorizedError("Email does not match OTP metadata")
 	}
 
@@ -375,6 +375,8 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 	if err := this.SetPassword(user, payload.NewPassword); err != nil {
 		return nil, err
 	}
+
+	this.otpService.Invalidate(otpResponse.ID)
 
 	return user, nil
 }

@@ -6,7 +6,12 @@ import (
 	"encoding/json"
 )
 
-type GetUsersAppQuery struct {
+// UserListQuery is the query of GET /core/users. AppId and PoolId both name the
+// pool to list, so exactly one of them has to be filled.
+type UserListQuery struct {
+	AppId  string `query:"app_id"`
+	PoolId string `query:"pool_id"`
+
 	Skip  int    `query:"skip"`
 	Limit int    `query:"limit"`
 	Name  string `query:"name"`
@@ -24,10 +29,11 @@ type UpdateUser struct {
 	Metadata         *json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`
 }
 
-type GetUsersAppResponse struct {
+type GetUsersResponse struct {
 	Total  int64         `json:"total"`
 	Amount int           `json:"amount"`
 	Skip   int           `json:"skip"`
+	Limit  int           `json:"limit"`
 	Data   []entity.User `json:"data"`
 }
 

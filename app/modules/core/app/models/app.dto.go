@@ -49,6 +49,9 @@ type GetAppsQuery struct {
 	Skip  int    `query:"skip"`
 	Limit int    `query:"limit"`
 	Name  string `query:"name"`
+
+	// Narrows the listing to one pool of the current organization.
+	PoolId string `query:"pool_id"`
 }
 
 type GetAppsResponse struct {

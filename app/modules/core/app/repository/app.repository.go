@@ -26,6 +26,10 @@ func searchScope(search AppSearch) func(*gorm.DB) *gorm.DB {
 	return func(query *gorm.DB) *gorm.DB {
 		query = query.Where("apps.organization_id = ?", search.OrganizationId)
 
+		if search.UsersPoolId != "" {
+			query = query.Where("apps.users_pool_id = ?", search.UsersPoolId)
+		}
+
 		if search.Name != "" {
 			query = query.Where("apps.name ILIKE ?", "%"+search.Name+"%")
 		}

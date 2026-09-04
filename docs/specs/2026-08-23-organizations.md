@@ -240,11 +240,14 @@ chama `permissions.Resolve`.
 | GET | `/core/organizations/:id/participants` | auth+org+perm | implementada |
 | POST | `/core/apps` | auth+org+perm + validator | escopada por org |
 | GET | `/core/apps` | auth+org+perm | escopada por org |
-| GET | `/core/apps/:id` | auth+org+perm | **stub 501** (pré-existente) |
-| GET | `/core/apps/:id/users` | auth+org+perm | escopada por org |
+| GET | `/core/apps/:id` | auth+org+perm | escopada por org |
 | PUT | `/core/apps/:id` | auth+org+perm | **stub 501** (pré-existente) |
 | POST | `/core/users_pool` | auth+org+perm + validator | escopada por org |
-| GET | `/core/users/:id` | auth | **stub 501**, sem permissionsGuard nem organizationGuard |
+| GET | `/core/users_pool` | auth+org+perm | escopada por org |
+| GET | `/core/users_pool/:id` | auth+org+perm | escopada por org |
+| GET | `/core/users` | auth+org+perm | escopada por org, via `app_id` ou `pool_id` |
+| GET | `/core/users/me` | auth+org+perm | atalho para `/core/users/:id` do próprio usuário |
+| GET | `/core/users/:id` | auth+org+perm | escopada por org |
 
 ### Escopo aplicado
 

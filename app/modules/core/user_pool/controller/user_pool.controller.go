@@ -77,6 +77,40 @@ func (this *UserPoolController) CreateUserPool(ctx fiber.Ctx) error {
 	})
 }
 
+func (this *UserPoolController) List(ctx fiber.Ctx) error {
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+
+	query := dto.UserPoolListQuery{}
+
+	if err := ctx.Bind().Query(&query); err != nil {
+		return err
+	}
+
+	pools, err := this.userPoolService.List(currentOrganization, &query)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(pools)
+}
+
+func (this *UserPoolController) GetUserPool(ctx fiber.Ctx) error {
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+
+	pool, err := this.userPoolService.FindByIdInOrganization(ctx.Params("id"), currentOrganization.ID)
+
+	if err != nil {
+		return e.ThrowInternalServerError("Failed to find the users pool")
+	}
+
+	if pool == nil {
+		return e.ThrowNotFound("Users pool not found in the current organization")
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(pool)
+}
+
 func (this *UserPoolController) Register(server *fiber.App) {
 	group := server.Group("/core/users_pool")
 
@@ -105,4 +139,53 @@ func (this *UserPoolController) Register(server *fiber.App) {
 		this.CreateUserPool,
 	)
 
+	this.swagger.Add(
+		docs.PermissionedRoute(this.swagger, "GET", "/core/users_pool", openapi.Options{
+			Summary:     "List users pools",
+			Description: "Lists the users pools of the organization the authenticated user is currently in. To look at another organization, switch to it with `PUT /core/organizations/switch`.",
+			Tags:        []string{docs.TagUserPools},
+		}).
+			AddQueryParam("skip", openapi.Integer, openapi.Options{
+				Description: "Pools to skip - defaults to 0",
+			}).
+			AddQueryParam("limit", openapi.Integer, openapi.Options{
+				Description: "Pools per page - defaults to 10",
+			}).
+			AddQueryParam("name", openapi.String, openapi.Options{
+				Description: "Filters by pool name, case insensitive",
+			}).
+			AddResponse(fiber.StatusOK, dto.GetUserPoolsResponse{}, openapi.Options{
+				Description: "Page of users pools",
+			}),
+	)
+	group.Get("",
+		this.authGuard.Act,
+		this.organizationGuard.Act,
+		this.permissionsGuard.Act,
+		this.List,
+	)
+
+	this.swagger.Add(
+		docs.PermissionedRoute(this.swagger, "GET", "/core/users_pool/{id}", openapi.Options{
+			Summary:     "Get a users pool",
+			Description: "Reads a single users pool of the current organization.",
+			Tags:        []string{docs.TagUserPools},
+		}).
+			AddPathParam("id", openapi.String, openapi.Options{
+				Required:    true,
+				Description: "Id of the users pool",
+			}).
+			AddResponse(fiber.StatusOK, entity.UsersPool{}, openapi.Options{
+				Description: "The requested users pool",
+			}).
+			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
+				Description: "No users pool of the current organization matches the given id",
+			}),
+	)
+	group.Get("/:id",
+		this.authGuard.Act,
+		this.organizationGuard.Act,
+		this.permissionsGuard.Act,
+		this.GetUserPool,
+	)
 }

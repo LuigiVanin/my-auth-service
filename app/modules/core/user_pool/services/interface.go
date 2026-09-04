@@ -1,6 +1,7 @@
 package services
 
 import (
+	dto "auth_service/app/modules/core/user_pool/models"
 	entity "auth_service/infra/entities"
 )
 
@@ -20,4 +21,9 @@ type IUserPoolService interface {
 
 	// The scoped lookup, for whenever the id comes from a request.
 	FindByIdInOrganization(id string, organizationId string) (*entity.UsersPool, error)
+
+	List(
+		currentOrganization *entity.Organization,
+		query *dto.UserPoolListQuery,
+	) (*dto.GetUserPoolsResponse, error)
 }

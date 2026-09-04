@@ -10,6 +10,7 @@ import (
 
 	e "auth_service/app/errors"
 	otpDto "auth_service/app/modules/core/otp/models"
+	udto "auth_service/app/modules/core/user/models"
 	"auth_service/app/modules/login/controller"
 	dto "auth_service/app/modules/login/models"
 	entity "auth_service/infra/entities"
@@ -89,10 +90,12 @@ func (this *LoginControllerTestSuite) TestLoginWithPassword_Success() {
 		RefreshToken:     "refresh-token",
 		ExpiresAt:        time.Now().Add(1 * time.Hour),
 		RefreshExpiresAt: time.Now().Add(7 * 24 * time.Hour),
-		User: entity.User{
-			ID:    1,
-			Email: "test@example.com",
-			Name:  "Test User",
+		User: udto.UserResponse{
+			User: entity.User{
+				ID:    1,
+				Email: "test@example.com",
+				Name:  "Test User",
+			},
 		},
 	}
 
@@ -135,8 +138,10 @@ func (this *LoginControllerTestSuite) TestLoginWithPassword_DefaultMethod_Succes
 	expectedResponse := &dto.LoginResponse{
 		SessionId:   "session-id",
 		AccessToken: "access-token",
-		User: entity.User{
-			Email: "test@example.com",
+		User: udto.UserResponse{
+			User: entity.User{
+				Email: "test@example.com",
+			},
 		},
 	}
 
@@ -242,8 +247,10 @@ func (this *LoginControllerTestSuite) TestLoginWithOtp_Success() {
 	expectedResponse := &dto.LoginResponse{
 		SessionId:   "session-id-otp",
 		AccessToken: "access-token-otp",
-		User: entity.User{
-			Email: "test@example.com",
+		User: udto.UserResponse{
+			User: entity.User{
+				Email: "test@example.com",
+			},
 		},
 	}
 

@@ -15,6 +15,10 @@ import (
 type AppSearch struct {
 	OrganizationId string
 
+	// Optional: narrows the listing to one pool. It never widens the scope, the
+	// organization predicate is applied either way.
+	UsersPoolId string
+
 	// Optional case insensitive partial match.
 	Name string
 }

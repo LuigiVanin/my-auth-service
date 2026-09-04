@@ -10,11 +10,15 @@ type IUserService interface {
 	FindUserInPool(email string, usersPoolId string) (*entity.User, error)
 	Update(where entity.User, data dto.UserUpdateDao) (int64, error)
 
-	FindAllUsersFromApp(
-		targetAppId string,
+	List(
 		currentUser *entity.User,
-		targetApp *entity.App,
 		currentOrganization *entity.Organization,
-		query *dto.GetUsersAppQuery,
-	) (*dto.GetUsersAppResponse, error)
+		query *dto.UserListQuery,
+	) (*dto.GetUsersResponse, error)
+
+	FindById(
+		currentUser *entity.User,
+		currentOrganization *entity.Organization,
+		targetUserId uint,
+	) (*entity.User, error)
 }

@@ -3,9 +3,9 @@ package entity
 import "time"
 
 type UsersPool struct {
-	ID        string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
-	Name      string `gorm:"not null"`
-	PublicKey string `gorm:"not null"`
+	ID        string `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()" json:"id"`
+	Name      string `gorm:"not null" json:"name"`
+	PublicKey string `gorm:"not null" json:"public_key,omitempty"`
 
 	// The ceiling handed to every organization created in this pool.
 	DefaultProfileId string `gorm:"type:uuid;not null" json:"default_profile_id"`
@@ -20,8 +20,8 @@ type UsersPool struct {
 	Organization   *Organization `gorm:"foreignKey:OrganizationId" json:"organization,omitempty"`
 	DefaultProfile *Profile      `gorm:"foreignKey:DefaultProfileId" json:"default_profile,omitempty"`
 
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null"`
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"created_at"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updated_at"`
 }
 
 func (UsersPool) TableName() string {

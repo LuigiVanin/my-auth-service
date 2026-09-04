@@ -15,7 +15,7 @@ const Wildcard = "*"
 
 // Document is the shape of profiles.permissions:
 //
-//	{ "api": { "/core/apps/:id/users": {
+//	{ "api": { "/core/users": {
 //	    "methods": ["GET"],
 //	    "query":   { "skip": "^[0-9]+$" } } } }
 //

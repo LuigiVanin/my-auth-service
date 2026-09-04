@@ -138,6 +138,23 @@ func (this *AppService) FindAll(
 	if query != nil {
 		search.Name = query.Name
 		option = option.Paginate(query.Skip, query.Limit)
+
+		if query.PoolId != "" {
+			pool, err := this.userPoolService.FindByIdInOrganization(
+				query.PoolId,
+				currentOrganization.ID,
+			)
+
+			if err != nil {
+				return nil, e.ThrowInternalServerError("Failed to find the users pool")
+			}
+
+			if pool == nil {
+				return nil, e.ThrowNotFound("Users pool not found in the current organization")
+			}
+
+			search.UsersPoolId = pool.ID
+		}
 	}
 
 	apps, err := this.appRepository.FindSearch(search, option)
@@ -168,7 +185,28 @@ func (this *AppService) FindAll(
 }
 
 func (this *AppService) FindById(id string, currentOrganization *entity.Organization) (*entity.App, error) {
-	return nil, e.ThrowInternalServerError("Not Implemented Yet")
+	if currentOrganization == nil {
+		return nil, e.ThrowInternalServerError("Current organization is required")
+	}
+
+	app, err := this.appRepository.FindOne(
+		entity.App{ID: id},
+		repo.Option{With: []string{"UsersPool"}},
+	)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to fetch the app")
+	}
+
+	if app == nil || app.OrganizationId == nil || *app.OrganizationId != currentOrganization.ID {
+		return nil, e.ThrowNotFound("App not found in the current organization")
+	}
+
+	// The public key is how a client addresses the app, so it belongs to the
+	// detail view; the secret is write once at creation and never read back.
+	app.SecretKey = ""
+
+	return app, nil
 }
 
 func (this *AppService) FindAllUserApps(userId string, currentOrganization *entity.Organization) ([]entity.App, error) {

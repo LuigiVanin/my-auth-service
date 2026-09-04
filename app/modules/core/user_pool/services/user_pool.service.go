@@ -107,6 +107,44 @@ func (this *UserPoolService) FindByIdInOrganization(
 	return pool, nil
 }
 
+func (this *UserPoolService) List(
+	currentOrganization *entity.Organization,
+	query *dto.UserPoolListQuery,
+) (*dto.GetUserPoolsResponse, error) {
+	if currentOrganization == nil {
+		return nil, e.ThrowInternalServerError("Current organization is required")
+	}
+
+	search := upr.UserPoolSearch{OrganizationId: currentOrganization.ID}
+
+	option := repo.Option{With: []string{"DefaultProfile"}}
+
+	if query != nil {
+		search.Name = query.Name
+		option = option.Paginate(query.Skip, query.Limit)
+	}
+
+	pools, err := this.userPoolRepository.FindSearch(search, option)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to fetch users pools")
+	}
+
+	total, err := this.userPoolRepository.FindSearchCount(search, option)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to count users pools")
+	}
+
+	return &dto.GetUserPoolsResponse{
+		Total:  total,
+		Amount: len(pools),
+		Skip:   option.Skip,
+		Limit:  option.Size(),
+		Data:   pools,
+	}, nil
+}
+
 // Without a profile the pool is born closed on LOGIN_PROFILE; with one, it has to
 // stay inside what the granting organization itself holds.
 //

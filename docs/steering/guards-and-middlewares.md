@@ -133,9 +133,9 @@ caller can see what it was matched against.
   "api": {
     "/core/apps": { "methods": ["POST", "GET"] },
     "/core/apps/:id": { "methods": ["GET", "PUT", "DELETE"] },
-    "/core/apps/:id/users": {
+    "/core/users": {
       "methods": ["GET"],
-      "query": { "skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$" }
+      "query": { "app_id": "^.+$", "skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$" }
     }
   }
 }

@@ -6,6 +6,8 @@ import (
 	arep "auth_service/app/modules/core/app/repository"
 	prep "auth_service/app/modules/core/profile/repository"
 	srep "auth_service/app/modules/core/session/repository"
+	urep "auth_service/app/modules/core/user/repository"
+	uprep "auth_service/app/modules/core/user_pool/repository"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -43,43 +45,82 @@ func TestAppSearchScopes(t *testing.T) {
 	client, _ := newClient(t)
 	repository := arep.NewAppRepository(client)
 
-	parentAppId := "app-1"
-
-	ownedOnly := captureQuery(t, client, func() {
-		_, _ = repository.FindSearch(arep.AppSearch{OwnerUserId: 7})
+	scoped := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(arep.AppSearch{OrganizationId: "org-1"})
 	})
-	assert.Contains(t, ownedOnly, "apps.owner_user_id = $")
-	assert.NotContains(t, ownedOnly, "parent_app_id")
+	assert.Contains(t, scoped, "apps.organization_id = $")
 
-	ownedOrChildren := captureQuery(t, client, func() {
+	// A pool filter narrows inside the organization, it never replaces it.
+	byPool := captureQuery(t, client, func() {
 		_, _ = repository.FindSearch(arep.AppSearch{
-			OwnerUserId:       7,
-			OrChildrenOfAppId: &parentAppId,
-			Name:              "portal",
+			OrganizationId: "org-1",
+			UsersPoolId:    "pool-1",
+			Name:           "portal",
 		})
 	})
-	assert.Contains(t, ownedOrChildren, "(apps.owner_user_id = $1 OR apps.parent_app_id = $2)")
-	assert.Contains(t, ownedOrChildren, "apps.name ILIKE $3")
+	assert.Contains(t, byPool, "apps.organization_id = $1")
+	assert.Contains(t, byPool, "apps.users_pool_id = $2")
+	assert.Contains(t, byPool, "apps.name ILIKE $3")
 
 	// The count must see the same predicate but no page.
 	counting := captureQuery(t, client, func() {
-		_, _ = repository.FindSearchCount(arep.AppSearch{OwnerUserId: 7})
+		_, _ = repository.FindSearchCount(arep.AppSearch{OrganizationId: "org-1"})
 	})
 	assert.Contains(t, counting, "count(*)")
 	assert.NotContains(t, counting, "LIMIT")
 }
 
-// The caller picks a single winning profile out of the whole set, so a page cap
-// would silently pick the wrong one.
-func TestProfileLookupIsNotPaginated(t *testing.T) {
+func TestProfileLookupByKey(t *testing.T) {
 	client, _ := newClient(t)
 	repository := prep.NewProfileRepository(client)
 
 	sql := captureQuery(t, client, func() {
-		_, _ = repository.FindByAppRole("USER")
+		_, _ = repository.FindByKey("LOGIN_PROFILE")
 	})
 
-	assert.Contains(t, sql, "role = $")
-	assert.Contains(t, sql, `ORDER BY "priority"`)
-	assert.NotContains(t, sql, "LIMIT")
+	assert.Contains(t, sql, "key = $")
+}
+
+// The pool is mandatory, so a users listing can never widen to the whole table.
+func TestUserSearchAlwaysScopesToAPool(t *testing.T) {
+	client, _ := newClient(t)
+	repository := urep.NewUserRepository(client)
+
+	sql := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(urep.UserSearch{UsersPoolId: "pool-1"})
+	})
+	assert.Contains(t, sql, "users.users_pool_id = $")
+
+	filtered := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(urep.UserSearch{
+			UsersPoolId: "pool-1",
+			Name:        "ana",
+			Email:       "ana@",
+		})
+	})
+	assert.Contains(t, filtered, "users.name ILIKE $2")
+	assert.Contains(t, filtered, "users.email ILIKE $3")
+
+	counting := captureQuery(t, client, func() {
+		_, _ = repository.FindSearchCount(urep.UserSearch{UsersPoolId: "pool-1"})
+	})
+	assert.Contains(t, counting, "count(*)")
+	assert.NotContains(t, counting, "LIMIT")
+}
+
+// The organization predicate is unconditional: a zero valued search must not
+// compile into an empty WHERE over every pool in the database.
+func TestUserPoolSearchAlwaysScopesToAnOrganization(t *testing.T) {
+	client, _ := newClient(t)
+	repository := uprep.NewUserPoolRepository(client)
+
+	scoped := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1"})
+	})
+	assert.Contains(t, scoped, "users_pool.organization_id = $")
+
+	empty := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{})
+	})
+	assert.Contains(t, empty, "users_pool.organization_id = $")
 }

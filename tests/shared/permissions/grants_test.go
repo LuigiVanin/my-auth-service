@@ -17,6 +17,16 @@ const (
 	grantC = "as::organizations::READ"
 )
 
+func everyGrant() []string {
+	grants := []string{}
+
+	for _, entry := range permissions.Catalog() {
+		grants = append(grants, entry.Grants...)
+	}
+
+	return grants
+}
+
 func resolve(t *testing.T, documents ...json.RawMessage) *permissions.Resolved {
 	t.Helper()
 
@@ -142,9 +152,21 @@ func TestFullWildcardExpandsToTheWholeCatalog(t *testing.T) {
 		}
 	}
 
-	// Reported as declared, never as its expansion: that is what makes a wildcard
-	// all or nothing against a ceiling instead of being kept half granted.
-	assert.Equal(t, []string{"as::*::*"}, whole.Grants)
+	// Expanded, never as authored: no consumer can expand `as::*::*` without a copy
+	// of this catalog.
+	assert.ElementsMatch(t, everyGrant(), whole.Grants)
+	assert.NotContains(t, whole.Grants, "as::*::*")
+}
+
+// The shape that used to report nothing while reaching every route in the service,
+// leaving the platform operator looking unprivileged to anything reading grants.
+func TestApiOnlyDocumentReportsTheCatalogItReaches(t *testing.T) {
+	resolved := resolve(t, json.RawMessage(`{"api": {"*": {"methods": ["*"]}}}`))
+
+	assert.ElementsMatch(t, everyGrant(), resolved.Grants)
+
+	// And still reaches what the catalog does not name.
+	assert.Contains(t, paths(resolved), permissions.Wildcard)
 }
 
 // Ignored on read - the guard must never become a 500 because a key left the map
@@ -279,7 +301,7 @@ func TestSeededProfilesFitUnderTheirCeiling(t *testing.T) {
 	}
 
 	// ADMIN carries both keys: the "*" of api so an uncatalogued route stays reachable,
-	// and as::*::* so the platform admin reports a grants list instead of an empty one.
+	// and as::*::* so the document says in the authoring format what it grants.
 	admin := json.RawMessage(`{"api": {"*": {"methods": ["*"]}}, "grants": ["as::*::*"]}`)
 
 	for name, child := range map[string]json.RawMessage{"manager": manager, "login": login, "member": member} {
@@ -291,7 +313,7 @@ func TestSeededProfilesFitUnderTheirCeiling(t *testing.T) {
 
 	resolved := resolve(t, admin, admin)
 
-	assert.Equal(t, []string{"as::*::*"}, resolved.Grants)
+	assert.ElementsMatch(t, everyGrant(), resolved.Grants)
 
 	// The guard reads the "*" key before any concrete path, so the grants riding along
 	// never narrow what the operator may call.

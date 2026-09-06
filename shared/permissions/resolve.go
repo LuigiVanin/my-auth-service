@@ -21,7 +21,6 @@ import (
 // trusted: it still goes through the same code path.
 func Resolve(documents ...json.RawMessage) (*Resolved, error) {
 	resolved := Resolved{Api: map[string]ResolvedRule{}}
-	candidates := []string{}
 
 	for index, raw := range documents {
 		document, err := Parse(raw)
@@ -32,10 +31,6 @@ func Resolve(documents ...json.RawMessage) (*Resolved, error) {
 
 		layer := document.resolved()
 
-		// Union, not intersection: an organization of [A, B] under a participant of
-		// {"api": {"*"}} really does grant A and B.
-		candidates = appendUnique(candidates, layer.Grants)
-
 		if index == 0 {
 			resolved = layer
 			continue
@@ -44,37 +39,9 @@ func Resolve(documents ...json.RawMessage) (*Resolved, error) {
 		resolved = intersect(resolved, layer)
 	}
 
-	resolved.Grants = surviving(candidates, resolved.Api)
+	resolved.Grants = grantsWithin(resolved.Api)
 
 	return &resolved, nil
-}
-
-// A candidate survives when its whole expansion fits the api that is left. Between
-// grant shaped documents that is the intersection of the lists; containment is what
-// also answers correctly when a layer is written in api.
-//
-// A grant covered only in part does not survive, so the list never promises more than
-// it delivers. See docs/steering/modules/profiles.md.
-func surviving(candidates []string, api map[string]ResolvedRule) []string {
-	kept := []string{}
-
-	for _, grant := range candidates {
-		if withinApi(expandGrants([]string{grant}), api) {
-			kept = append(kept, grant)
-		}
-	}
-
-	return kept
-}
-
-func appendUnique(values []string, extra []string) []string {
-	for _, value := range extra {
-		if !slices.Contains(values, value) {
-			values = append(values, value)
-		}
-	}
-
-	return values
 }
 
 // IsSubsetOf answers whether child exceeds parent anywhere. It is the check behind

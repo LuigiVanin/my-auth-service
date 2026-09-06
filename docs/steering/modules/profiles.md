@@ -197,28 +197,36 @@ Resolution rules, in order:
 ### What `Resolved.Grants` reports
 
 `Resolve` answers the same question by resource, and that list is what a frontend
-renders. The rule is **not** the intersection of the declared lists: an organization
-of `[A, B]` under a participant of `{"api": {"*": {"methods": ["*"]}}}` - what the
-owner of any organization holds - really does grant A and B, and intersecting the
-lists would answer `[]`.
+renders. It is **derived from the final `resolved.Api`**, not filtered out of what the
+documents declared:
 
-> **candidates** = the union of the grants declared by every layer.
-> **surviving** = the grant whose whole expansion fits inside the final
-> `resolved.Api`.
+> `Grants` = every **catalog key** whose whole expansion fits inside `resolved.Api`.
 
-On documents written entirely in grants this is exactly the intersection of the
-lists. Containment is what also answers correctly when one of the layers is written
-in `api`.
+That is `grantsWithin`, and it has three consequences worth knowing.
 
-A grant covered only in part does not appear. If a ceiling written by hand grants
-`GET /core/users` but not `GET /core/users/:id`, `as::users::READ` is not reported,
-even though `resolved.Api` keeps granting the listing. `Api` is the truth of what the
-guard does; `Grants` is an honest summary by resource, and it never promises more than
-it delivers. Whoever writes `api` by hand is using the administration escape hatch,
-and that does not report itself as grants.
+**The answer does not depend on how a profile was written.** A ceiling written in
+`api` and one written in the equivalent grants report the same list. This is the
+reason the rule is a read back rather than a filter: a document written entirely in
+`api` - the administration escape hatch - declares no grant at all, and used to report
+`[]` while reaching every route in the service. The platform operator looked
+unprivileged to everything that read grants, a frontend gate most of all.
 
-A wildcard is reported as it was declared, never expanded, so it survives whole or
-not at all.
+**A wildcard is reported expanded, never as authored.** `as::*::*` under a ceiling
+that reaches the whole catalog reports the 22 concrete keys. No consumer can expand
+`as::*::*` on its own without shipping a copy of this catalog, so the resolved list
+does it for them. All or nothing still holds on the way *in*: the wildcard only
+reaches the whole catalog when every layer above it does.
+
+**A grant covered only in part still does not appear.** If a ceiling written by hand
+grants `GET /core/users` but not `GET /core/users/:id`, `as::users::READ` is not
+reported, even though `resolved.Api` keeps granting the listing. `Api` remains the
+truth of what the guard does, and a hand written path outside the catalog is reachable
+through no grant at all. `Grants` never promises more than it delivers.
+
+The intersection question the old rule had to answer explicitly - an organization of
+`[A, B]` under a participant of `{"api": {"*"}}` really does grant A and B - falls out
+of the api for free, because `intersect` already collapses the wildcard onto the
+ceiling before the list is read back.
 
 ### Why a resolved query key is a list
 
@@ -312,11 +320,15 @@ ceiling would let a member author a profile wider than the member itself holds.
 helper that `IsSubsetOf` is built on, exported with a `*Resolved` parent instead of a
 raw one.
 
-**Never compare grant lists instead.** It is the obvious simplification now that only
-grants are written, and it breaks the most powerful caller: the platform admin holds
-`Resolved.Grants == []`, because `ADMIN` is written in `api` and no layer of it
-declares a grant. Comparing lists would leave whoever may do everything unable to
-author anything. The comparison is always against the resolved `Api`.
+**Never compare grant lists instead.** `Grants` is derived from `Api`, so comparing
+it can only ever be less precise than comparing the source: a hand written path
+outside the catalog is reachable and appears in no grant, and a document asking for
+one would be refused against a ceiling that in fact holds it. The comparison is always
+against the resolved `Api`.
+
+Until 2026-09-06 this had a sharper edge - the platform admin reported
+`Resolved.Grants == []` and a list comparison left whoever may do everything unable to
+author anything. `grantsWithin` closed that, but the rule stands for the reason above.
 
 **What gets written is the payload, verbatim.** That is the practical gain of
 refusing rather than clamping: there is no resolved document to convert back before
@@ -440,11 +452,11 @@ ceiling happens to be" - every other participant is still pinned.
 
 **Why it reads well now, when a wildcard participation was tried and dropped before.**
 Two things changed. The row has an identity - what is shown is a profile named `Admin`
-scoped to an organization, not a loose document. And `Resolved.Grants` keeps only the
-grants whose whole expansion fits the resolved api, so a wildcard under a narrow
-ceiling reports the concrete grants of that ceiling. An owner with `as::*::*` under a
-`LOGIN_PROFILE` ceiling reports the four `LOGIN_PROFILE` grants, not `["as::*::*"]`.
-The raw wildcard only surfaces in the participant listing, and there it comes with a
+scoped to an organization, not a loose document. And `Resolved.Grants` is read back
+from the resolved api, so a wildcard under a narrow ceiling reports the concrete grants
+of that ceiling. An owner with `as::*::*` under a `LOGIN_PROFILE` ceiling reports the
+four `LOGIN_PROFILE` grants, not `["as::*::*"]`. The raw wildcard only surfaces in the
+participant listing, where the document itself is shown, and there it comes with a
 name.
 
 `admin_organization` is the exception: its owner keeps participating on the `ADMIN`

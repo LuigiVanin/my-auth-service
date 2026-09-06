@@ -209,6 +209,15 @@ var _ ur.IUserRepository = &MockUserRepository{}
 typed parameter and a small body already say what the code does. A comment that
 restates the line below it is noise that goes stale.
 
+**Try the three better exits first, in this order.** A comment is the last
+resort, not the first:
+
+1. **Rename.** A comment explaining what a value is means the name is wrong.
+2. **Extract.** A block that needs a heading comment is a function with a name.
+3. **Move it to the steering document.** Rationale that takes a paragraph belongs
+   in `docs/steering/`, where it is found by whoever needs it, and not above one
+   call site where it rots.
+
 Write one only when the *reason* cannot be read from the code:
 
 - a constraint the compiler cannot express (an ordering dependency, a predicate
@@ -225,6 +234,18 @@ Do not write:
 - commented-out code — delete it, git has it
 - a paragraph of rationale that belongs in a steering document; link the
   document or let it be found there
+- a comment that narrates the writing ("now we…", "note that…")
+- the history of a decision. Why the code is like this belongs here; what it used
+  to be belongs in git and in the spec
+
+**The budget is four lines, and it is a real ceiling.** A comment longer than that
+outside the three packages named below is the signal that the explanation belongs
+in a steering document. Move it there and leave one line pointing at it — a
+five-line block above a twelve-line function is the failure mode this rule exists
+to stop, and `shared/permissions` is where it keeps happening.
+
+A doc comment on an exported symbol is held to the same bar as any other: it earns
+its lines by saying something the signature does not.
 
 **Where verbosity is allowed:** infrastructure that is heavily reused, generic,
 or reflection driven — `shared/repository/` is the reference. There, a wrong
@@ -234,7 +255,8 @@ from the definition, so explaining the mechanism inline is worth the lines.
 code — controllers, services, models — does not.
 
 When in doubt, put the explanation in the steering document for the layer and
-leave the code clean.
+leave the code clean. When in doubt about whether the comment is worth writing at
+all, it is not.
 
 ### Logging
 

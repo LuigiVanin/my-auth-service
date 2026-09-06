@@ -194,21 +194,36 @@ func expandGrants(grants []string) map[string]ResolvedRule {
 	return expanded
 }
 
-// The candidates Resolve filters against the resolved api.
-func knownGrants(grants []string) []string {
-	known := []string{}
+// Precomputed because grantsWithin runs on every request through the guard.
+var grantExpansions = buildGrantExpansions()
 
-	for _, grant := range grants {
-		if len(matchCatalog(grant)) == 0 || slices.Contains(known, grant) {
-			continue
-		}
+func buildGrantExpansions() map[string]map[string]ResolvedRule {
+	expansions := make(map[string]map[string]ResolvedRule, len(catalog))
 
-		known = append(known, grant)
+	for key := range catalog {
+		expansions[key] = expandGrants([]string{key})
 	}
 
-	slices.Sort(known)
+	return expansions
+}
 
-	return known
+// Every catalog key whose whole expansion fits the api. Read back from the api, and
+// not filtered out of what the documents declared, so the answer does not depend on
+// whether a profile was written in grants or in api - which is what left a document
+// written only in api reporting nothing while reaching everything.
+// See docs/steering/modules/profiles.md.
+func grantsWithin(api map[string]ResolvedRule) []string {
+	granted := []string{}
+
+	for key, expansion := range grantExpansions {
+		if withinApi(expansion, api) {
+			granted = append(granted, key)
+		}
+	}
+
+	slices.Sort(granted)
+
+	return granted
 }
 
 // A well formed grant that reaches no key is refused too, because the alternative is

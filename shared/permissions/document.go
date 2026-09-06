@@ -46,10 +46,9 @@ type Rule struct {
 // single expression meaning "matches both". Picking one side would grant more than
 // the other allows, so every pattern is kept and all of them have to match.
 //
-// Grants is the summary by resource of the same answer: the grants that survived
-// every ceiling above. Api is the truth of what the guard does, and where the two
-// diverge Api wins - a grant only half covered by a hand written api layer does
-// not appear at all.
+// Grants is the same answer summarised by resource, derived from Api by grantsWithin,
+// so it is always concrete catalog keys and never the wildcard somebody authored.
+// Only Resolve fills it. Where the two diverge Api wins.
 type Resolved struct {
 	Api    map[string]ResolvedRule `json:"api"`
 	Grants []string                `json:"grants,omitempty"`
@@ -73,7 +72,7 @@ func Parse(document json.RawMessage) (Document, error) {
 }
 
 func (this Document) resolved() Resolved {
-	resolved := Resolved{Api: expandGrants(this.Grants), Grants: knownGrants(this.Grants)}
+	resolved := Resolved{Api: expandGrants(this.Grants)}
 
 	// api replaces the expansion for a path, never merges with it: grants leave the
 	// query open, so a union would erase a regex someone wrote by hand.

@@ -9,7 +9,9 @@ import (
 	as "auth_service/app/modules/authorize/services"
 	odto "auth_service/app/modules/core/otp/models"
 	os "auth_service/app/modules/core/otp/services"
+	ps "auth_service/app/modules/core/participant/services"
 	ss "auth_service/app/modules/core/session/services"
+	udto "auth_service/app/modules/core/user/models"
 	ur "auth_service/app/modules/core/user/repository"
 	dto "auth_service/app/modules/login/models"
 	hs "auth_service/app/modules/utils/hash/services"
@@ -24,12 +26,13 @@ import (
 var _ ILoginService = &LoginService{}
 
 type LoginService struct {
-	userRepository   ur.IUserRepository
-	hashService      hs.IHashService
-	sessionService   ss.ISessionService
-	authorizeService as.IAuthorizeService
-	otpService       os.IOtpService
-	logger           *zap.Logger
+	userRepository     ur.IUserRepository
+	hashService        hs.IHashService
+	sessionService     ss.ISessionService
+	authorizeService   as.IAuthorizeService
+	otpService         os.IOtpService
+	participantService ps.IParticipantService
+	logger             *zap.Logger
 }
 
 func NewLoginService(
@@ -38,16 +41,18 @@ func NewLoginService(
 	sessionService ss.ISessionService,
 	authorizeService as.IAuthorizeService,
 	otpService os.IOtpService,
+	participantService ps.IParticipantService,
 	logger *zap.Logger,
 ) *LoginService {
 
 	return &LoginService{
-		userRepository:   userRepository,
-		hashService:      hashService,
-		sessionService:   sessionService,
-		authorizeService: authorizeService,
-		otpService:       otpService,
-		logger:           logger,
+		userRepository:     userRepository,
+		hashService:        hashService,
+		sessionService:     sessionService,
+		authorizeService:   authorizeService,
+		otpService:         otpService,
+		participantService: participantService,
+		logger:             logger,
 	}
 }
 
@@ -60,7 +65,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	user, err := this.userRepository.FindOne(entity.User{
 		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
-	}, repo.Option{With: []string{"Profile"}})
+	}, repo.Option{With: []string{"CurrentOrganization", "CurrentOrganization.Profile"}})
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to find user in User Pool")
@@ -102,13 +107,25 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		return nil, err
 	}
 
+	participation, err := this.participantService.FindForCurrentOrganization(user)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &dto.LoginResponse{
 		SessionId:        session.ID,
 		AccessToken:      credentials.AccessToken,
 		RefreshToken:     credentials.RefreshToken,
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
-		User:             *user,
+		User: udto.UserResponse{
+			User: *user,
+			Profile: &udto.ProfileResponse{
+				Profile:     *participation.Participant.Profile,
+				Permissions: participation.Permissions,
+			},
+		},
 	}, nil
 }
 
@@ -120,7 +137,7 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 	user, err := this.userRepository.FindOne(entity.User{
 		Email:       strings.ToLower(userData.Email),
 		UsersPoolId: app.UsersPool.ID,
-	}, repo.Option{With: []string{"Profile"}})
+	}, repo.Option{With: []string{"CurrentOrganization", "CurrentOrganization.Profile"}})
 
 	if err != nil {
 		return nil, e.ThrowInternalServerError("Failed to find user in User Pool")
@@ -162,13 +179,25 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 
 	go this.otpService.Invalidate(otp.ID)
 
+	participation, err := this.participantService.FindForCurrentOrganization(user)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &dto.LoginResponse{
 		SessionId:        session.ID,
 		AccessToken:      credentials.AccessToken,
 		RefreshToken:     credentials.RefreshToken,
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
-		User:             *user,
+		User: udto.UserResponse{
+			User: *user,
+			Profile: &udto.ProfileResponse{
+				Profile:     *participation.Participant.Profile,
+				Permissions: participation.Permissions,
+			},
+		},
 	}, nil
 }
 

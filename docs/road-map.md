@@ -1,0 +1,9 @@
+- Testar via interface implementação de organização
+- Regra: Um usuário não pode editar o perfil da própria organização, não importa o profile do mesmo
+- Mudar UpdateDao para NullableDao para que se possa utilizar o mesmo para gerar queries de Where, isso pensando em casos de fields=false no banco - chamar de UpdateDao é injusto
+- Garantir Profiles intransigentes
+- Criar profiles de organização e globois
+- Separar rota de users/me e users/uuid , alguns users podem buscar e editar a si mesmo e outros podem modificar a todos os outros que tem visibilidade.
+- Rota de verificação de email
+- Fluxo de 2fa (Não prioritário)
+- Visibilidade em cascata - possibilidade de ver todos os itens associados abaixo da organização em forma de cascata

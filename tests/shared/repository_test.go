@@ -310,18 +310,18 @@ func TestUpdateDaoKeysResolveToRealColumns(t *testing.T) {
 
 	name, phone := "Luis", ""
 	verified, twoFactor := false, true
-	profileId, hash := "profile-1", "hash"
+	organizationId, hash := "org-1", "hash"
 	metadata := json.RawMessage(`{}`)
 
 	dao := udto.UserUpdateDao{
-		ProfileId:        &profileId,
-		Name:             &name,
-		Email:            &name,
-		Phone:            &phone,
-		VerifyEmail:      &verified,
-		TwoFactorEnabled: &twoFactor,
-		PasswordHash:     &hash,
-		Metadata:         &metadata,
+		CurrentOrganizationId: &organizationId,
+		Name:                  &name,
+		Email:                 &name,
+		Phone:                 &phone,
+		VerifyEmail:           &verified,
+		TwoFactorEnabled:      &twoFactor,
+		PasswordHash:          &hash,
+		Metadata:              &metadata,
 	}
 
 	statement := client.Model(&entity.User{}).Where("id = ?", 1).
@@ -330,7 +330,7 @@ func TestUpdateDaoKeysResolveToRealColumns(t *testing.T) {
 	// An unknown key would be emitted as a raw column name and blow up in
 	// postgres; every column below proves the dao field name resolved.
 	for _, column := range []string{
-		"profile_id", "name", "email", "phone",
+		"current_organization_id", "name", "email", "phone",
 		"verify_email", "two_factor_enabled", "password_hash", "metadata",
 	} {
 		assert.Contains(t, statement.SQL.String(), `"`+column+`"=`)

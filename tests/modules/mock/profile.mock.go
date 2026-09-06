@@ -9,21 +9,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockProfileService represents a mock implementation of IProfileService
-type MockProfileService struct {
-	mock.Mock
-}
-
-var _ ps.IProfileService = &MockProfileService{}
-
-func (this *MockProfileService) GetProfileByAppRole(role string) (*entity.Profile, error) {
-	args := this.Called(role)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.Profile), args.Error(1)
-}
-
 // MockProfileRepository represents a mock implementation of IProfileRepository
 type MockProfileRepository struct {
 	mock.Mock
@@ -31,10 +16,41 @@ type MockProfileRepository struct {
 
 var _ pr.IProfileRepository = &MockProfileRepository{}
 
-func (this *MockProfileRepository) FindByAppRole(role string, options ...repo.Option) ([]entity.AppRoleProfile, error) {
-	args := this.Called(role, options)
+func (this *MockProfileRepository) FindOne(where entity.Profile, options ...repo.Option) (*entity.Profile, error) {
+	args := this.Called(where, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]entity.AppRoleProfile), args.Error(1)
+	return args.Get(0).(*entity.Profile), args.Error(1)
+}
+
+func (this *MockProfileRepository) FindByKey(key string, options ...repo.Option) (*entity.Profile, error) {
+	args := this.Called(key, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Profile), args.Error(1)
+}
+
+// MockProfileService represents a mock implementation of IProfileService
+type MockProfileService struct {
+	mock.Mock
+}
+
+var _ ps.IProfileService = &MockProfileService{}
+
+func (this *MockProfileService) FindById(id string) (*entity.Profile, error) {
+	args := this.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Profile), args.Error(1)
+}
+
+func (this *MockProfileService) FindByKey(key string) (*entity.Profile, error) {
+	args := this.Called(key)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Profile), args.Error(1)
 }

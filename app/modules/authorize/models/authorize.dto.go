@@ -2,6 +2,7 @@ package models
 
 import (
 	otpDto "auth_service/app/modules/core/otp/models"
+	udto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
 	"time"
 )
@@ -25,11 +26,11 @@ type RefreshResponse struct {
 	ExpiresAt        time.Time `json:"expires_at"`
 	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
 
-	User entity.User `json:"user"`
+	User udto.UserResponse `json:"user"`
 }
 
 type ResetPasswordPayload struct {
 	Email       string                `json:"email" validate:"required,email"`
-	NewPassword string                `json:"new_password" validate:"required"`
+	NewPassword string                `json:"new_password" validate:"required,min=8"`
 	Otp         otpDto.PayloadOtpData `json:"otp" validate:"required"`
 }

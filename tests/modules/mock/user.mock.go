@@ -56,16 +56,16 @@ func (this *MockUserRepository) Delete(where entity.User, options ...repo.Option
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (this *MockUserRepository) FindFromAppId(appId string, options ...repo.Option) ([]entity.User, error) {
-	args := this.Called(appId, options)
+func (this *MockUserRepository) FindSearch(search ur.UserSearch, options ...repo.Option) ([]entity.User, error) {
+	args := this.Called(search, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]entity.User), args.Error(1)
 }
 
-func (this *MockUserRepository) FindFromAppIdCount(appId string, options ...repo.Option) (int64, error) {
-	args := this.Called(appId, options)
+func (this *MockUserRepository) FindSearchCount(search ur.UserSearch, options ...repo.Option) (int64, error) {
+	args := this.Called(search, options)
 	return args.Get(0).(int64), args.Error(1)
 }
 
@@ -94,10 +94,18 @@ func (this *MockUserService) Update(where entity.User, data dto.UserUpdateDao) (
 	return args.Get(0).(int64), args.Error(1)
 }
 
-func (this *MockUserService) FindAllUsersFromApp(targetAppId string, currentUser *entity.User, targetApp *entity.App, query *dto.GetUsersAppQuery) (*dto.GetUsersAppResponse, error) {
-	args := this.Called(targetAppId, currentUser, targetApp, query)
+func (this *MockUserService) List(currentUser *entity.User, currentOrganization *entity.Organization, query *dto.UserListQuery) (*dto.GetUsersResponse, error) {
+	args := this.Called(currentUser, currentOrganization, query)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*dto.GetUsersAppResponse), args.Error(1)
+	return args.Get(0).(*dto.GetUsersResponse), args.Error(1)
+}
+
+func (this *MockUserService) FindById(currentUser *entity.User, currentOrganization *entity.Organization, targetUserId uint) (*entity.User, error) {
+	args := this.Called(currentUser, currentOrganization, targetUserId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
 }

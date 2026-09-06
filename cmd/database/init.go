@@ -12,6 +12,7 @@ import (
 	hash "auth_service/app/modules/utils/hash/services"
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/constants"
 	"auth_service/shared/utils"
 
 	"github.com/google/uuid"
@@ -24,14 +25,25 @@ const (
 	mainAppName    = "main_app"
 	adminUserName  = "Admin User"
 	adminUserEmail = "admin@example.com"
+	adminOrgName   = "admin_organization"
 
 	credentialsFile = "credentials.txt"
 )
 
+// Matched by PermissionsGuard against ctx.Route().Path - the registered route
+// pattern, never the request URL - so a key is written as `/core/apps/:id`. A
+// query parameter the map does not mention is a denial.
 var (
 	adminPermissions = json.RawMessage(`{ "api": { "*": { "methods": ["*"] } } }`)
 
-	managerPermissions = json.RawMessage(`{"api": {"/core/apps": {"methods": ["POST", "GET"]}, "/core/apps/:id": {"methods": ["GET", "PUT", "DELETE"]}, "/core/users_pool": {"methods": ["GET", "POST", "PUT"]}, "/core/apps/:id/users": {"query": {"name": "^.+$", "skip": "^[0-9]+$", "email": "^.+$", "limit": "^[0-9]+$"}, "methods": ["GET", "POST"]}}}`)
+	managerPermissions = json.RawMessage(`{"api": {"/core/apps": {"query": {"name": "^.+$", "skip": "^[0-9]+$", "limit": "^[0-9]+$", "pool_id": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}, "methods": ["POST", "GET"]}, "/core/apps/:id": {"methods": ["GET", "PUT", "DELETE"]}, "/core/users_pool": {"methods": ["GET", "POST", "PUT"], "query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$"}}, "/core/organizations": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET", "POST"]}, "/core/organizations/switch": {"methods": ["PUT"]}, "/core/organizations/:id/participants": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}, "/core/users": {"methods": ["GET"], "query": {"app_id": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "pool_id": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$", "email": "^.+$"}}, "/core/users/me": {"methods": ["GET"]}, "/core/users/:id": {"methods": ["GET"]}, "/core/users_pool/:id": {"methods": ["GET"]}}}`)
+
+	// NOTE: /auth/login and /auth/register are listed for documentation only -
+	// neither route runs the PermissionsGuard, so this profile does not gate them.
+	loginPermissions = json.RawMessage(`{"api": {"/auth/login": {"methods": ["POST"]}, "/auth/register": {"methods": ["POST"]}, "/core/organizations": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}, "/core/organizations/switch": {"methods": ["PUT"]}}}`)
+
+	// Nothing assigns it yet; seeded for the invite flow.
+	memberPermissions = json.RawMessage(`{"api": {"/core/organizations": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}, "/core/organizations/:id/participants": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}}}`)
 
 	emptyJson = json.RawMessage(`{}`)
 )
@@ -39,12 +51,13 @@ var (
 // initSeed holds the values produced by the seed that are needed once the
 // transaction is committed (credentials output).
 type initSeed struct {
-	usersPoolId   string
-	poolPublicKey string
-	appId         string
-	appPublicKey  string
-	appSecretKey  string
-	password      string
+	usersPoolId    string
+	poolPublicKey  string
+	appId          string
+	appPublicKey   string
+	appSecretKey   string
+	organizationId string
+	password       string
 }
 
 func run(db *gorm.DB, cfg *config.Config) error {
@@ -57,7 +70,56 @@ func run(db *gorm.DB, cfg *config.Config) error {
 	seed := initSeed{}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		// 1. Create Users Pool
+		// The order is dictated by the NOT NULL columns and has no slack in it:
+		// profiles before the pool, the organization before the user, and the user
+		// before the owner of the organization can be stamped.
+
+		// 1. Create Profiles
+		adminProfile, err := upsertProfile(tx, entity.Profile{
+			Key:         constants.ProfileAdmin,
+			Name:        "Admin Profile",
+			Permissions: adminPermissions,
+			Metadata:    emptyJson,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to insert or retrieve admin profile: %w", err)
+		}
+		utils.PrintSuccess("Admin Profile created/retrieved")
+
+		managerProfile, err := upsertProfile(tx, entity.Profile{
+			Key:             constants.ProfileManager,
+			Name:            "Manager Profile",
+			ParentProfileId: &adminProfile.ID,
+			Permissions:     managerPermissions,
+			Metadata:        emptyJson,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to insert or retrieve manager profile: %w", err)
+		}
+		utils.PrintSuccess("Manager Profile created/retrieved")
+
+		if _, err := upsertProfile(tx, entity.Profile{
+			Key:             constants.ProfileLogin,
+			Name:            "Login Profile",
+			ParentProfileId: &managerProfile.ID,
+			Permissions:     loginPermissions,
+			Metadata:        emptyJson,
+		}); err != nil {
+			return fmt.Errorf("failed to insert or retrieve login profile: %w", err)
+		}
+		utils.PrintSuccess("Login Profile created/retrieved")
+
+		if _, err := upsertProfile(tx, entity.Profile{
+			Key:         constants.ProfileMember,
+			Name:        "Member Participant Profile",
+			Permissions: memberPermissions,
+			Metadata:    emptyJson,
+		}); err != nil {
+			return fmt.Errorf("failed to insert or retrieve member profile: %w", err)
+		}
+		utils.PrintSuccess("Member Participant Profile created/retrieved")
+
+		// 2. Create Users Pool
 		// The id is generated upfront so its ciphered version (the public key)
 		// can be persisted on the same insert, mirroring what the user pool
 		// repository does at runtime.
@@ -72,6 +134,9 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			ID:        usersPoolId,
 			Name:      mainPoolName,
 			PublicKey: poolPublicKey,
+
+			// Every other pool is created through the API and starts on LOGIN_PROFILE.
+			DefaultProfileId: managerProfile.ID,
 		}
 
 		if err := tx.Create(&usersPool).Error; err != nil {
@@ -79,7 +144,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("Users Pool created")
 
-		// 2. Create App
+		// 3. Create App
 		appId := uuid.New().String()
 
 		appPublicKey, err := cipherService.EncryptUuidIntoToken(appId)
@@ -107,64 +172,24 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("App created")
 
-		// 3. Create Profiles
-		adminProfile, err := upsertProfile(tx, entity.Profile{
-			Key:         "ADMIN",
-			Name:        "Admin Profile",
-			Permissions: adminPermissions,
+		// 4. Create the organization of the platform admin
+		//
+		// NOTE: it lives inside the very pool it goes on to own, and this is the ONLY
+		// place where that is allowed - everywhere else the owning organization sits
+		// in the parent pool, which is what keeps a user from seeing the pool it
+		// belongs to. See docs/specs/2026-08-23-organizations.md.
+		adminOrganization := entity.Organization{
+			UsersPoolId: usersPool.ID,
+			ProfileId:   adminProfile.ID,
+			Name:        adminOrgName,
+			Description: "Organization of the platform administrator",
 			Metadata:    emptyJson,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to insert or retrieve admin profile: %w", err)
 		}
-		utils.PrintSuccess("Admin Profile created/retrieved")
 
-		managerProfile, err := upsertProfile(tx, entity.Profile{
-			Key:             "MANAGER",
-			Name:            "Manager Profile",
-			ParentProfileId: &adminProfile.ID,
-			Permissions:     managerPermissions,
-			Metadata:        emptyJson,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to insert or retrieve manager profile: %w", err)
+		if err := tx.Create(&adminOrganization).Error; err != nil {
+			return fmt.Errorf("failed to insert admin organization: %w", err)
 		}
-		utils.PrintSuccess("Manager Profile created/retrieved")
-
-		consumerProfile, err := upsertProfile(tx, entity.Profile{
-			Key:             "CONSUMER",
-			Name:            "Consumer Profile",
-			ParentProfileId: &managerProfile.ID,
-			Permissions:     emptyJson,
-			Metadata:        emptyJson,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to insert or retrieve consumer profile: %w", err)
-		}
-		utils.PrintSuccess("Consumer Profile created/retrieved")
-
-		// 4. Create App Role Profiles
-		// NOTE: Here I will create the relation between the app types and the user roles
-		//       Where I will define what kind of users each app will have.
-		// Example:
-		//  - The Admin app will have admin users and managers users - those users will have the profile associated with the
-		//    app via database APP_ROLE -> PROFILES.
-		//  - The User app will have consumer users - those users will have the profile associated with the
-		//    app via database APP_ROLE -> PROFILES.
-		if err := ensureAppRoleProfile(tx, adminProfile.ID, "ADMIN", 999, json.RawMessage(`{ "register": false }`)); err != nil {
-			return fmt.Errorf("failed to insert admin app role profile: %w", err)
-		}
-		utils.PrintSuccess("Admin App Role Profile created")
-
-		if err := ensureAppRoleProfile(tx, managerProfile.ID, "ADMIN", 0, json.RawMessage(`{ "register": true }`)); err != nil {
-			return fmt.Errorf("failed to insert manager app role profile: %w", err)
-		}
-		utils.PrintSuccess("Manager App Role Profile created")
-
-		if err := ensureAppRoleProfile(tx, consumerProfile.ID, "USER", 0, json.RawMessage(`{ "register": true }`)); err != nil {
-			return fmt.Errorf("failed to insert consumer app role profile: %w", err)
-		}
-		utils.PrintSuccess("Consumer App Role Profile created")
+		utils.PrintSuccess("Admin Organization created")
 
 		// 5. Create Admin User
 		// password := uuid.New().String()
@@ -176,12 +201,12 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 
 		adminUser := entity.User{
-			Name:         adminUserName,
-			Email:        adminUserEmail,
-			UsersPoolId:  usersPool.ID,
-			ProfileId:    adminProfile.ID,
-			PasswordHash: adminHashedPassword,
-			Metadata:     emptyJson,
+			Name:                  adminUserName,
+			Email:                 adminUserEmail,
+			UsersPoolId:           usersPool.ID,
+			CurrentOrganizationId: adminOrganization.ID,
+			PasswordHash:          adminHashedPassword,
+			Metadata:              emptyJson,
 		}
 
 		if err := tx.Create(&adminUser).Error; err != nil {
@@ -189,13 +214,49 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("Admin User created")
 
+		// 6. Close the cycle: the organization now has an owner
+		if err := tx.Model(&entity.Organization{}).
+			Where("id = ?", adminOrganization.ID).
+			Update("owner_user_id", adminUser.ID).Error; err != nil {
+			return fmt.Errorf("failed to set the admin organization owner: %w", err)
+		}
+		utils.PrintSuccess("Admin Organization owner set")
+
+		// 7. The owner participates on the ceiling of its own organization.
+		adminParticipant := entity.Participant{
+			OrganizationId: adminOrganization.ID,
+			UserId:         adminUser.ID,
+			ProfileId:      adminProfile.ID,
+			Metadata:       emptyJson,
+		}
+
+		if err := tx.Create(&adminParticipant).Error; err != nil {
+			return fmt.Errorf("failed to insert admin participant: %w", err)
+		}
+		utils.PrintSuccess("Admin Participant created")
+
+		// 8. The column every listing filters by.
+		if err := tx.Model(&entity.UsersPool{}).
+			Where("id = ?", usersPool.ID).
+			Update("organization_id", adminOrganization.ID).Error; err != nil {
+			return fmt.Errorf("failed to set the users pool organization: %w", err)
+		}
+
+		if err := tx.Model(&entity.App{}).
+			Where("id = ?", app.ID).
+			Update("organization_id", adminOrganization.ID).Error; err != nil {
+			return fmt.Errorf("failed to set the app organization: %w", err)
+		}
+		utils.PrintSuccess("Users Pool and App bound to the Admin Organization")
+
 		seed = initSeed{
-			usersPoolId:   usersPool.ID,
-			poolPublicKey: poolPublicKey,
-			appId:         app.ID,
-			appPublicKey:  appPublicKey,
-			appSecretKey:  app.SecretKey,
-			password:      password,
+			usersPoolId:    usersPool.ID,
+			poolPublicKey:  poolPublicKey,
+			appId:          app.ID,
+			appPublicKey:   appPublicKey,
+			appSecretKey:   app.SecretKey,
+			organizationId: adminOrganization.ID,
+			password:       password,
 		}
 
 		return nil
@@ -233,34 +294,6 @@ func upsertProfile(tx *gorm.DB, profile entity.Profile) (*entity.Profile, error)
 	return &profile, nil
 }
 
-// ensureAppRoleProfile creates the profile/role relation only when it does not
-// exist yet. The insert goes through a map because GORM drops zero valued struct
-// fields that declare a `default` tag - `priority = 0` would silently become 999.
-func ensureAppRoleProfile(tx *gorm.DB, profileId string, role string, priority int, permission json.RawMessage) error {
-	var count int64
-
-	err := tx.Model(&entity.AppRoleProfile{}).
-		Where("profile_id = ? AND role = ?", profileId, role).
-		Count(&count).Error
-
-	if err != nil {
-		return err
-	}
-
-	if count > 0 {
-		return nil
-	}
-
-	return tx.Model(&entity.AppRoleProfile{}).Create(map[string]any{
-		"profile_id": profileId,
-		"role":       role,
-		"priority":   priority,
-		"permission": string(permission),
-		"relation":   string(emptyJson),
-		"metadata":   string(emptyJson),
-	}).Error
-}
-
 func writeCredentialsFile(seed initSeed) {
 	newCredentials := fmt.Sprintf(`
 Initialization Complete & Credentials
@@ -281,8 +314,10 @@ App ID              : %s
 Encrypted App ID    : %s
 App Secret Key      : %s
 
+Organization ID     : %s
+
 Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)
-`, adminUserName, adminUserEmail, seed.password, seed.usersPoolId, seed.poolPublicKey, seed.appId, seed.appPublicKey, seed.appSecretKey)
+`, adminUserName, adminUserEmail, seed.password, seed.usersPoolId, seed.poolPublicKey, seed.appId, seed.appPublicKey, seed.appSecretKey, seed.organizationId)
 
 	// Get System Info
 	hostname, _ := os.Hostname()
@@ -343,6 +378,10 @@ func printCredentials(seed initSeed) {
 	utils.PrintKeyValue("App ID", seed.appId)
 	utils.PrintKeyValue("Encrypted App ID", seed.appPublicKey)
 	utils.PrintKeyValue("App Secret Key", seed.appSecretKey)
+
+	fmt.Println()
+	utils.PrintSection("Current Organization")
+	utils.PrintKeyValue("Organization ID", seed.organizationId)
 
 	fmt.Println()
 	utils.PrintHint("Use the Encrypted IDs in your request headers (X-Pool-Key, X-Public-Key)")

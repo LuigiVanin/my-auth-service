@@ -5,7 +5,7 @@ import (
 	"time"
 
 	otpDto "auth_service/app/modules/core/otp/models"
-	entity "auth_service/infra/entities"
+	udto "auth_service/app/modules/core/user/models"
 )
 
 type RegisterPayloadWithPassoword struct {
@@ -36,5 +36,5 @@ type RegisterResponse struct {
 	ExpiresAt        time.Time `json:"expires_at"`
 	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
 
-	User entity.User `json:"user"`
+	User udto.UserResponse `json:"user"`
 }

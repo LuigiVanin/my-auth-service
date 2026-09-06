@@ -112,6 +112,34 @@ transaction in the service and threads the option through every call inside it.
 Read only flows and single mutations do not need one. See
 [repository-pattern.md](repository-pattern.md).
 
+**Inside a unit of work, write through the repository — including another
+module's.** This is the one exception to the rule above about not holding another
+module's repository, and it exists because `repo.Option` is what carries the
+transaction. Routing a write through the other module's service means either
+threading the option across a service boundary or silently dropping out of the
+transaction; the second is invisible and the first turns every thin wrapper into
+part of the transaction API.
+
+`RegisterService.ProvisionUser` writes an organization, a user and a participation
+in one transaction, and holds `IOrganizationRepository`, `IUserRepository` and
+`IParticipantRepository` for exactly those three writes. It still depends on
+`IParticipantService` for the *read* that resolves permissions, because that read
+carries a rule that must not be duplicated. `OrganizationService.CreateForUser`
+does the same with the participant repository.
+
+The service methods those writes bypass (`IOrganizationService.Create`,
+`SetOwner`, `IParticipantService.Create`) are kept, uncalled, for the routes that
+will perform the same mutations on their own — a single mutation needs no
+transaction and should go through the service.
+
+The split, stated once:
+
+| | Goes through |
+| --- | --- |
+| A write inside a transaction | the repository, on the shared `repo.Option` |
+| A single write, no transaction | the other module's service |
+| Any read carrying a rule | the other module's service, always |
+
 **Combine listing and counting here.** Repositories expose `Find` and
 `FindCount` separately; assembling the page response is the service's job.
 
@@ -126,13 +154,13 @@ visibility is a business rule.
 | ------------------------------ | ------- | -------------------------------------------------- |
 | Its own module's repository    | yes     | the normal case                                     |
 | Another module's **service**   | yes     | `RegisterService` → `IOtpService`, `ISessionService` |
-| Another module's **repository**| no      | go through that module's service                    |
+| Another module's **repository**| for a write inside a transaction only | see "Own the transaction"; anything else goes through that module's service |
 | A controller                   | no      | never                                               |
 | `*gorm.DB`                     | no      | never                                               |
 | `*zap.Logger`, `*config.Config`| yes     | injected like any other dependency                  |
 
-A service that needs a repository from another module is the signal that the
-other module is missing a service method.
+Outside a transaction, a service that needs a repository from another module is
+the signal that the other module is missing a service method.
 
 ## Logging
 

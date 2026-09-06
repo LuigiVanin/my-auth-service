@@ -10,6 +10,7 @@ import (
 
 	e "auth_service/app/errors"
 	otpDto "auth_service/app/modules/core/otp/models"
+	udto "auth_service/app/modules/core/user/models"
 	"auth_service/app/modules/register/controller"
 	dto "auth_service/app/modules/register/models"
 	entity "auth_service/infra/entities"
@@ -92,10 +93,12 @@ func (this *RegisterControllerTestSuite) TestRegisterWithPassword_Success() {
 		RefreshToken:     "refresh-token",
 		ExpiresAt:        time.Now().Add(1 * time.Hour),
 		RefreshExpiresAt: time.Now().Add(7 * 24 * time.Hour),
-		User: entity.User{
-			ID:    1,
-			Email: "newuser@example.com",
-			Name:  "New User",
+		User: udto.UserResponse{
+			User: entity.User{
+				ID:    1,
+				Email: "newuser@example.com",
+				Name:  "New User",
+			},
 		},
 	}
 
@@ -225,10 +228,12 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_Success() {
 	expectedResponse := &dto.RegisterResponse{
 		SessionId:   "session-id-otp",
 		AccessToken: "access-token-otp",
-		User: entity.User{
-			Email:       "newuser@example.com",
-			Name:        "New User",
-			VerifyEmail: true,
+		User: udto.UserResponse{
+			User: entity.User{
+				Email:       "newuser@example.com",
+				Name:        "New User",
+				VerifyEmail: true,
+			},
 		},
 	}
 
@@ -271,7 +276,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_DefaultMethod_Succe
 	expectedResponse := &dto.RegisterResponse{
 		SessionId:   "session-id",
 		AccessToken: "access-token",
-		User:        entity.User{Email: "newuser@example.com"},
+		User:        udto.UserResponse{User: entity.User{Email: "newuser@example.com"}},
 	}
 
 	this.mockRegisterService.On("RegisterWithOtp", this.appEntity, payload, testifymock.Anything).Return(expectedResponse, nil)
@@ -399,9 +404,11 @@ func (this *RegisterControllerTestSuite) TestRegister_WithPhoneNumber_Success() 
 	expectedResponse := &dto.RegisterResponse{
 		SessionId:   "session-id",
 		AccessToken: "access-token",
-		User: entity.User{
-			Email: "newuser@example.com",
-			Phone: "+1234567890",
+		User: udto.UserResponse{
+			User: entity.User{
+				Email: "newuser@example.com",
+				Phone: "+1234567890",
+			},
 		},
 	}
 

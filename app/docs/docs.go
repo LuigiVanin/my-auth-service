@@ -23,12 +23,13 @@ import (
 )
 
 const (
-	TagAuth      = "Auth"
-	TagOtp       = "OTP"
-	TagApps      = "Apps"
-	TagUsers     = "Users"
-	TagUserPools = "User Pools"
-	TagHealth    = "Health"
+	TagAuth          = "Auth"
+	TagOtp           = "OTP"
+	TagApps          = "Apps"
+	TagUsers         = "Users"
+	TagUserPools     = "User Pools"
+	TagOrganizations = "Organizations"
+	TagHealth        = "Health"
 )
 
 func PublicRoute(
@@ -83,6 +84,7 @@ func AuthRoute(
 		})
 }
 
+// AppGuard + AuthGuard + OrganizationGuard + PermissionsGuard.
 func PermissionedRoute(
 	builder *openapi.Builder,
 	method string,
@@ -91,7 +93,7 @@ func PermissionedRoute(
 ) *openapi.RouteBuilder {
 	return AuthRoute(builder, method, path, options...).
 		AddResponse(fiber.StatusForbidden, e.ProblemDetail{}, openapi.Options{
-			Description: "The profile of the user does not grant access to this route",
+			Description: "`PERMISSION_DENIED` when the permissions of the user in its current organization do not grant access to this route, `NOT_A_PARTICIPANT` when the user does not participate in the organization it is scoped to",
 		})
 }
 

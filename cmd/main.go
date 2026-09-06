@@ -9,7 +9,9 @@ import (
 
 	"auth_service/app/modules/authorize"
 	"auth_service/app/modules/core/app"
+	"auth_service/app/modules/core/organization"
 	"auth_service/app/modules/core/otp"
+	"auth_service/app/modules/core/participant"
 	"auth_service/app/modules/core/profile"
 	"auth_service/app/modules/core/session"
 	"auth_service/app/modules/core/user"
@@ -60,6 +62,7 @@ func AppBootstrap() fx.Option {
 		fx.Provide(guards.NewAppGuard),
 		fx.Provide(guards.NewAuthGuard),
 		fx.Provide(guards.NewOtpGuard),
+		fx.Provide(guards.NewOrganizationGuard),
 		fx.Provide(guards.NewPermissionsGuard),
 
 		// Utils
@@ -73,6 +76,8 @@ func AppBootstrap() fx.Option {
 		user_pool.Module,
 		session.Module,
 		profile.Module,
+		organization.Module,
+		participant.Module,
 		otp.Module,
 
 		// API

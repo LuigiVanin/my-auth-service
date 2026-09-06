@@ -2,6 +2,7 @@ package mock
 
 import (
 	dto "auth_service/app/modules/register/models"
+	rs "auth_service/app/modules/register/services"
 	entity "auth_service/infra/entities"
 	sharedDto "auth_service/shared/models"
 
@@ -10,6 +11,14 @@ import (
 
 type MockRegisterService struct {
 	mock.Mock
+}
+
+func (this *MockRegisterService) ProvisionUser(app *entity.App, user entity.User) (*rs.ProvisionedUser, error) {
+	args := this.Called(app, user)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*rs.ProvisionedUser), args.Error(1)
 }
 
 func (this *MockRegisterService) Register() error {

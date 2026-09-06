@@ -24,14 +24,10 @@ func NewAppRepository(client *gorm.DB) *AppRepository {
 // FindSearch and FindSearchCount so the two can never drift apart.
 func searchScope(search AppSearch) func(*gorm.DB) *gorm.DB {
 	return func(query *gorm.DB) *gorm.DB {
-		if search.OrChildrenOfAppId != nil {
-			query = query.Where(
-				"(apps.owner_user_id = ? OR apps.parent_app_id = ?)",
-				search.OwnerUserId,
-				*search.OrChildrenOfAppId,
-			)
-		} else {
-			query = query.Where("apps.owner_user_id = ?", search.OwnerUserId)
+		query = query.Where("apps.organization_id = ?", search.OrganizationId)
+
+		if search.UsersPoolId != "" {
+			query = query.Where("apps.users_pool_id = ?", search.UsersPoolId)
 		}
 
 		if search.Name != "" {

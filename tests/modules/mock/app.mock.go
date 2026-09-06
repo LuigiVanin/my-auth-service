@@ -58,40 +58,40 @@ type MockAppService struct {
 
 var _ as.IAppService = &MockAppService{}
 
-func (this *MockAppService) CreateWithUserPool(currentUser *entity.User, currentApp *entity.App, payload *dto.CreateAppPayload) (*entity.App, error) {
-	args := this.Called(currentUser, currentApp, payload)
+func (this *MockAppService) CreateWithUserPool(currentUser *entity.User, currentApp *entity.App, currentOrganization *entity.Organization, payload *dto.CreateAppPayload) (*entity.App, error) {
+	args := this.Called(currentUser, currentApp, currentOrganization, payload)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.App), args.Error(1)
 }
 
-func (this *MockAppService) FindAll(currentUser *entity.User, currentApp *entity.App, query *dto.GetAppsQuery) (*dto.GetAppsResponse, error) {
-	args := this.Called(currentUser, currentApp, query)
+func (this *MockAppService) FindAll(currentUser *entity.User, currentApp *entity.App, currentOrganization *entity.Organization, query *dto.GetAppsQuery) (*dto.GetAppsResponse, error) {
+	args := this.Called(currentUser, currentApp, currentOrganization, query)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*dto.GetAppsResponse), args.Error(1)
 }
 
-func (this *MockAppService) FindById(id string) (*entity.App, error) {
-	args := this.Called(id)
+func (this *MockAppService) FindById(id string, currentOrganization *entity.Organization) (*entity.App, error) {
+	args := this.Called(id, currentOrganization)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.App), args.Error(1)
 }
 
-func (this *MockAppService) FindAllUserApps(userId string) ([]entity.App, error) {
-	args := this.Called(userId)
+func (this *MockAppService) FindAllUserApps(userId string, currentOrganization *entity.Organization) ([]entity.App, error) {
+	args := this.Called(userId, currentOrganization)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]entity.App), args.Error(1)
 }
 
-func (this *MockAppService) Update(user *entity.User, app *entity.App) (*entity.App, error) {
-	args := this.Called(user, app)
+func (this *MockAppService) Update(user *entity.User, app *entity.App, currentOrganization *entity.Organization) (*entity.App, error) {
+	args := this.Called(user, app, currentOrganization)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

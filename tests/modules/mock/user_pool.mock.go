@@ -38,6 +38,19 @@ func (this *MockUserPoolRepository) Update(where entity.UsersPool, data dto.User
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (this *MockUserPoolRepository) FindSearch(search upr.UserPoolSearch, options ...repo.Option) ([]entity.UsersPool, error) {
+	args := this.Called(search, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]entity.UsersPool), args.Error(1)
+}
+
+func (this *MockUserPoolRepository) FindSearchCount(search upr.UserPoolSearch, options ...repo.Option) (int64, error) {
+	args := this.Called(search, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // MockUserPoolService represents a mock implementation of IUserPoolService
 type MockUserPoolService struct {
 	mock.Mock
@@ -45,8 +58,8 @@ type MockUserPoolService struct {
 
 var _ ups.IUserPoolService = &MockUserPoolService{}
 
-func (this *MockUserPoolService) Create(name string, ownerUserId *uint) (*entity.UsersPool, error) {
-	args := this.Called(name, ownerUserId)
+func (this *MockUserPoolService) Create(data ups.CreateUserPoolData, granter *entity.Organization) (*entity.UsersPool, error) {
+	args := this.Called(data, granter)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -59,4 +72,20 @@ func (this *MockUserPoolService) FindById(id string) (*entity.UsersPool, error) 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.UsersPool), args.Error(1)
+}
+
+func (this *MockUserPoolService) FindByIdInOrganization(id string, organizationId string) (*entity.UsersPool, error) {
+	args := this.Called(id, organizationId)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.UsersPool), args.Error(1)
+}
+
+func (this *MockUserPoolService) List(currentOrganization *entity.Organization, query *dto.UserPoolListQuery) (*dto.GetUserPoolsResponse, error) {
+	args := this.Called(currentOrganization, query)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.GetUserPoolsResponse), args.Error(1)
 }

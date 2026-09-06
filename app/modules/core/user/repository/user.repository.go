@@ -20,28 +20,36 @@ func NewUserRepository(client *gorm.DB) *UserRepository {
 	}
 }
 
-// NOTE: a user belongs to an app through the pool the app points to, so this
-// cannot be expressed by the typed `where` argument.
-const userFromAppJoin = "JOIN apps ON apps.users_pool_id = users.users_pool_id"
+// searchScope is the single definition of the listing predicate, shared by
+// FindSearch and FindSearchCount so the two cannot drift apart.
+func searchScope(search UserSearch) func(*gorm.DB) *gorm.DB {
+	return func(query *gorm.DB) *gorm.DB {
+		query = query.Where("users.users_pool_id = ?", search.UsersPoolId)
 
-func (this *UserRepository) FindFromAppId(appId string, options ...repo.Option) ([]entity.User, error) {
+		if search.Name != "" {
+			query = query.Where("users.name ILIKE ?", "%"+search.Name+"%")
+		}
+
+		if search.Email != "" {
+			query = query.Where("users.email ILIKE ?", "%"+search.Email+"%")
+		}
+
+		return query
+	}
+}
+
+func (this *UserRepository) FindSearch(search UserSearch, options ...repo.Option) ([]entity.User, error) {
 	result := []entity.User{}
 
-	err := this.ListQuery(options...).
-		Joins(userFromAppJoin).
-		Where("apps.id = ?", appId).
-		Find(&result).Error
+	err := this.ListQuery(options...).Scopes(searchScope(search)).Find(&result).Error
 
 	return result, err
 }
 
-func (this *UserRepository) FindFromAppIdCount(appId string, options ...repo.Option) (int64, error) {
+func (this *UserRepository) FindSearchCount(search UserSearch, options ...repo.Option) (int64, error) {
 	var count int64
 
-	err := this.Query(options...).
-		Joins(userFromAppJoin).
-		Where("apps.id = ?", appId).
-		Count(&count).Error
+	err := this.Query(options...).Scopes(searchScope(search)).Count(&count).Error
 
 	return count, err
 }

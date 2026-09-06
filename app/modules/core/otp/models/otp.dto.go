@@ -83,3 +83,8 @@ type GenerateConsumableOtpResponse struct {
 type VerifyConsumableOtpPayload struct {
 	Code string `json:"code" validate:"required"`
 }
+
+// OtpForgotPasswordPayload is the request body for FORGOT_PASSWORD action
+type OtpForgotPasswordPayload struct {
+	Email string `json:"email" validate:"required,email"`
+}

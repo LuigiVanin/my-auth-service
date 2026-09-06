@@ -46,7 +46,18 @@ func main() {
 	// `SELECT typname FROM pg_type` returns lowercase.
 	// So I should check for lowercase.
 
-	// 3. AutoMigrate
+	// 3. Drop what the organization refactor removed.
+	//
+	// AutoMigrate never drops a column or a table. Without this step
+	// `users.profile_id` stays behind as a NOT NULL column the entity no longer
+	// fills, so the very next insert fails, and `app_role_profiles` lingers with a
+	// foreign key into `profiles`.
+	dropRemoved(db,
+		`DROP TABLE IF EXISTS app_role_profiles`,
+		`ALTER TABLE IF EXISTS users DROP COLUMN IF EXISTS profile_id`,
+	)
+
+	// 4. AutoMigrate
 	// We run migration in two steps to handle circular dependencies (e.g., UsersPool <-> User)
 
 	// Step 1: Create tables without foreign key constraints
@@ -55,9 +66,10 @@ func main() {
 		&entity.UsersPool{},
 		&entity.Profile{},
 		&entity.User{},
+		&entity.Organization{},
+		&entity.Participant{},
 		&entity.App{},
 		&entity.Session{},
-		&entity.AppRoleProfile{},
 		&entity.Otp{},
 	)
 	if err != nil {
@@ -70,9 +82,10 @@ func main() {
 		&entity.UsersPool{},
 		&entity.Profile{},
 		&entity.User{},
+		&entity.Organization{},
+		&entity.Participant{},
 		&entity.App{},
 		&entity.Session{},
-		&entity.AppRoleProfile{},
 		&entity.Otp{},
 	)
 	if err != nil {
@@ -80,6 +93,16 @@ func main() {
 	}
 
 	fmt.Println("Migrations Finished ✅")
+}
+
+// Fatal on purpose: a leftover NOT NULL column breaks every insert afterwards, and
+// a warning in the log is not enough to notice it.
+func dropRemoved(db *gorm.DB, statements ...string) {
+	for _, statement := range statements {
+		if err := db.Exec(statement).Error; err != nil {
+			log.Fatalf("Failed to run `%s`: %v", statement, err)
+		}
+	}
 }
 
 func createEnum(db *gorm.DB, name string, enums ...string) {

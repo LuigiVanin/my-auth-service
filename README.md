@@ -179,19 +179,22 @@ The compiled binary will be available at `./build/auth_service`.
 
 ### Core Resources
 
-- `GET /core/user/:user_id/apps` - Get user's applications (requires permissions)
-- `GET /core/user/:id` - Get user details (requires authentication)
+- `GET /core/users?app_id=:uuid` - List the users of the pool an application belongs to, within the current organization (requires permissions)
+- `GET /core/users?pool_id=:uuid` - List the users of a pool of the current organization (requires permissions)
+- `GET /core/users/me` - Get the authenticated user - shortcut for `/core/users/:id` on its own id
+- `GET /core/users/:id` - Get user details (requires permissions)
+- `GET /core/user/:user_id/apps` - Get user's applications (requires permissions) [TODO]
 
 - `POST /core/apps` - Create a new application
-- `GET /core/apps` - List all applications (requires permissions)
-- `GET /core/apps/:uuid` - Get application details (requires permissions)
-- `GET /core/apps/:uuid/users` - Get users from an application (requires permissions)
+- `GET /core/apps` - List the applications of the current organization (requires permissions)
+- `GET /core/apps?pool_id=:uuid` - Narrow that listing to one pool of the current organization (requires permissions)
+- `GET /core/apps/:uuid` - Get application details, without `secret_key` (requires permissions)
 - `PUT /core/apps/:uuid` - Update application (requires permissions) [TODO]
 
-- `PUT /core/users_pool/:id` [TODO]
 - `POST /core/users_pool`
-- `GET /core/users_pool` [TODO]
-- `GET /core/users_pool/:uuid` [TODO]
+- `GET /core/users_pool` - List the users pools of the current organization (requires permissions)
+- `GET /core/users_pool/:uuid` - Get users pool details (requires permissions)
+- `PUT /core/users_pool/:id` [TODO]
 
 ## Database Management
 

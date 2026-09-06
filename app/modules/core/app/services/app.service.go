@@ -33,6 +33,7 @@ func (this *AppService) CreateWithUserPool(
 	currentUser *entity.User,
 	currentApp *entity.App,
 	currentOrganization *entity.Organization,
+	participant *entity.Participant,
 	payload *dto.CreateAppPayload,
 ) (*entity.App, error) {
 
@@ -65,7 +66,7 @@ func (this *AppService) CreateWithUserPool(
 			OwnerUserId:      &currentUser.ID,
 			OrganizationId:   &currentOrganization.ID,
 			DefaultProfileId: payload.UserPool.DefaultProfileId,
-		}, currentOrganization)
+		}, currentOrganization, participant)
 
 		if err != nil {
 			return nil, err

@@ -21,6 +21,7 @@ import (
 // trusted: it still goes through the same code path.
 func Resolve(documents ...json.RawMessage) (*Resolved, error) {
 	resolved := Resolved{Api: map[string]ResolvedRule{}}
+	candidates := []string{}
 
 	for index, raw := range documents {
 		document, err := Parse(raw)
@@ -29,15 +30,51 @@ func Resolve(documents ...json.RawMessage) (*Resolved, error) {
 			return nil, err
 		}
 
+		layer := document.resolved()
+
+		// Union, not intersection: an organization of [A, B] under a participant of
+		// {"api": {"*"}} really does grant A and B.
+		candidates = appendUnique(candidates, layer.Grants)
+
 		if index == 0 {
-			resolved = document.resolved()
+			resolved = layer
 			continue
 		}
 
-		resolved = intersect(resolved, document.resolved())
+		resolved = intersect(resolved, layer)
 	}
 
+	resolved.Grants = surviving(candidates, resolved.Api)
+
 	return &resolved, nil
+}
+
+// A candidate survives when its whole expansion fits the api that is left. Between
+// grant shaped documents that is the intersection of the lists; containment is what
+// also answers correctly when a layer is written in api.
+//
+// A grant covered only in part does not survive, so the list never promises more than
+// it delivers. See docs/steering/modules/profiles.md.
+func surviving(candidates []string, api map[string]ResolvedRule) []string {
+	kept := []string{}
+
+	for _, grant := range candidates {
+		if withinApi(expandGrants([]string{grant}), api) {
+			kept = append(kept, grant)
+		}
+	}
+
+	return kept
+}
+
+func appendUnique(values []string, extra []string) []string {
+	for _, value := range extra {
+		if !slices.Contains(values, value) {
+			values = append(values, value)
+		}
+	}
+
+	return values
 }
 
 // IsSubsetOf answers whether child exceeds parent anywhere. It is the check behind
@@ -59,23 +96,51 @@ func IsSubsetOf(child json.RawMessage, parent json.RawMessage) (bool, error) {
 		return false, err
 	}
 
-	for path, childRule := range childDoc.Api {
-		parentRule, ok := resolvePath(parentDoc.resolved(), path)
+	// Resolved on both sides, never raw: iterating childDoc.Api would leave the grants
+	// of the candidate unchecked, and a profile is written in grants.
+	return withinApi(childDoc.resolved().Api, parentDoc.resolved().Api), nil
+}
+
+// IsWithin is IsSubsetOf against a ceiling already resolved, which is what a write
+// path holds.
+//
+// It compares against Api and never against Grants: a document written in api
+// declares no grant at all, so comparing lists would leave the platform admin unable
+// to author anything.
+func IsWithin(child json.RawMessage, parent *Resolved) (bool, error) {
+	childDoc, err := Parse(child)
+
+	if err != nil {
+		return false, err
+	}
+
+	if parent == nil {
+		return false, nil
+	}
+
+	return withinApi(childDoc.resolved().Api, parent.Api), nil
+}
+
+// Whether every path of child is granted by parent. This is the question both
+// IsSubsetOf and the survival of a grant ask.
+func withinApi(child map[string]ResolvedRule, parent map[string]ResolvedRule) bool {
+	for path, childRule := range child {
+		parentRule, ok := resolvePath(Resolved{Api: parent}, path)
 
 		if !ok {
-			return false, nil
+			return false
 		}
 
 		if !methodsWithin(childRule.Methods, parentRule.Methods) {
-			return false, nil
+			return false
 		}
 
-		if !queryWithin(singlePatterns(childRule.Query), parentRule.Query) {
-			return false, nil
+		if !queryWithin(childRule.Query, parentRule.Query) {
+			return false
 		}
 	}
 
-	return true, nil
+	return true
 }
 
 func intersect(parent Resolved, child Resolved) Resolved {

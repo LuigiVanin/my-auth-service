@@ -58,8 +58,8 @@ type MockUserPoolService struct {
 
 var _ ups.IUserPoolService = &MockUserPoolService{}
 
-func (this *MockUserPoolService) Create(data ups.CreateUserPoolData, granter *entity.Organization) (*entity.UsersPool, error) {
-	args := this.Called(data, granter)
+func (this *MockUserPoolService) Create(data ups.CreateUserPoolData, granter *entity.Organization, caller *entity.Participant) (*entity.UsersPool, error) {
+	args := this.Called(data, granter, caller)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

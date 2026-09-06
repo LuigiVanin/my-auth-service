@@ -13,8 +13,8 @@ type CreateUserPoolData struct {
 }
 
 type IUserPoolService interface {
-	// Validates DefaultProfileId against the ceiling of granter before writing.
-	Create(data CreateUserPoolData, granter *entity.Organization) (*entity.UsersPool, error)
+	// Refuses when DefaultProfileId grants more than caller holds in granter.
+	Create(data CreateUserPoolData, granter *entity.Organization, caller *entity.Participant) (*entity.UsersPool, error)
 
 	// Unscoped, and only safe where the id did not come from the caller.
 	FindById(id string) (*entity.UsersPool, error)

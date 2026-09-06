@@ -13,6 +13,8 @@ import (
 	os "auth_service/app/modules/core/otp/services"
 	prep "auth_service/app/modules/core/participant/repository"
 	ps "auth_service/app/modules/core/participant/services"
+	prr "auth_service/app/modules/core/profile/repository"
+	prs "auth_service/app/modules/core/profile/services"
 	ss "auth_service/app/modules/core/session/services"
 	udto "auth_service/app/modules/core/user/models"
 	ur "auth_service/app/modules/core/user/repository"
@@ -33,15 +35,16 @@ import (
 
 var _ IRegisterService = &RegisterService{}
 
-// NOTE: the three writes of a provisioning go straight to the repositories, not
-// through the organization and participant services. Those services wrap the same
-// calls one to one, and the unit of work needs every one of them on the same
+// NOTE: the four writes of a provisioning go straight to the repositories, not
+// through the organization, profile and participant services. Those services wrap the
+// same calls one to one, and the unit of work needs every one of them on the same
 // repo.Option - the layer that owns it. The services stay for the routes that will
 // perform these mutations on their own.
 type RegisterService struct {
 	userRepository         ur.IUserRepository
 	organizationRepository orep.IOrganizationRepository
 	participantRepository  prep.IParticipantRepository
+	profileRepository      prr.IProfileRepository
 	userService            us.IUserService
 	participantService     ps.IParticipantService
 	logger                 *zap.Logger
@@ -56,6 +59,7 @@ func NewRegisterService(
 	userRepository ur.IUserRepository,
 	organizationRepository orep.IOrganizationRepository,
 	participantRepository prep.IParticipantRepository,
+	profileRepository prr.IProfileRepository,
 	userService us.IUserService,
 	participantService ps.IParticipantService,
 	logger *zap.Logger,
@@ -70,6 +74,7 @@ func NewRegisterService(
 		userRepository:         userRepository,
 		organizationRepository: organizationRepository,
 		participantRepository:  participantRepository,
+		profileRepository:      profileRepository,
 		userService:            userService,
 		participantService:     participantService,
 		logger:                 logger,
@@ -83,7 +88,7 @@ func NewRegisterService(
 
 // ProvisionUser writes a user together with the organization it owns. The order is
 // the only one the cycle between the two tables allows: organization with no owner,
-// user pointing at it, owner stamped, participation created.
+// its Admin profile, user pointing at it, owner stamped, participation created.
 //
 // NOTE: the session stays out of this transaction and is created by the caller.
 // SessionService.CreateNew takes no repo.Option and already fires the invalidation
@@ -117,6 +122,13 @@ func (this *RegisterService) ProvisionUser(
 		return nil, e.ThrowInternalServerError("Failed to create organization")
 	}
 
+	admin, err := this.profileRepository.Create(prs.OrganizationAdminProfile(organization.ID), option)
+
+	if err != nil {
+		this.logger.Error("Failed to create the organization admin profile", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to create the organization admin profile")
+	}
+
 	user.UsersPoolId = app.UsersPool.ID
 	user.CurrentOrganizationId = organization.ID
 
@@ -138,14 +150,14 @@ func (this *RegisterService) ProvisionUser(
 		return nil, e.ThrowInternalServerError("Failed to set the organization owner")
 	}
 
-	// The owner participates on the very profile that is the ceiling of its
-	// organization, so it holds the most that organization can hold and not a
-	// token more. What a signup actually gets is decided in one place:
-	// users_pool.default_profile_id.
+	// The owner participates on the Admin profile of its own organization, which is
+	// a wildcard and therefore collapses onto the ceiling whatever the ceiling
+	// becomes. What a signup actually gets is still decided in one place:
+	// users_pool.default_profile_id, which is that ceiling.
 	if _, err := this.participantRepository.Create(entity.Participant{
 		OrganizationId: organization.ID,
 		UserId:         created.ID,
-		ProfileId:      app.UsersPool.DefaultProfileId,
+		ProfileId:      admin.ID,
 	}, option); err != nil {
 		this.logger.Error("Failed to create participant", zap.Error(err))
 		return nil, e.ThrowInternalServerError("Failed to create participant")

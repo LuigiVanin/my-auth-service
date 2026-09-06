@@ -83,7 +83,7 @@ make fresh                          # seed reset + migrate + seed init
 # Testing
 go test ./...                       # Everything
 go test ./cmd/                      # FX dependency graph validation
-go test ./tests/shared/             # Repository pattern and dedicated queries
+go test ./tests/shared/...          # Repository pattern, dedicated queries, permission algebra
 go test ./tests/modules/login/...   # A single module
 
 # Utilities
@@ -126,7 +126,7 @@ shared/
 ├── global/                  # Process wide handles
 ├── interfaces/              # IController, IGuard only
 ├── models/                  # DTOs shared across modules (RequestInfo)
-├── permissions/             # Permission documents and Resolve  → docs/steering/modules/profiles.md
+├── permissions/             # Permission documents, the grant catalog and Resolve  → docs/steering/modules/profiles.md
 ├── repository/              # Option, BaseRepository, Tx  → docs/steering/repository-pattern.md
 └── utils/                   # Cipher, JSON, Pair, random, print helpers
 
@@ -258,7 +258,10 @@ status — log the internal cause, not the request.
    organization*, through its `Participant` row
 4. **Permissions** — enforced by `PermissionsGuard` from
    `organization.profile ∩ participant.profile`, resolved per request by
-   `shared/permissions.Resolve` → [profiles.md](docs/steering/modules/profiles.md)
+   `shared/permissions.Resolve`. A profile is written in **grants**
+   (`as::users::READ`), which are expanded into route patterns before any of that
+   algebra runs; `api` is the administration escape hatch and wins the whole path
+   it declares → [profiles.md](docs/steering/modules/profiles.md)
 
 `AppGuard` is mounted by prefix in [infra/bootstrap/routes.go](infra/bootstrap/routes.go)
 for `/auth`, `/otp` and `/core` — not by the controllers. The other guards are
@@ -285,6 +288,9 @@ make dev production
 - `tests/shared/` — repository pattern guarantees and per module dedicated
   queries, run against a fake conn pool in gorm `DryRun` mode. No database
   needed.
+- `tests/shared/permissions/` — grant expansion, wildcards, `Resolve` and
+  `IsSubsetOf`. Pure computation, its own package because `tests/shared/` is
+  already `package repository_test`.
 - `tests/modules/{module}/` — service tests with testify mocks from
   `tests/modules/mock/`.
 - `tests/bootstrap/`, `tests/middlewares/` — web server and middleware behaviour.

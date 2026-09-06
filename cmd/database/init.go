@@ -13,6 +13,7 @@ import (
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	"auth_service/shared/permissions"
 	"auth_service/shared/utils"
 
 	"github.com/google/uuid"
@@ -30,20 +31,45 @@ const (
 	credentialsFile = "credentials.txt"
 )
 
-// Matched by PermissionsGuard against ctx.Route().Path - the registered route
-// pattern, never the request URL - so a key is written as `/core/apps/:id`. A
-// query parameter the map does not mention is a denial.
+// A grant is the authoring format: `as::{feature}::{subfeature?}::{ACTION}`,
+// translated into route patterns by shared/permissions. Writing api by hand is
+// the administration escape hatch, and it is what ADMIN uses on purpose - see
+// below. Every grant here is checked against the catalog by validateSeededGrants.
 var (
-	adminPermissions = json.RawMessage(`{ "api": { "*": { "methods": ["*"] } } }`)
+	// The "*" of api matches any registered route, catalogued or not, and the guard
+	// reads that key first. The grant rides along only so the admin reports a grants
+	// list instead of an empty one - it does narrow IsSubsetOf, which prefers an exact
+	// key over "*". See docs/steering/modules/profiles.md.
+	adminPermissions = json.RawMessage(`{"api": {"*": {"methods": ["*"]}}, "grants": ["as::*::*"]}`)
 
-	managerPermissions = json.RawMessage(`{"api": {"/core/apps": {"query": {"name": "^.+$", "skip": "^[0-9]+$", "limit": "^[0-9]+$", "pool_id": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"}, "methods": ["POST", "GET"]}, "/core/apps/:id": {"methods": ["GET", "PUT", "DELETE"]}, "/core/users_pool": {"methods": ["GET", "POST", "PUT"], "query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$"}}, "/core/organizations": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET", "POST"]}, "/core/organizations/switch": {"methods": ["PUT"]}, "/core/organizations/:id/participants": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}, "/core/users": {"methods": ["GET"], "query": {"app_id": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "pool_id": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "skip": "^[0-9]+$", "limit": "^[0-9]+$", "name": "^.+$", "email": "^.+$"}}, "/core/users/me": {"methods": ["GET"]}, "/core/users/:id": {"methods": ["GET"]}, "/core/users_pool/:id": {"methods": ["GET"]}}}`)
+	// Carries the whole auth and otp set because it is the ceiling of
+	// LOGIN_PROFILE, and IsSubsetOf refuses a child that names a route the parent
+	// does not.
+	managerPermissions = json.RawMessage(`{"grants": [
+		"as::apps::CREATE", "as::apps::READ", "as::apps::UPDATE",
+		"as::users::READ", "as::users::me::READ",
+		"as::users_pool::CREATE", "as::users_pool::READ",
+		"as::organizations::CREATE", "as::organizations::READ",
+		"as::organizations::switch::UPDATE", "as::organizations::participants::READ",
+		"as::organizations::participants::UPDATE",
+		"as::profiles::CREATE", "as::profiles::READ", "as::profiles::UPDATE",
+		"as::grants::READ",
+		"as::login::CREATE", "as::register::CREATE", "as::authorize::CREATE",
+		"as::refresh::CREATE", "as::forgot_password::UPDATE", "as::otp::CREATE"
+	]}`)
 
-	// NOTE: /auth/login and /auth/register are listed for documentation only -
-	// neither route runs the PermissionsGuard, so this profile does not gate them.
-	loginPermissions = json.RawMessage(`{"api": {"/auth/login": {"methods": ["POST"]}, "/auth/register": {"methods": ["POST"]}, "/core/organizations": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}, "/core/organizations/switch": {"methods": ["PUT"]}}}`)
+	// NOTE: nothing enforces /auth yet, so the login and register grants are
+	// expressive rather than effective. They are here because the profile a pool
+	// defaults to is where "may this pool sign users up" belongs.
+	loginPermissions = json.RawMessage(`{"grants": [
+		"as::login::CREATE", "as::register::CREATE",
+		"as::organizations::READ", "as::organizations::switch::UPDATE"
+	]}`)
 
 	// Nothing assigns it yet; seeded for the invite flow.
-	memberPermissions = json.RawMessage(`{"api": {"/core/organizations": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}, "/core/organizations/:id/participants": {"query": {"skip": "^[0-9]+$", "limit": "^[0-9]+$"}, "methods": ["GET"]}}}`)
+	memberPermissions = json.RawMessage(`{"grants": [
+		"as::organizations::READ", "as::organizations::participants::READ"
+	]}`)
 
 	emptyJson = json.RawMessage(`{}`)
 )
@@ -60,9 +86,39 @@ type initSeed struct {
 	password       string
 }
 
+// Fails the seed loudly when a literal above names a grant the catalog does not
+// know. Nothing else checks these strings: a key renamed or removed in
+// shared/permissions turns them into rows that grant nothing, silently.
+func validateSeededGrants() error {
+	documents := []json.RawMessage{
+		adminPermissions,
+		managerPermissions,
+		loginPermissions,
+		memberPermissions,
+	}
+
+	for _, document := range documents {
+		parsed, err := permissions.Parse(document)
+
+		if err != nil {
+			return err
+		}
+
+		if err := permissions.ValidateGrants(parsed.Grants); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func run(db *gorm.DB, cfg *config.Config) error {
 	cipherService := cipher.NewCipherService(cfg)
 	hashService := hash.NewHashService()
+
+	if err := validateSeededGrants(); err != nil {
+		return fmt.Errorf("seeded profiles carry an unknown grant: %w", err)
+	}
 
 	fmt.Println()
 	utils.PrintHeader("Initializing Database Seed")
@@ -87,11 +143,10 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		utils.PrintSuccess("Admin Profile created/retrieved")
 
 		managerProfile, err := upsertProfile(tx, entity.Profile{
-			Key:             constants.ProfileManager,
-			Name:            "Manager Profile",
-			ParentProfileId: &adminProfile.ID,
-			Permissions:     managerPermissions,
-			Metadata:        emptyJson,
+			Key:         constants.ProfileManager,
+			Name:        "Manager Profile",
+			Permissions: managerPermissions,
+			Metadata:    emptyJson,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to insert or retrieve manager profile: %w", err)
@@ -99,11 +154,10 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		utils.PrintSuccess("Manager Profile created/retrieved")
 
 		if _, err := upsertProfile(tx, entity.Profile{
-			Key:             constants.ProfileLogin,
-			Name:            "Login Profile",
-			ParentProfileId: &managerProfile.ID,
-			Permissions:     loginPermissions,
-			Metadata:        emptyJson,
+			Key:         constants.ProfileLogin,
+			Name:        "Login Profile",
+			Permissions: loginPermissions,
+			Metadata:    emptyJson,
 		}); err != nil {
 			return fmt.Errorf("failed to insert or retrieve login profile: %w", err)
 		}
@@ -248,6 +302,17 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			return fmt.Errorf("failed to set the app organization: %w", err)
 		}
 		utils.PrintSuccess("Users Pool and App bound to the Admin Organization")
+
+		// 9. ADMIN is born global because its organization does not exist yet when
+		// the profiles are written, and is scoped here. The other three stay global:
+		// main_app_pool defaults to MANAGER_PROFILE, so no existing path starts
+		// depending on a profile it cannot see.
+		if err := tx.Model(&entity.Profile{}).
+			Where("id = ?", adminProfile.ID).
+			Update("organization_id", adminOrganization.ID).Error; err != nil {
+			return fmt.Errorf("failed to scope the admin profile to the admin organization: %w", err)
+		}
+		utils.PrintSuccess("Admin Profile scoped to the Admin Organization")
 
 		seed = initSeed{
 			usersPoolId:    usersPool.ID,

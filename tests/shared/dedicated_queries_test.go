@@ -124,3 +124,42 @@ func TestUserPoolSearchAlwaysScopesToAnOrganization(t *testing.T) {
 	})
 	assert.Contains(t, empty, "users_pool.organization_id = $")
 }
+
+// A global profile has organization_id NULL, and gorm drops a nil pointer out of a
+// typed struct condition - so writing this predicate as a struct would compile to a
+// WHERE with the NULL half missing, and every organization would see every scoped
+// profile of every other one. It has to stay raw SQL.
+func TestProfileVisibilityKeepsTheGlobalHalf(t *testing.T) {
+	client, _ := newClient(t)
+	repository := prep.NewProfileRepository(client)
+
+	visible := captureQuery(t, client, func() {
+		_, _ = repository.FindVisibleTo(prep.ProfileSearch{OrganizationId: "org-1"})
+	})
+
+	assert.Contains(t, visible, "profiles.organization_id IS NULL")
+	assert.Contains(t, visible, "profiles.organization_id = $")
+
+	// Scoped drops the global half: it is the "only what this organization owns"
+	// filter of the listing, not the visibility rule.
+	scoped := captureQuery(t, client, func() {
+		_, _ = repository.FindVisibleTo(prep.ProfileSearch{OrganizationId: "org-1", Scoped: true})
+	})
+
+	assert.NotContains(t, scoped, "IS NULL")
+	assert.Contains(t, scoped, "profiles.organization_id = $")
+}
+
+// A lookup that skipped the predicate would resolve a profile scoped to another
+// organization, which is the whole point of the feature.
+func TestProfileByIdIsScoped(t *testing.T) {
+	client, _ := newClient(t)
+	repository := prep.NewProfileRepository(client)
+
+	sql := captureQuery(t, client, func() {
+		_, _ = repository.FindByIdVisibleTo("profile-1", "org-1")
+	})
+
+	assert.Contains(t, sql, "profiles.organization_id IS NULL")
+	assert.Contains(t, sql, "profiles.id = $")
+}

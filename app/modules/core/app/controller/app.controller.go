@@ -56,8 +56,9 @@ func (this *AppController) CreateApp(ctx fiber.Ctx) error {
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentApp := ctx.Locals("app").(*entity.App)
 	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+	participant := ctx.Locals("participant").(*entity.Participant)
 
-	app, err := this.appService.CreateWithUserPool(currentUser, currentApp, currentOrganization, &payload)
+	app, err := this.appService.CreateWithUserPool(currentUser, currentApp, currentOrganization, participant, &payload)
 
 	if err != nil {
 		return err

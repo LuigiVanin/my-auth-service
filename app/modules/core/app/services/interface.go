@@ -12,6 +12,7 @@ type IAppService interface {
 		currentUser *entity.User,
 		currentApp *entity.App,
 		currentOrganization *entity.Organization,
+		participant *entity.Participant,
 		payload *dto.CreateAppPayload,
 	) (*entity.App, error)
 

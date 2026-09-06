@@ -10,4 +10,9 @@ const (
 	ProfileLogin   = "LOGIN_PROFILE"
 
 	ProfileMember = "MEMBER_PROFILE"
+
+	// The name every organization's own admin profile is created with. It is not a
+	// key: the key is generated as `<organization_id>:ADMIN`, so the row is scoped
+	// and two organizations can both have one.
+	ProfileOrganizationAdmin = "Admin"
 )

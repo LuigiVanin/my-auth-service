@@ -58,8 +58,8 @@ type MockAppService struct {
 
 var _ as.IAppService = &MockAppService{}
 
-func (this *MockAppService) CreateWithUserPool(currentUser *entity.User, currentApp *entity.App, currentOrganization *entity.Organization, payload *dto.CreateAppPayload) (*entity.App, error) {
-	args := this.Called(currentUser, currentApp, currentOrganization, payload)
+func (this *MockAppService) CreateWithUserPool(currentUser *entity.User, currentApp *entity.App, currentOrganization *entity.Organization, participant *entity.Participant, payload *dto.CreateAppPayload) (*entity.App, error) {
+	args := this.Called(currentUser, currentApp, currentOrganization, participant, payload)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

@@ -130,6 +130,31 @@ func (this *OrganizationController) GetParticipants(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(participants)
 }
 
+func (this *OrganizationController) UpdateParticipant(ctx fiber.Ctx) error {
+	var payload pdto.UpdateParticipant
+
+	if err := ctx.Bind().Body(&payload); err != nil {
+		return err
+	}
+
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+	caller := ctx.Locals("participant").(*entity.Participant)
+
+	participant, err := this.organizationService.UpdateParticipant(
+		ctx.Params("id"),
+		ctx.Params("participant_id"),
+		currentOrganization,
+		caller,
+		&payload,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(participant)
+}
+
 func (this *OrganizationController) Register(server *fiber.App) {
 
 	group := server.Group("/core")
@@ -234,5 +259,41 @@ func (this *OrganizationController) Register(server *fiber.App) {
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetParticipants,
+	)
+
+	this.swagger.Add(
+		docs.Validated(
+			docs.PermissionedRoute(this.swagger, "PUT", "/core/organizations/{id}/participants/{participant_id}", openapi.Options{
+				Summary:     "Change the profile of a participant",
+				Description: "Moves one participation onto another profile, which is how a role is handed out inside an organization. `id` has to be the organization the authenticated user is currently in. Refused with `403` on the caller's own participation, on the participation of the owner of the organization - frozen, so an organization always keeps one administrator - and whenever the chosen profile grants more than the caller itself holds here.",
+				Tags:        []string{docs.TagOrganizations},
+			}),
+		).
+			AddPathParam("id", openapi.String, openapi.Options{
+				Required:    true,
+				Description: "Id of the organization, which has to be the current one",
+			}).
+			AddPathParam("participant_id", openapi.String, openapi.Options{
+				Required:    true,
+				Description: "Id of the participation being changed",
+			}).
+			AddBody(pdto.UpdateParticipant{}, openapi.Options{
+				Required:    true,
+				Description: "Id of the profile the participant is moved onto",
+			}).
+			AddResponse(fiber.StatusOK, entity.Participant{}, openapi.Options{
+				Description: "The updated participation, with its user and its new profile",
+			}).
+			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
+				Description: "No participation of this organization matches the given id",
+			}),
+	)
+	group.Put(
+		"/organizations/:id/participants/:participant_id",
+		middleware.BodyValidator[pdto.UpdateParticipant](),
+		this.authGuard.Act,
+		this.organizationGuard.Act,
+		this.permissionsGuard.Act,
+		this.UpdateParticipant,
 	)
 }

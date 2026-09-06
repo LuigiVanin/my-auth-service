@@ -26,47 +26,6 @@ A robust y authentication and authorization service built with Go, designed to h
 - **Email**: [Resend API](https://resend.com/)
 - **Hot Reload**: [Air](https://github.com/cosmtrek/air)
 
-## Project Structure
-
-```
-.
-├── app/                      # Application layer
-│   ├── errors/              # Error handling and problem details
-│   ├── middlewares/         # HTTP middlewares and guards
-│   │   ├── guards/         # Authentication and authorization guards
-│   │   └── validators/     # Request validation
-│   ├── models/dto/         # Data transfer objects
-│   └── modules/            # Feature modules
-│       ├── authorize/      # Token authorization and refresh
-│       ├── login/          # User login
-│       ├── register/       # User registration
-│       └── core/           # Core domain modules
-│           ├── app/        # Application management
-│           ├── otp/        # OTP verification
-│           ├── profile/    # User profiles
-│           ├── session/    # Session management
-│           ├── user/       # User management
-│           └── user_pool/  # Multi-tenancy user pools
-├── cmd/                     # Command-line entry points
-│   ├── main.go             # Main application entry
-│   ├── database/           # Database utilities
-│   │   ├── migration/      # Database migrations
-│   │   └── init/           # Database initialization
-│   └── helpers/            # CLI helper tools
-├── shared/                  # Shared utilities
-│   ├── constants/          # Application constants
-│   ├── interfaces/         # Common interfaces
-│   └── utils/              # Utility functions
-├── infra/                   # Infrastructure layer
-│   ├── bootstrap/          # Application bootstrapping
-│   ├── config/             # Configuration management
-│   └── entities/           # Database entities
-├── packages/                # Reusable packages
-│   └── email/              # Email service abstraction
-└── tests/                   # Test files
-
-```
-
 ## Getting Started
 
 ### Prerequisites

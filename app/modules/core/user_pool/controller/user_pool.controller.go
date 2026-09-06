@@ -59,13 +59,14 @@ func (this *UserPoolController) CreateUserPool(ctx fiber.Ctx) error {
 
 	currentUser := ctx.Locals("user").(*entity.User)
 	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+	participant := ctx.Locals("participant").(*entity.Participant)
 
 	userPool, err := this.userPoolService.Create(ups.CreateUserPoolData{
 		Name:             payload.Name,
 		OwnerUserId:      &currentUser.ID,
 		OrganizationId:   &currentOrganization.ID,
 		DefaultProfileId: payload.DefaultProfileId,
-	}, currentOrganization)
+	}, currentOrganization, participant)
 
 	if err != nil {
 		return err

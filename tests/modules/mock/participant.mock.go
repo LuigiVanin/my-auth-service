@@ -17,6 +17,14 @@ type MockParticipantRepository struct {
 
 var _ pr.IParticipantRepository = &MockParticipantRepository{}
 
+func (this *MockParticipantRepository) FindOne(where entity.Participant, options ...repo.Option) (*entity.Participant, error) {
+	args := this.Called(where, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Participant), args.Error(1)
+}
+
 func (this *MockParticipantRepository) Create(participant entity.Participant, options ...repo.Option) (*entity.Participant, error) {
 	args := this.Called(participant, options)
 	if args.Get(0) == nil {

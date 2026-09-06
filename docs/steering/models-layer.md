@@ -166,12 +166,28 @@ func (User) TableName() string { return "users" }
 
 | Type              | Suffix / shape                | Example                     |
 | ----------------- | ----------------------------- | --------------------------- |
-| Request body      | `...Payload`                  | `CreateAppPayload`          |
+| Request body      | no suffix, named by the action | `CreateProfile`, `SwitchOrganization` |
 | Query struct      | `...Query`                    | `GetAppsQuery`              |
 | Response body     | `...Response`                 | `GetUsersAppResponse`       |
 | Update dao        | `{Entity}UpdateDao`           | `UserUpdateDao`             |
 | Repository search | `{Entity}Search`              | `AppSearch`                 |
 | Entity            | singular, no suffix           | `User`, `App`, `UsersPool`  |
+
+The `dto` import alias already says these are transport types, so a `Payload` or
+`Dto` suffix only adds noise: `dto.CreateProfile` reads better than
+`dto.CreateProfilePayload`. `CreateUserPool` was already written this way.
+
+**Most request bodies still carry the old `...Payload` suffix** — `CreateAppPayload`,
+`CreateOrganizationPayload`, `SwitchOrganizationPayload`, `ResetPasswordPayload`,
+`VerifyConsumableOtpPayload`, and the four `Login`/`Register` variants. Renaming them
+is roughly ninety occurrences across twenty five files, touching controllers,
+validators, services, OpenAPI registrations and tests. It has not been done. New
+request bodies follow the rule above; the old names are left alone until someone
+decides to migrate them in one pass.
+
+Note that `...Payload` is still the right suffix for a structure that is *not* an HTTP
+request body — `OtpMetadataPayload` and `OtpStoredMetadataPayload` describe what is
+stored inside an OTP, and the rule above does not reach them.
 
 Note `Passoword` is misspelled in `LoginPayloadWithPassoword` and
 `RegisterPayloadWithPassoword`. Do not propagate the typo into new names; the

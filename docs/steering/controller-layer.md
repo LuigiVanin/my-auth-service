@@ -8,8 +8,15 @@ about HTTP belongs in a service.
 
 - Always for an **api module** (`login`, `register`, `authorize`).
 - For a **core module** only when the domain is exposed over HTTP (`app`,
-  `user`, `user_pool`, `otp`). `session` and `profile` have none — they are
-  consumed by other modules, not by clients.
+  `user`, `user_pool`, `otp`). `session` has none — it is consumed by other
+  modules, not by clients.
+- `profile` has one: the four `/core/profiles` routes, plus `GET /core/grants`,
+  which serves no service at all — it reports the grant catalog of
+  `shared/permissions`, which is a constant. The catalog lives on that controller
+  because grants are the authoring format of a profile, so that is where a profile
+  editor comes looking. `/core/grants` is registered before `/core/profiles/:id`
+  and deliberately not under it: fiber matches in registration order, and
+  `/core/profiles/grants` would be swallowed by the parameter route.
 - Never for a **utils module**.
 
 One controller per module. A controller registers every route of its module,

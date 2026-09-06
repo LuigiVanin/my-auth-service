@@ -29,6 +29,8 @@ const (
 	TagUsers         = "Users"
 	TagUserPools     = "User Pools"
 	TagOrganizations = "Organizations"
+	TagProfiles      = "Profiles"
+	TagGrants        = "Grants"
 	TagHealth        = "Health"
 )
 

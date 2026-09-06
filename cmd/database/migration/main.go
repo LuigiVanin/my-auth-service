@@ -55,6 +55,12 @@ func main() {
 	dropRemoved(db,
 		`DROP TABLE IF EXISTS app_role_profiles`,
 		`ALTER TABLE IF EXISTS users DROP COLUMN IF EXISTS profile_id`,
+
+		// Never read by the code - only the seed filled it - and a field that looks
+		// meaningful without being one is a trap exactly where scoped profiles land,
+		// since "a scoped profile derived from a global one" is the first idea anyone
+		// has. profiles.organization_id replaces it and means something else.
+		`ALTER TABLE IF EXISTS profiles DROP COLUMN IF EXISTS parent_profile_id`,
 	)
 
 	// 4. AutoMigrate

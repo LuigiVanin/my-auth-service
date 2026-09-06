@@ -44,8 +44,9 @@ func NewUserPoolService(
 func (this *UserPoolService) Create(
 	data CreateUserPoolData,
 	granter *entity.Organization,
+	caller *entity.Participant,
 ) (*entity.UsersPool, error) {
-	defaultProfile, err := this.resolveDefaultProfile(data.DefaultProfileId, granter)
+	defaultProfile, err := this.resolveDefaultProfile(data.DefaultProfileId, granter, caller)
 
 	if err != nil {
 		return nil, err
@@ -153,6 +154,7 @@ func (this *UserPoolService) List(
 func (this *UserPoolService) resolveDefaultProfile(
 	profileId string,
 	granter *entity.Organization,
+	caller *entity.Participant,
 ) (*entity.Profile, error) {
 	var profile *entity.Profile
 	var err error
@@ -160,7 +162,7 @@ func (this *UserPoolService) resolveDefaultProfile(
 	if profileId == "" {
 		profile, err = this.profileService.FindByKey(constants.ProfileLogin)
 	} else {
-		profile, err = this.profileService.FindById(profileId)
+		profile, err = this.profileService.FindByIdVisibleTo(profileId, granter.ID)
 	}
 
 	if err != nil {
@@ -175,7 +177,19 @@ func (this *UserPoolService) resolveDefaultProfile(
 		return nil, e.ThrowInternalServerError("The granting organization has no profile loaded")
 	}
 
-	within, err := permissions.IsSubsetOf(profile.Permissions, granter.Profile.Permissions)
+	if caller == nil || caller.Profile == nil {
+		return nil, e.ThrowInternalServerError("The caller has no participation profile loaded")
+	}
+
+	// Against what the caller holds, not against the ceiling of its organization: a
+	// member narrower than its organization must not hand out more than it has.
+	ceiling, err := permissions.Resolve(granter.Profile.Permissions, caller.Profile.Permissions)
+
+	if err != nil {
+		return nil, err
+	}
+
+	within, err := permissions.IsWithin(profile.Permissions, ceiling)
 
 	if err != nil {
 		return nil, err

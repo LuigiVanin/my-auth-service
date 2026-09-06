@@ -7,6 +7,8 @@ import (
 )
 
 type IParticipantRepository interface {
+	FindOne(where entity.Participant, options ...repo.Option) (*entity.Participant, error)
+
 	Create(participant entity.Participant, options ...repo.Option) (*entity.Participant, error)
 	Update(where entity.Participant, data dto.ParticipantUpdateDao, options ...repo.Option) (int64, error)
 	Delete(where entity.Participant, options ...repo.Option) (int64, error)

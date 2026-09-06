@@ -4,6 +4,7 @@ import (
 	dto "auth_service/app/modules/core/organization/models"
 	or "auth_service/app/modules/core/organization/repository"
 	os "auth_service/app/modules/core/organization/services"
+	pdto "auth_service/app/modules/core/participant/models"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
 
@@ -105,4 +106,18 @@ func (this *MockOrganizationService) CreateForUser(
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.Organization), args.Error(1)
+}
+
+func (this *MockOrganizationService) UpdateParticipant(
+	organizationId string,
+	participantId string,
+	currentOrganization *entity.Organization,
+	caller *entity.Participant,
+	payload *pdto.UpdateParticipant,
+) (*entity.Participant, error) {
+	args := this.Called(organizationId, participantId, currentOrganization, caller, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Participant), args.Error(1)
 }

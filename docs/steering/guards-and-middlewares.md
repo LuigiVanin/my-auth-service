@@ -141,7 +141,8 @@ caller can see what it was matched against.
 }
 ```
 
-The ADMIN profile uses the wildcard form: `{"api": {"*": {"methods": ["*"]}}}`.
+The ADMIN profile uses the wildcard form: `{"api": {"*": {"methods": ["*"]}}}`, plus a
+`"grants": ["as::*::*"]` that the guard never reaches - it matches the `"*"` key first.
 
 Matching rules, in order:
 

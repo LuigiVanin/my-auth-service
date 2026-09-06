@@ -2,6 +2,7 @@ package services
 
 import (
 	dto "auth_service/app/modules/core/organization/models"
+	pdto "auth_service/app/modules/core/participant/models"
 	entity "auth_service/infra/entities"
 )
 
@@ -27,4 +28,14 @@ type IOrganizationService interface {
 		currentOrganization *entity.Organization,
 		payload *dto.CreateOrganizationPayload,
 	) (*entity.Organization, error)
+
+	// The caller is its own participation, not its user: it is both what caps the
+	// profile being handed out and one of the participations that may not be moved.
+	UpdateParticipant(
+		organizationId string,
+		participantId string,
+		currentOrganization *entity.Organization,
+		caller *entity.Participant,
+		payload *pdto.UpdateParticipant,
+	) (*entity.Participant, error)
 }

@@ -1,7 +1,13 @@
 # Feature: Grants — permissões por recurso no documento de profile
 
-> **Estado deste documento:** plano, nada implementado. Decisões fechadas com o
-> autor do projeto na sessão de 2026-09-03.
+> **Estado deste documento:** **implementado em 2026-09-06**, com as divergências
+> registradas na seção "O que saiu diferente do plano" no fim. Decisões fechadas
+> com o autor do projeto nas sessões de 2026-09-03 e 2026-09-06.
+>
+> A Fase 4 (filtro de escrita) **não** foi implementada: não existe endpoint que
+> escreva profile. Ela continua valendo como especificação do que esse endpoint
+> terá que fazer, e está resumida em
+> [profiles.md](../steering/modules/profiles.md#authoring-a-document--clamp).
 >
 > **Leia antes:** [docs/steering/modules/profiles.md](../steering/modules/profiles.md) — o
 > modelo de permissão, a hierarquia e a distinção clamp vs recusar. Este plano
@@ -54,7 +60,8 @@ Todas fechadas. Onde houve alternativa considerada e descartada, está registrad
 
 | Tema | Decisão |
 | --- | --- |
-| Formato | `as::{feature}::{subfeature?}::(CREATE\|READ\|UPDATE\|DELETE)` |
+| Formato | `as::{feature}::{subfeature?}::(CREATE\|READ\|UPDATE\|DELETE)`, ou a forma com curinga `as::{feature\|*}::(ACTION\|*)` |
+| Curinga | `*` vale em `feature` e em `ACTION`. Casa **contra as chaves do mapa**, nunca contra a tabela de rotas |
 | Namespace | Só `as::`. Qualquer outro prefixo é `400` na escrita |
 | Tradução grant → api | **Mapa estático explícito** em `shared/permissions`, grant completo → fragmento no formato exato de `permissions.api` |
 | Query nos grants | Sempre **aberta**. Restringir query é o que justifica escrever `api` à mão |
@@ -66,7 +73,7 @@ Todas fechadas. Onde houve alternativa considerada e descartada, está registrad
 | `Resolved` | Ganha `Grants []string`: os grants que sobreviveram à interseção |
 | Grant inválido | `400` na escrita; **ignorado com warn** na leitura |
 | Descoberta | `GET /core/grants`, derivado do mapa |
-| Seed | `MANAGER_PROFILE`, `LOGIN_PROFILE` e `MEMBER_PROFILE` reescritos em grants. `ADMIN` continua `api` |
+| Seed | `MANAGER_PROFILE`, `LOGIN_PROFILE` e `MEMBER_PROFILE` reescritos em grants. `ADMIN` fica com as duas chaves — ver "O que saiu diferente do plano" |
 | Migração | **Nenhuma.** `permissions` é `jsonb`, `grants` é só uma chave nova |
 
 ### Por que um mapa explícito, e não derivação por convenção
@@ -125,23 +132,53 @@ expansão de um grant**.
 ## Formato do grant
 
 ```
-as :: {feature} :: {subfeature}? :: {ACTION}
+as :: {feature} :: {subfeature}? :: {ACTION}      exato
+as :: {feature|*} :: {ACTION|*}                   com curinga
 ```
 
 | Parte | Regra |
 | --- | --- |
 | `as` | Literal. Namespace deste serviço; qualquer outro prefixo é `400` |
-| `feature` | `[a-z0-9_]+` — o recurso: `users`, `apps`, `users_pool`, `organizations` |
-| `subfeature` | `[a-z0-9_]+`, opcional. A maioria dos recursos não usa |
-| `ACTION` | `CREATE`, `READ`, `UPDATE` ou `DELETE`, maiúsculas, exatas |
+| `feature` | `[a-z0-9_]+` — o recurso: `users`, `apps`, `users_pool`, `organizations` — ou `*` |
+| `subfeature` | `[a-z0-9_]+`, opcional. A maioria dos recursos não usa. Não existe na forma com curinga |
+| `ACTION` | `CREATE`, `READ`, `UPDATE` ou `DELETE`, maiúsculas, exatas — ou `*` |
 
 ```
-^as::[a-z0-9_]+(::[a-z0-9_]+)?::(CREATE|READ|UPDATE|DELETE)$
+^as::[a-z0-9_]+(::[a-z0-9_]+)?::(CREATE|READ|UPDATE|DELETE)$   exato
+^as::([a-z0-9_]+|\*)::(CREATE|READ|UPDATE|DELETE|\*)$          com curinga
 ```
 
-Casar o regex **não** basta: o grant também tem que ser uma chave do mapa. Um
-grant bem formado e desconhecido é `400` na escrita, porque a alternativa é o
-caller achar que concedeu algo e não ter concedido nada.
+### Curingas
+
+Um grant com `*` é um **padrão sobre as chaves do mapa**: expande para a união
+dos fragmentos de toda chave que ele casa.
+
+| Grant | Casa |
+| --- | --- |
+| `as::organizations::*` | toda chave de feature `organizations`, **incluindo as de subfeature** — `CREATE`, `READ`, `switch::UPDATE`, `participants::READ` |
+| `as::*::READ` | toda chave de ação `READ`, em qualquer feature |
+| `as::*::*` | o mapa inteiro |
+
+`*` na ação é o que abre as subfeatures. Um grant **sem** curinga continua sendo
+chave exata: `as::organizations::READ` concede `GET /core/organizations` e nada
+mais — não alcança `as::organizations::participants::READ`. A assimetria é
+proposital, senão todo grant explícito que já existe passaria a conceder mais do
+que concedia.
+
+**O curinga é limitado pelo mapa, não pelas rotas.** `as::*::*` concede
+exatamente a união do catálogo; uma rota `/core` sem entrada no mapa continua
+inalcançável por ele. É a diferença para `api: {"*": {"methods": ["*"]}}`, que
+casa qualquer path registrado, catalogado ou não — ver o seed da Fase 5.
+
+O outro lado: uma entrada nova no mapa é concedida **automaticamente** a quem tem
+`as::*::*` gravado. É a intenção do curinga, e é o motivo de o teste de cobertura
+da Fase 5 ser obrigatório — ele é o que garante que "o mapa inteiro" e "as rotas
+sob o guard" sejam a mesma coisa.
+
+Casar o regex **não** basta: o grant exato tem que ser uma chave do mapa, e o
+grant com curinga tem que casar **pelo menos uma**. Um grant bem formado que não
+alcança nada é `400` na escrita, porque a alternativa é o caller achar que
+concedeu algo e não ter concedido nada.
 
 O `::` como separador é o motivo de `feature` e `subfeature` não aceitarem `:`.
 A grafia é a mesma do nome do recurso na rota, incluindo o underscore de
@@ -243,9 +280,15 @@ reescrita da Fase 5 os perde, e é uma correção, não uma regressão.
 
 ```go
 // Expande uma lista de grants no fragmento de api que ela concede. Grant
-// desconhecido ou malformado e ignorado: o guard nunca pode virar 500 porque
-// uma chave saiu do mapa. Ignorar concede nada, que e o lado seguro.
+// desconhecido, malformado, ou curinga que nao casa chave nenhuma e ignorado:
+// o guard nunca pode virar 500 porque uma chave saiu do mapa. Ignorar concede
+// nada, que e o lado seguro.
 func expandGrants(grants []string) map[string]ResolvedRule
+
+// As chaves do mapa que o grant alcanca. Um grant exato devolve ela mesma se
+// existir; um curinga devolve todas que casa. Vazio significa "nao concede
+// nada", e e o que ValidateGrant recusa.
+func matchCatalog(grant string) []string
 
 // Valida na escrita, onde o silencio e o lado errado.
 func ValidateGrant(grant string) error
@@ -254,6 +297,10 @@ func ValidateGrants(grants []string) error
 // Alimenta GET /core/grants. Ordenado, para a resposta ser estavel.
 func Catalog() []string
 ```
+
+`expandGrants` e `ValidateGrant` passam os dois pelo `matchCatalog`, entao a
+regra de curinga existe num lugar so e nao pode divergir entre leitura e
+escrita.
 
 ---
 
@@ -398,6 +445,15 @@ contivesse, a regra "api vence no path inteiro" congelaria aquele path: o profil
 pararia de acompanhar o mapa, e um grant que ganhasse uma rota nova amanhã não a
 concederia ali.
 
+**Curinga pedido contra teto parcial some inteiro.** `resolved.Grants` guarda o
+que sobrevive *por completo*, então pedir `as::*::*` sob um teto que não alcança
+tudo grava zero grants — não a parte que caberia. Para o caller isso parece "o
+servidor ignorou meu pedido". O caminho previsível é a UI mandar a lista dos
+grants concretos que ela quer quando o teto é parcial, e reservar o curinga para
+quando o teto de fato o cobre; se isso incomodar na prática, a saída é expandir o
+curinga em chaves concretas **antes** do filtro, e gravar a interseção. Fica
+registrado nos Pontos em aberto.
+
 Como `resolved.Api` mistura as duas origens, separá-las depois é adivinhação.
 São duas chamadas explícitas — a segunda com um documento que só carrega `api`:
 
@@ -426,7 +482,7 @@ de strings, grava direto. Ele só volta a morder no caso de payload com `api`.
 ### `cmd/database/init.go`
 
 ```go
-adminPermissions = json.RawMessage(`{"api": {"*": {"methods": ["*"]}}}`)
+adminPermissions = json.RawMessage(`{"api": {"*": {"methods": ["*"]}}, "grants": ["as::*::*"]}`)
 
 managerPermissions = json.RawMessage(`{"grants": [
     "as::apps::CREATE", "as::apps::READ", "as::apps::UPDATE",
@@ -447,9 +503,16 @@ memberPermissions = json.RawMessage(`{"grants": [
 ]}`)
 ```
 
-`ADMIN` continua `api`: grants não produzem wildcard, e um `ADMIN` escrito como
-lista de grants precisaria ser editado a cada rota nova. Não existe
-`as::*::*` — se um dia fizer falta, é decisão nova.
+`ADMIN` carrega **as duas chaves**. `api: {"*": {"methods": ["*"]}}` casa **qualquer
+path registrado**; `as::*::*` casa **o mapa inteiro**, que é menos. Para o operador da
+plataforma o alcance mais largo é o certo: se uma rota entrar sob `/core` sem entrada
+no mapa, o `ADMIN` continua chegando nela. O guard consulta a chave `"*"` antes de
+qualquer path concreto, então o grant que anda junto não estreita nada do que o
+operador pode chamar — ele existe para que o admin reporte uma lista de grants em vez
+de uma lista vazia. O custo medido está registrado em "O que saiu diferente do plano".
+
+Para qualquer profile que não seja o `ADMIN`, o curinga é a forma preferida: ele é
+limitado pelo catálogo, que é justamente o que se quer de um teto de tenant.
 
 `LOGIN_PROFILE` perde `/auth/login` e `/auth/register`. O comentário que está lá
 hoje já diz que eram documentação: nenhuma das duas roda o `PermissionsGuard`.
@@ -488,6 +551,11 @@ Esta é a única aparição da tabela de rotas do fiber. Em runtime, o pacote
 `Resolve` com grants nas duas pontas, a tabela de sobrevivência de
 `Resolved.Grants`, `IsSubsetOf` com child grant-shaped contra parent api-shaped.
 
+Do curinga, três casos que são a regra inteira: `as::{feature}::*` alcançando as
+subfeatures daquela feature e só delas, `as::*::*` expandindo para a união do
+mapa, e um curinga sem correspondência sendo `400` na escrita e ignorado na
+leitura.
+
 `tests/middlewares/` — um profile grant-shaped passando e negando no guard, e o
 caso em que `api` estreita um path que o grant abriria.
 
@@ -514,6 +582,14 @@ Cadeia normal: `authGuard → organizationGuard → permissionsGuard`. Derivado 
 }
 ```
 
+O curinga não é enumerado no `data` — ele não é chave do mapa. A resposta ganha
+um bloco à parte com as formas construíveis, para a UI poder oferecer "tudo em
+`organizations`" sem hardcodar a regra:
+
+```json
+{ "wildcards": ["as::*::*", "as::*::{ACTION}", "as::{feature}::*"] }
+```
+
 **Onde mora o controller.** O módulo `profile` não tem controller hoje; a spec de
 scoped-profiles cria um. Se as duas frentes forem juntas, esta rota entra lá. Se
 esta for primeiro, ela cria o controller do módulo `profile`.
@@ -527,21 +603,37 @@ armadilha.
 
 ## Interação com scoped-profiles
 
-[2026-08-23-scoped-profiles.md](2026-08-23-scoped-profiles.md) não foi
-implementada. As duas frentes são independentes — esta não precisa daquela — mas
-se forem juntas, a Fase 3 daquele plano é emendada assim:
+> **Reescrito em 2026-09-06.** Esta seção descrevia o clamp: gravar o documento
+> resolvido, com `resolved.Grants` indo direto e o `api` do payload passando por uma
+> conversão de `Resolved` para `Document`. Nada disso vale mais — a spec de
+> scoped-profiles passou a **recusar com 403** o que excede o teto de quem escreve, e
+> o que é gravado é o payload tal como veio.
 
-- `CreateProfilePayload` / `UpdateProfilePayload` aceitam `grants []string` além
-  de `permissions`. `ValidateGrants` roda no validador, antes do service.
-- O clamp é a mesma chamada única de `Resolve` que aquele plano já descreve. O que
-  muda é o que se faz com o retorno: `resolved.Grants` grava direto, e só o `api`
-  do payload passa pela conversão `Resolved` → `Document`.
-- A nota sobre listagem devolver `permissions` cru vale igual: quem escolhe um
-  profile precisa ver os grants como estão.
+Esta frente foi implementada primeiro, e sem endpoint de escrita nenhum: grants são
+escritos pelo seed e direto no banco. A Fase 4 desta spec ficou como especificação do
+que o endpoint terá que fazer quando existir.
 
-Se esta frente for primeiro, ela entra sem endpoint de escrita nenhum: grants são
-escritos pelo seed e pelo banco, e a Fase 4 vira documentação do que o endpoint
-tem que fazer quando existir.
+O que sobra desta seção, para quem for implementar a escrita de profiles:
+
+- **O endpoint só aceita grants.** Escrever `api` continua sendo manual, no banco, e a
+  API não lê, não escreve e não valida essa metade. Um `api` no corpo da requisição é
+  `400`, não ignorado. O campo `permissions` é um objeto e não uma lista solta
+  justamente para que a escrita de `api` possa entrar depois como segunda chave, sem
+  quebrar quem já manda `grants`.
+- **`ValidateGrants` roda no validador**, antes do service, para que um grant
+  malformado ou fora do catálogo seja `400` e não um documento gravado com uma linha
+  inerte. É o único lugar onde um grant desconhecido não pode passar em silêncio.
+- **A verificação nunca compara listas de grants.** Comparar o que foi pedido contra
+  `Resolved.Grants` de quem pede quebra o admin da plataforma, que tem `Grants` vazio
+  por ser escrito em `api`. A comparação é contra o `Api` resolvido.
+- **O que é gravado é o payload.** Não há `Resolved` para converter, então a
+  divergência entre `Resolved.Query` e `Document.Query` não aparece.
+- **A listagem devolve `permissions` cru**, grants inclusive. Quem escolhe um profile
+  precisa ver o documento como ele é.
+
+O resto — quem pode criar, editar e atribuir profile, e contra o que cada escolha é
+conferida — está nas Fases 3, 7 e 8 de
+[2026-08-23-scoped-profiles.md](2026-08-23-scoped-profiles.md).
 
 ---
 
@@ -575,6 +667,13 @@ Depois, com as chaves de `credentials.txt`:
    sobreviventes.
 8. `GET /core/grants` → o mapa inteiro, e todo grant listado ali é aceito na
    escrita.
+9. Um profile com `{"grants": ["as::organizations::*"]}` → `GET /core/organizations`
+   **e** `PUT /core/organizations/switch` `200`. Prova que o curinga de ação
+   atravessa a subfeature.
+10. O mesmo profile → `GET /core/apps` `403`. O curinga não vazou para outra
+    feature.
+11. `{"grants": ["as::naoexiste::*"]}` na escrita → `400`. Curinga que não casa
+    chave nenhuma não é aceito em silêncio.
 
 ---
 
@@ -589,17 +688,27 @@ Depois, com as chaves de `credentials.txt`:
 2. **Grant meio coberto não aparece em `Resolved.Grants`.** Aceito e documentado
    acima. Se na prática incomodar (uma UI marcando checkbox por grant vai mostrar
    desmarcado algo que concede metade), a saída é `Resolved` reportar
-   `partial_grants` em vez de mudar a regra de contenção.
+   `partial_grants` em vez de mudar a regra de contenção. **O curinga agrava
+   isso**: `as::*::*` sob qualquer teto que não seja total desaparece de `Grants`,
+   enquanto `Api` continua concedendo a interseção correta. O guard acerta; o
+   resumo é que fica pobre.
 3. **Sem grant `DELETE` nenhum hoje.** O primeiro `DELETE` registrado sob `/core`
    estreia a ação. O teste de cobertura vai cobrar.
-4. **`as::*::*` não existe.** `ADMIN` continua api wildcard. Se um dia um profile
-   grant-shaped precisar de "tudo", é decisão nova — e ela reabre a pergunta de
-   se o mapa deve ter uma entrada sintética.
+4. **`as::*::*` concede o mapa, e o mapa cresce.** Um profile gravado com o
+   curinga passa a conceder a entrada nova sem ninguém reeditar a linha. É o
+   ponto do curinga, mas significa que **acrescentar uma chave ao mapa é uma
+   mudança de permissão** para quem tem curinga gravado, não só uma tradução de
+   rota. Revisar entrada nova de mapa com esse olho.
 5. **Renomear uma rota quebra os profiles gravados em `api`, não os em grants.**
    É a vantagem prática da feature e vale registrar: mudar `/core/users_pool` de
    path exige reescrever todo profile api-shaped no banco, mas só uma linha no
    mapa para os grant-shaped.
-6. **Nada versiona o mapa.** Remover uma chave torna inertes os grants gravados
+6. **Curinga não é gravado pela metade.** Ver Fase 4. Decidir se `as::*::*` sob
+   teto parcial grava nada (hoje) ou se o curinga é expandido em chaves concretas
+   antes do filtro e grava a interseção. A segunda opção perde a propriedade de
+   acompanhar o mapa automaticamente, que é o ponto do curinga — por isso não é
+   óbvia.
+7. **Nada versiona o mapa.** Remover uma chave torna inertes os grants gravados
    que a nomeiam (são ignorados com warn na leitura), sem aviso para quem tem a
    linha. Um `DELETE` de grant do mapa devia vir com uma migração de dados; hoje
    não vem.
@@ -620,3 +729,112 @@ Para o próximo agente não sair procurando:
 
 O que muda é: um mapa novo, um campo em `Document`, um campo em `Resolved`, uma
 linha em `IsSubsetOf`, três literais de seed, dois arquivos de teste e uma rota.
+
+---
+
+## O que saiu diferente do plano
+
+Registrado na sessão de implementação (2026-09-06). O resto do documento acima
+descreve o que foi construído.
+
+### 1. Curinga ignora a subfeature em qualquer posição
+
+O plano tinha uma ambiguidade: a tabela dizia que `as::*::READ` casa "toda chave de
+ação READ, em qualquer feature", e o texto logo abaixo dizia que "`*` na ação é o
+que abre as subfeatures". As duas leituras discordam sobre `as::*::READ` alcançar
+`as::users::me::READ`.
+
+Fechado pela **regra única**: grant sem `*` é chave exata; grant com `*` em qualquer
+posição é padrão sobre *(feature, ação)* e a subfeature é *don't-care*. Então
+`as::*::READ` **alcança** `as::users::me::READ`. `matchCatalog` fica com um caminho
+só e a regra não pode divergir entre leitura e escrita.
+
+### 2. O mapa cobre `/auth` e `/otp`
+
+O plano limitava o catálogo às rotas sob o `PermissionsGuard`. Isso foi descartado:
+o guard rodar só em `/core` nunca foi política escrita em lugar nenhum — é emergente
+de quais controllers encadeiam `permissionsGuard.Act`. Para um profile de **pool de
+usuários** faz todo sentido dizer se aquele pool permite login, cadastro ou
+recuperação de senha.
+
+As sete entradas novas são nomeadas pelo recurso, sem prefixo `auth`:
+
+```
+as::login::CREATE            as::register::CREATE       as::authorize::CREATE
+as::refresh::CREATE          as::forgot_password::UPDATE
+as::otp::CREATE
+```
+
+`as::otp::CREATE` concede as duas rotas de OTP — `POST /otp/generate_consumable` e
+`PUT /otp/verify/:otp_id` — porque gerar um código sem poder verificá-lo não concede
+nada útil. Daí a regra de que **a ação nomeia a intenção, não o verbo**.
+
+Elas são expressivas, não enforçadas: nada roda o `PermissionsGuard` em `/auth` e
+`/otp`, e montar isso ficou fora desta frente.
+
+Consequência: `as::*::CREATE` passa a alcançar login, register, authorize, refresh e
+otp, e `as::*::*` alcança o mapa inteiro incluindo `/auth` e `/otp`. Inócuo enquanto
+nada enforça essas rotas, e deixa de ser no dia em que algo enforçar.
+
+### 3. `LOGIN_PROFILE` mantém login e register — e isso conserta um bug
+
+O plano tirava `/auth/login` e `/auth/register` do `LOGIN_PROFILE`, por serem
+documentação inerte. Com a decisão acima elas ficam, agora como grants nomeados.
+
+Isso expôs um **bug vivo**: `LOGIN_PROFILE` nomeava `/auth/login` e `/auth/register`,
+`MANAGER_PROFILE` não, e como `IsSubsetOf` itera as chaves do filho,
+`IsSubsetOf(login, manager)` retornava `false`. Ou seja, **`POST /core/users_pool` a
+partir de uma organização com teto `MANAGER` respondia 403** — inclusive sem passar
+`default_profile_id`, porque `resolveDefaultProfile` roda o check também no branch do
+`FindByKey(LOGIN_PROFILE)`. Só passava a partir da org `ADMIN`, que é `api: {"*"}`.
+
+`MANAGER_PROFILE` passou a carregar o conjunto completo de auth+otp, e
+`TestSeededProfilesFitUnderTheirCeiling` é o teste de regressão.
+
+### 4. `Catalog()` devolve entradas agrupadas
+
+O plano previa `Catalog() []string`. Virou `Catalog() []CatalogEntry`, já agrupado
+por feature e subfeature. O agrupamento é conhecimento da gramática do grant, não do
+transporte, então mora no pacote e o controller fica fino como
+`controller-layer.md` exige. `Wildcards()` devolve as formas construíveis à parte.
+
+### 5. Sem teste de cobertura de rotas
+
+A Fase 5 previa `tests/shared/grants_test.go` confrontando o mapa com
+`server.GetRoutes()`. **Não foi implementado**, por decisão do autor. Subir o grafo
+fx para chegar na tabela de rotas exige banco, e as alternativas sem banco custavam
+mais do que o autor quis pagar agora.
+
+Fica descoberto:
+
+- rota nova sem entrada no mapa fica inalcançável por grant, em silêncio — e como
+  `as::*::*` é limitado pelo mapa, nem o curinga a alcança;
+- chave do mapa apontando para rota removida ou verbo errado produz um profile
+  silenciosamente inútil.
+
+O que sobrou de rede: `cmd/database/init.go` roda `permissions.ValidateGrants` sobre
+os próprios literais antes de semear, então uma chave removida do mapa quebra o seed
+em vez de gravar linhas inertes. Isso cobre só os grants seedados.
+
+### 6. Ponto em aberto nº 1 fechado como comportamento, não como bug
+
+A validação de query **não** entra na frente de grants: grants nunca controlam query,
+e a migração dos seeds libera todas as queries daqueles três profiles de propósito.
+`?limit=abc` passa a chegar no handler. Restringir query continua sendo exatamente o
+que justifica escrever `api` à mão.
+
+### 7. Onde os testes ficaram
+
+`tests/shared/` já é `package repository_test`, e um arquivo novo lá seria obrigado a
+entrar nesse pacote. Os testes da álgebra ficaram em
+`tests/shared/permissions/grants_test.go`, `package permissions_test`, mais
+`tests/middlewares/permissions_guard_test.go` para o guard. Antes desta frente não
+existia teste nenhum de `shared/permissions/` nem de guard algum.
+
+### Não implementado
+
+- **Fase 4**, filtro de escrita — depende de um endpoint que escreva profile, que a
+  spec de scoped-profiles ainda não trouxe. `ValidateGrants` existe e é exercitada
+  pelo seed e pelos testes, mas não tem call site de request.
+- **Fase 6 parcial:** `GET /core/grants` existe; os itens 8 e 11 da Verificação, que
+  dependem de escrita, continuam sem como serem exercitados.

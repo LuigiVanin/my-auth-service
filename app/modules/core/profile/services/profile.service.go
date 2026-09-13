@@ -199,6 +199,22 @@ func (this *ProfileService) UpdateForOrganization(
 		dao.Permissions = &permissionDocument
 	}
 
+	if payload.Metadata != nil {
+		merged, err := utils.MergeJsonPatch(current.Metadata, *payload.Metadata)
+
+		if err != nil {
+			return nil, e.ThrowBadRequest("`metadata` has to be a JSON object", utils.JSON{"field": "metadata"})
+		}
+
+		dao.Metadata = &merged
+	}
+
+	// An all nil payload writes nothing, and Update short circuits to 0 rows
+	// affected for it - which the check below would report as a missing row.
+	if !repo.HasChanges(dao) {
+		return current, nil
+	}
+
 	affected, err := this.profileRepository.Update(entity.Profile{ID: id}, dao)
 
 	if err != nil {

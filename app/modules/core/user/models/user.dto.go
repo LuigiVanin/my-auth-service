@@ -18,15 +18,44 @@ type UserListQuery struct {
 	Email string `query:"email"`
 }
 
+// UpdateUser is PUT /core/users/{id}, the administration route: whoever owns the
+// pool of the target user. Every field is a pointer, so an absent one is not the
+// same as an empty one, and Metadata is merged rather than replaced - see
+// docs/steering/models-layer.md.
+//
+// The password is absent: it is never carried by a payload, only derived by the
+// hash service from the forgot password flow.
 type UpdateUser struct {
-	// All the elements can be nil to indicate that the field should not be touched
-	Name             *string          `gorm:"not null" json:"name"`
-	Email            *string          `gorm:"not null;uniqueIndex:users_email_users_pool_unique,priority:1" json:"email"`
-	Phone            *string          `gorm:"default:null" json:"phone"`
-	VerifyEmail      *bool            `gorm:"not null;default:false" json:"verifyEmail"`
-	TwoFactorEnabled *bool            `gorm:"not null;default:false" json:"twoFactorEnabled"`
-	PasswordHash     *string          `gorm:"not null" json:"-"`
-	Metadata         *json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`
+	Name             *string          `json:"name" validate:"omitnil,min=1"`
+	Email            *string          `json:"email" validate:"omitnil,email"`
+	Phone            *string          `json:"phone"`
+	VerifyEmail      *bool            `json:"verify_email"`
+	TwoFactorEnabled *bool            `json:"two_factor_enabled"`
+	Metadata         *json.RawMessage `json:"metadata"`
+}
+
+// UpdateUserSelf is PUT /core/users/me, which needs no scope check because the
+// target is the caller. It is narrower than UpdateUser on purpose: email and the
+// two verification flags decide how the user authenticates, so moving them is an
+// administration act and not a profile edit.
+type UpdateUserSelf struct {
+	Name     *string          `json:"name" validate:"omitnil,min=1"`
+	Phone    *string          `json:"phone"`
+	Metadata *json.RawMessage `json:"metadata"`
+}
+
+// GetUserResponse is the answer of the two individual user reads, and the only
+// place `users.tracking` is exposed: the column is `json:"-"` on the entity, so
+// the login, register, refresh and listing responses that embed entity.User
+// cannot leak the ip history of a user. The outer Tracking shadows the embedded
+// one, the same way ProfileResponse shadows Permissions.
+type GetUserResponse struct {
+	entity.User
+	Tracking json.RawMessage `json:"tracking"`
+}
+
+func UserWithTracking(user *entity.User) *GetUserResponse {
+	return &GetUserResponse{User: *user, Tracking: user.Tracking}
 }
 
 type GetUsersResponse struct {

@@ -157,6 +157,23 @@ func captureQuery(t *testing.T, client *gorm.DB, run func()) string {
 	return captured
 }
 
+// captureUpdate is captureQuery for a write: an UPDATE never reaches the query
+// callback, so a statement built by Update or UpdateColumn needs this one.
+func captureUpdate(t *testing.T, client *gorm.DB, run func()) string {
+	captured := ""
+
+	err := client.Callback().Update().After("gorm:update").Register("test:capture-update", func(db *gorm.DB) {
+		captured = db.Statement.SQL.String()
+	})
+
+	assert.NoError(t, err)
+	defer client.Callback().Update().Remove("test:capture-update")
+
+	run()
+
+	return captured
+}
+
 func TestPageSizeDefaultsToTen(t *testing.T) {
 	assert.Equal(t, repo.DefaultLimit, repo.Option{}.Size())
 	assert.Equal(t, repo.DefaultLimit, repo.Option{Skip: 40}.Size())

@@ -57,6 +57,111 @@ When the body shape depends on a query parameter, declare one DTO per variant
 (`LoginPayloadWithPassoword`, `LoginPayloadWithOtp`) and let a validator in
 `app/middlewares/validators/` pick between them.
 
+### Update bodies
+
+**Every field of an update DTO is a pointer.** Go has no null for a value type, so
+`*T` is the only way to tell "the caller did not send this field" from "the caller
+sent the zero value". Without it `{"private": false}` and a body with no `private`
+at all are the same struct, and a `PUT` either cannot write `false`, `0` and `""`
+or overwrites every column the caller did not mention.
+
+```go
+type UpdateApp struct {
+    Name       *string   `json:"name" validate:"omitnil,min=1"`
+    LoginTypes *[]string `json:"login_types" validate:"omitnil,min=1,dive,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
+
+    TokenExpirationTime *int64 `json:"token_expiration_time" validate:"omitnil,gt=0"`
+
+    Private *bool `json:"private"`
+
+    Metadata *json.RawMessage `json:"metadata"`
+}
+```
+
+- `omitnil`, not `omitempty`. Both work — `hasValue` special cases a pointer, so
+  `omitempty,gt=0` does still run on a `*int64` pointing at `0` — but `omitnil`
+  says the intent and saves the next reader that verification.
+- A slice is already a reference type, but it is still declared `*[]string`, so
+  the rule reads the same on every field.
+- `min=1` next to a `dive`: an explicit `[]` passes `hasValue` and then `dive`
+  validates nothing, which is how an app with no login method would get written.
+- The dao mirrors the DTO, and it is the narrower of the two: a column absent
+  from the dao can never be written whatever the payload says.
+
+The service maps the payload onto the dao field by field and hands it to one
+`Update`. Before answering `404` on `RowsAffected == 0` it has to ask
+`repo.HasChanges(dao)`, because an all-nil payload resolves to an empty map and
+`Update` short circuits to `(0, nil)` — see
+[repository-pattern.md](repository-pattern.md).
+
+### Open JSON columns are merged, never replaced
+
+A `metadata` column is a document the caller owns keys inside of, not a value it
+replaces. An update therefore **merges** the patch into what is stored, with
+[RFC 7386](https://www.rfc-editor.org/rfc/rfc7386) merge patch semantics:
+
+| Patch | Effect |
+| --- | --- |
+| `{"a": 1}` on `{"b": 2}` | `{"a": 1, "b": 2}` — keys not named are kept |
+| `{"a": "new"}` on `{"a": "old"}` | `{"a": "new"}` — the request wins |
+| `{"a": null}` | the key is **removed**; this is the only way to delete one |
+| `{"outer": {"x": 1}}` on `{"outer": {"y": 2}}` | merged one level down, recursively |
+| `{"list": [3]}` on `{"list": [1, 2]}` | replaced — an array is a value, not a document |
+
+`utils.MergeJsonPatch(stored, patch)` is the single implementation.
+
+**It is called from the service, never from the repository.** The repository
+writes the columns it is given; deciding that two documents become one is
+processing of what the caller sent, which is the service's job. A repository that
+merged would also have to read the row first, turning every update into a
+read-modify-write it has no business owning.
+
+Two things the mechanism cannot do, both deliberate:
+
+- **Clearing the whole object is not expressible.** `{"metadata": null}` leaves a
+  `*json.RawMessage` field `nil`, indistinguishable from an absent one:
+  `encoding/json` zeroes the pointer before it ever reaches `RawMessage`'s
+  `UnmarshalJSON`, and fiber uses `encoding/json`. So `null` on the column means
+  "do not touch", and deletion is per key.
+- **A patch that is not an object is refused**, not applied. RFC 7386 would
+  replace the document with the scalar; every jsonb column here is documented as
+  an object, so `MergeJsonPatch` errors and the service answers `400`.
+
+### A column the service owns
+
+Data the service maintains itself does **not** go into `metadata`. It gets a column
+of its own, absent from the update dao, written only by a named repository method —
+`users.tracking` and `users_pool.tracking` are the reference:
+
+```go
+// infra/entities/user.entity.go
+Tracking json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"-"`
+```
+
+```go
+// The only writer. `tracking` is not a dao field, so no payload reaches it.
+WriteTracking(id uint, document json.RawMessage, options ...repo.Option) (int64, error)
+```
+
+The protection is the dao rule stated above, not a new one: leave the column out of
+the dao and no request body can write it, whatever it sends. This replaced an
+earlier attempt at a "reserved key" refused inside `metadata`, which needed a check
+on every write path to hold — the column needs none.
+
+Two details that come with it:
+
+- **Serialization is a decision, not a default.** A column embedded in a widely
+  reused entity leaks everywhere that entity does. `users.tracking` is `json:"-"`
+  and comes back only from `dto.GetUserResponse`, which shadows the embedded field;
+  `users_pool.tracking` serializes and the listing blanks it row by row.
+- **`omitempty` does not hide a jsonb column.** It omits `json.RawMessage` only at
+  length zero, and `default:'{}'` is two bytes — so it hides only a value the code
+  zeroed on purpose.
+
+Where the write is a counter or a document changed in place, the concurrency rules
+are in [repository-pattern.md](repository-pattern.md) and the worked case is
+`docs/specs/2026-09-09-tracking.md`.
+
 ### Query structs
 
 Bound with `ctx.Bind().Query(&query)`, tagged with `query`:

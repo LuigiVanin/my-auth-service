@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"auth_service/cmd/database/seeds"
 	"auth_service/shared/permissions"
 
 	"github.com/stretchr/testify/assert"
@@ -109,6 +110,7 @@ func TestActionWildcardReachesTheSubfeaturesOfItsFeature(t *testing.T) {
 
 	assert.ElementsMatch(t, []string{
 		"/core/organizations",
+		"/core/organizations/:id",
 		"/core/organizations/switch",
 		"/core/organizations/:id/participants",
 		"/core/organizations/:id/participants/:participant_id",
@@ -268,30 +270,20 @@ func TestIsSubsetOfSeesTheGrantsOfTheChild(t *testing.T) {
 	assert.True(t, within)
 }
 
-// Mirrors cmd/database/init.go. LOGIN_PROFILE named /auth/login and /auth/register
-// while MANAGER_PROFILE did not, so IsSubsetOf refused it and POST /core/users_pool
+// Reads the documents the seed actually writes, from cmd/database/seeds. It used
+// to keep a copy of them, which drifted by four grants - so this test passed
+// while the real LOGIN_PROFILE named /auth/login and /auth/register that the real
+// MANAGER_PROFILE did not, IsSubsetOf refused it, and POST /core/users_pool
 // answered 403 from any organization whose ceiling was MANAGER - including when no
 // default_profile_id was sent, since resolveDefaultProfile checks that branch too.
 func TestSeededProfilesFitUnderTheirCeiling(t *testing.T) {
-	manager := json.RawMessage(`{"grants": [
-		"as::apps::CREATE", "as::apps::READ", "as::apps::UPDATE",
-		"as::users::READ", "as::users::me::READ",
-		"as::users_pool::CREATE", "as::users_pool::READ",
-		"as::organizations::CREATE", "as::organizations::READ",
-		"as::organizations::switch::UPDATE", "as::organizations::participants::READ",
-		"as::grants::READ",
-		"as::login::CREATE", "as::register::CREATE", "as::authorize::CREATE",
-		"as::refresh::CREATE", "as::forgot_password::UPDATE", "as::otp::CREATE"
-	]}`)
+	// The seed runs this before writing anything, so a grant that left the catalog
+	// fails here instead of at `make seed init`.
+	assert.NoError(t, seeds.ValidateAll())
 
-	login := json.RawMessage(`{"grants": [
-		"as::login::CREATE", "as::register::CREATE",
-		"as::organizations::READ", "as::organizations::switch::UPDATE"
-	]}`)
-
-	member := json.RawMessage(`{"grants": [
-		"as::organizations::READ", "as::organizations::participants::READ"
-	]}`)
+	manager := seeds.ManagerPermissions
+	login := seeds.LoginPermissions
+	member := seeds.MemberPermissions
 
 	for name, child := range map[string]json.RawMessage{"login": login, "member": member} {
 		within, err := permissions.IsSubsetOf(child, manager)
@@ -302,7 +294,7 @@ func TestSeededProfilesFitUnderTheirCeiling(t *testing.T) {
 
 	// ADMIN carries both keys: the "*" of api so an uncatalogued route stays reachable,
 	// and as::*::* so the document says in the authoring format what it grants.
-	admin := json.RawMessage(`{"api": {"*": {"methods": ["*"]}}, "grants": ["as::*::*"]}`)
+	admin := seeds.AdminPermissions
 
 	for name, child := range map[string]json.RawMessage{"manager": manager, "login": login, "member": member} {
 		within, err := permissions.IsSubsetOf(child, admin)
@@ -368,8 +360,8 @@ func TestCatalogIsGroupedAndStable(t *testing.T) {
 			continue
 		}
 
-		assert.Equal(t, []string{"READ"}, entry.Actions)
-		assert.Equal(t, []string{"as::users::me::READ"}, entry.Grants)
+		assert.Equal(t, []string{"READ", "UPDATE"}, entry.Actions)
+		assert.Equal(t, []string{"as::users::me::READ", "as::users::me::UPDATE"}, entry.Grants)
 
 		return
 	}

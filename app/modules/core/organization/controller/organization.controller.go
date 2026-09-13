@@ -106,6 +106,24 @@ func (this *OrganizationController) SwitchOrganization(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(organization)
 }
 
+func (this *OrganizationController) UpdateOrganization(ctx fiber.Ctx) error {
+	var payload dto.UpdateOrganization
+
+	if err := ctx.Bind().Body(&payload); err != nil {
+		return err
+	}
+
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+
+	organization, err := this.organizationService.UpdateForCaller(ctx.Params("id"), currentOrganization, &payload)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(organization)
+}
+
 func (this *OrganizationController) GetParticipants(ctx fiber.Ctx) error {
 	currentUser := ctx.Locals("user").(*entity.User)
 
@@ -231,6 +249,39 @@ func (this *OrganizationController) Register(server *fiber.App) {
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.SwitchOrganization,
+	)
+
+	this.swagger.Add(
+		docs.Validated(
+			docs.PermissionedRoute(this.swagger, "PUT", "/core/organizations/{id}", openapi.Options{
+				Summary:     "Update an organization",
+				Description: "Edits the organization the authenticated user is currently in - `id` has to be that organization, any other answers `403`, because the permissions this request was authorized with are the ones held there. Only the fields present in the body are written, and `metadata` is merged into what is stored rather than replacing it: the request wins on the keys it names, and a key is removed by sending it as `null`. `profile_id` is not editable here - it is the permission ceiling of the organization - and neither is the owner, which needs a transfer flow of its own.",
+				Tags:        []string{docs.TagOrganizations},
+			}),
+		).
+			AddPathParam("id", openapi.String, openapi.Options{
+				Required:    true,
+				Description: "Id of the organization, which has to be the current one",
+			}).
+			AddBody(dto.UpdateOrganization{}, openapi.Options{
+				Required:    true,
+				Description: "Fields to change - every one of them is optional",
+			}).
+			AddResponse(fiber.StatusOK, entity.Organization{}, openapi.Options{
+				Description: "The updated organization",
+			}),
+	)
+	// After /organizations/switch, never before: fiber matches in registration
+	// order, so this parameter route would swallow that literal, and every user
+	// holding `as::organizations::switch::UPDATE` - which is every signed up user -
+	// would lose the ability to switch organizations.
+	group.Put(
+		"/organizations/:id",
+		middleware.BodyValidator[dto.UpdateOrganization](),
+		this.authGuard.Act,
+		this.organizationGuard.Act,
+		this.permissionsGuard.Act,
+		this.UpdateOrganization,
 	)
 
 	this.swagger.Add(

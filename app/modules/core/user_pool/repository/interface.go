@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"encoding/json"
+
 	dto "auth_service/app/modules/core/user_pool/models"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
@@ -25,4 +27,11 @@ type IUserPoolRepository interface {
 	// Dedicated queries: the ILIKE cannot be expressed by the typed `where`.
 	FindSearch(search UserPoolSearch, options ...repo.Option) ([]entity.UsersPool, error)
 	FindSearchCount(search UserPoolSearch, options ...repo.Option) (int64, error)
+
+	IncrementUsersCount(id string, options ...repo.Option) (int64, error)
+
+	// The tracking pair. The column is absent from the update dao, so these two
+	// are the only way it is read for writing and written.
+	FindOneForUpdate(id string, options ...repo.Option) (*entity.UsersPool, error)
+	WriteTracking(id string, document json.RawMessage, options ...repo.Option) (int64, error)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	as "auth_service/app/modules/authorize/services"
 	odto "auth_service/app/modules/core/organization/models"
@@ -19,6 +20,8 @@ import (
 	udto "auth_service/app/modules/core/user/models"
 	ur "auth_service/app/modules/core/user/repository"
 	us "auth_service/app/modules/core/user/services"
+	upr "auth_service/app/modules/core/user_pool/repository"
+	ups "auth_service/app/modules/core/user_pool/services"
 	dto "auth_service/app/modules/register/models"
 	hs "auth_service/app/modules/utils/hash/services"
 	repo "auth_service/shared/repository"
@@ -27,6 +30,7 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
+	"auth_service/shared/tracking"
 	"auth_service/shared/utils"
 
 	"github.com/google/uuid"
@@ -45,6 +49,8 @@ type RegisterService struct {
 	organizationRepository orep.IOrganizationRepository
 	participantRepository  prep.IParticipantRepository
 	profileRepository      prr.IProfileRepository
+	userPoolRepository     upr.IUserPoolRepository
+	userPoolService        ups.IUserPoolService
 	userService            us.IUserService
 	participantService     ps.IParticipantService
 	logger                 *zap.Logger
@@ -60,6 +66,8 @@ func NewRegisterService(
 	organizationRepository orep.IOrganizationRepository,
 	participantRepository prep.IParticipantRepository,
 	profileRepository prr.IProfileRepository,
+	userPoolRepository upr.IUserPoolRepository,
+	userPoolService ups.IUserPoolService,
 	userService us.IUserService,
 	participantService ps.IParticipantService,
 	logger *zap.Logger,
@@ -75,6 +83,8 @@ func NewRegisterService(
 		organizationRepository: organizationRepository,
 		participantRepository:  participantRepository,
 		profileRepository:      profileRepository,
+		userPoolRepository:     userPoolRepository,
+		userPoolService:        userPoolService,
 		userService:            userService,
 		participantService:     participantService,
 		logger:                 logger,
@@ -163,9 +173,30 @@ func (this *RegisterService) ProvisionUser(
 		return nil, e.ThrowInternalServerError("Failed to create participant")
 	}
 
+	// Last write of the unit of work, and it has to stay last: it takes a row lock
+	// on the pool that every other signup into the same pool then waits on until
+	// this transaction commits.
+	if _, err := this.userPoolRepository.IncrementUsersCount(app.UsersPool.ID, option); err != nil {
+		this.logger.Error("Failed to increment the users count of the pool", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to increment the users count of the pool")
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, e.ThrowInternalServerError("Failed to commit transaction")
 	}
+
+	// After the commit, never before: the transaction above still holds the pool row
+	// from the users_count increment, and the lock Track takes would sit waiting on
+	// it for nothing.
+	poolId := app.UsersPool.ID
+
+	utils.Detach(this.logger, "track pool signup", func() error {
+		return this.userPoolService.Track(tracking.TagSignup, ups.TrackSignup{
+			PoolId: poolId,
+			AppId:  app.ID,
+			At:     time.Now(),
+		})
+	})
 
 	this.logger.Info(
 		"User created Successfully!",
@@ -261,6 +292,15 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 
 	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
 
+	// The value is built here and not inside the goroutine: `session.User` is
+	// assigned right below, and reading the struct while this goroutine writes it
+	// would be a race. LoginFrom copies the scalars out.
+	login := us.LoginFrom(session)
+
+	utils.Detach(this.logger, "track user login", func() error {
+		return this.userService.Track(tracking.TagLogin, login)
+	})
+
 	// Populate User field in session for CreateAuthorizationCredentials
 	session.User = *provisioned.User
 
@@ -332,7 +372,10 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		return nil, err
 	}
 
-	go this.otpService.Invalidate(otp.ID)
+	utils.Detach(this.logger, "invalidate otp", func() error {
+		this.otpService.Invalidate(otp.ID)
+		return nil
+	})
 
 	var hashedPassword string
 
@@ -363,6 +406,15 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 	}
 
 	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
+
+	// The value is built here and not inside the goroutine: `session.User` is
+	// assigned right below, and reading the struct while this goroutine writes it
+	// would be a race. LoginFrom copies the scalars out.
+	login := us.LoginFrom(session)
+
+	utils.Detach(this.logger, "track user login", func() error {
+		return this.userService.Track(tracking.TagLogin, login)
+	})
 
 	// Populate User field in session for CreateAuthorizationCredentials
 	session.User = *provisioned.User

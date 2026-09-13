@@ -18,6 +18,7 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/permissions"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/utils"
 
 	"go.uber.org/zap"
 )
@@ -272,6 +273,58 @@ func (this *OrganizationService) CreateForUser(
 	organization.Profile = ceiling
 
 	return organization, nil
+}
+
+// UpdateForCaller edits the organization the caller is currently in, and only
+// that one: the PermissionsGuard answered this request against it, so a write
+// landing anywhere else would be authorized with powers held elsewhere. It is the
+// same restriction UpdateParticipant makes, for the same reason.
+func (this *OrganizationService) UpdateForCaller(
+	organizationId string,
+	currentOrganization *entity.Organization,
+	payload *dto.UpdateOrganization,
+) (*entity.Organization, error) {
+	if currentOrganization == nil || payload == nil {
+		return nil, e.ThrowInternalServerError("Current organization and payload are required")
+	}
+
+	if organizationId != currentOrganization.ID {
+		return nil, e.ThrowPermissionDeniedError(
+			"An organization can only be edited while you are currently in it",
+		)
+	}
+
+	dao := dto.OrganizationUpdateDao{
+		Name:        payload.Name,
+		Description: payload.Description,
+	}
+
+	if payload.Metadata != nil {
+		merged, err := utils.MergeJsonPatch(currentOrganization.Metadata, *payload.Metadata)
+
+		if err != nil {
+			return nil, e.ThrowBadRequest("`metadata` has to be a JSON object", utils.JSON{"field": "metadata"})
+		}
+
+		dao.Metadata = &merged
+	}
+
+	if !repo.HasChanges(dao) {
+		return currentOrganization, nil
+	}
+
+	affected, err := this.organizationRepository.Update(entity.Organization{ID: organizationId}, dao)
+
+	if err != nil {
+		this.logger.Error("Failed to update an organization", zap.String("organization_id", organizationId), zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to update the organization")
+	}
+
+	if affected == 0 {
+		return nil, e.ThrowNotFound(fmt.Sprintf("Organization `%s` not found", organizationId))
+	}
+
+	return this.FindById(organizationId)
 }
 
 // UpdateParticipant moves one participation onto another profile. Three refusals

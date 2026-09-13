@@ -22,6 +22,7 @@ import (
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -300,15 +301,11 @@ func (this *AuthorizeService) Authorize(
 		return nil, e.ThrowUnauthorizedError("IP Address mismatch!")
 	}
 
-	go func() {
-		err = this.sessionService.UseSession(session.ID)
-		if err != nil {
-			this.logger.Error("Failed to use session", zap.Error(err), zap.String("session_id", session.ID))
-			return
-		}
-
-		this.logger.Info("Session used", zap.String("session_id", session.ID))
-	}()
+	// It used to assign to the `err` of the enclosing function, which raced with
+	// the handler reading it.
+	utils.Detach(this.logger, "mark the session as used", func() error {
+		return this.sessionService.UseSession(session.ID)
+	})
 
 	return &dto.AuthorizeResponse{
 		User:      session.User,

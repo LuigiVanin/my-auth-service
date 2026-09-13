@@ -102,14 +102,12 @@ func (this *AppController) UpdateApp(ctx fiber.Ctx) error {
 	var payload dto.UpdateApp
 
 	if err := ctx.Bind().Body(&payload); err != nil {
-		return e.ThrowBadRequest(err.Error())
+		return err
 	}
 
-	currentApp := ctx.Locals("app").(*entity.App)
-	currentUser := ctx.Locals("user").(*entity.User)
 	currentOrganization := ctx.Locals("organization").(*entity.Organization)
 
-	app, err := this.appService.Update(currentUser, currentApp, currentOrganization)
+	app, err := this.appService.Update(ctx.Params("id"), currentOrganization, &payload)
 
 	if err != nil {
 		return err
@@ -194,7 +192,7 @@ func (this *AppController) Register(server *fiber.App) {
 		docs.Validated(
 			docs.PermissionedRoute(this.swagger, "PUT", "/core/apps/{id}", openapi.Options{
 				Summary:     "Update an application",
-				Description: "Updates the settings of an application owned by the authenticated user. Not implemented yet - always answers 500.",
+				Description: "Edits an application of the current organization. Only the fields present in the body are written, so an absent field and a zero one are not the same request - `{\"private\": false}` writes false, an absent `private` writes nothing. `metadata` is merged into what is stored instead of replacing it: the request wins on the keys it names, and the only way to remove a key is to send it as `null`. `users_pool_id`, `public_key` and `secret_key` are never writable. Two changes bite the caller: a new `token_type` invalidates the format of every token already issued by this application, and `private` set to true starts requiring `X-Secret-Key` on it.",
 				Tags:        []string{docs.TagApps},
 			}),
 		).
@@ -204,11 +202,21 @@ func (this *AppController) Register(server *fiber.App) {
 			}).
 			AddBody(dto.UpdateApp{}, openapi.Options{
 				Required:    true,
-				Description: "New settings of the application",
+				Description: "Fields to change - every one of them is optional",
 			}).
 			AddResponse(fiber.StatusOK, entity.App{}, openapi.Options{
 				Description: "The updated application",
+			}).
+			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
+				Description: "No application of the current organization matches the given id",
 			}),
 	)
-	group.Put("/apps/:id", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.UpdateApp)
+	group.Put(
+		"/apps/:id",
+		middleware.BodyValidator[dto.UpdateApp](),
+		this.authGuard.Act,
+		this.organizationGuard.Act,
+		this.permissionsGuard.Act,
+		this.UpdateApp,
+	)
 }

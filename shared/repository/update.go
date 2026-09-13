@@ -13,6 +13,16 @@ type IUpdateDao interface {
 	ToUpdateMap() map[string]any
 }
 
+// HasChanges reports whether the dao would write anything at all.
+//
+// An update dao with every field nil resolves to an empty map and Update short
+// circuits to (0, nil) without touching the database, which is indistinguishable
+// from "no row matched". A service that answers 404 on zero rows affected has to
+// ask this first, or a PUT with an empty body 404s a row that exists.
+func HasChanges(dao any) bool {
+	return len(BuildUpdateMap(dao)) > 0
+}
+
 // BuildUpdateMap turns an update dao into the map gorm expects.
 //
 // Why a map and not the dao struct itself: gorm only auto fills AutoUpdateTime

@@ -1,11 +1,14 @@
 package mock
 
 import (
+	"encoding/json"
+
 	dto "auth_service/app/modules/core/user/models"
 	ur "auth_service/app/modules/core/user/repository"
 	us "auth_service/app/modules/core/user/services"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/tracking"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -69,6 +72,19 @@ func (this *MockUserRepository) FindSearchCount(search ur.UserSearch, options ..
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (this *MockUserRepository) FindOneForUpdate(id uint, options ...repo.Option) (*entity.User, error) {
+	args := this.Called(id, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
+}
+
+func (this *MockUserRepository) WriteTracking(id uint, document json.RawMessage, options ...repo.Option) (int64, error) {
+	args := this.Called(id, document, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // MockUserService represents a mock implementation of IUserService
 type MockUserService struct {
 	mock.Mock
@@ -94,6 +110,26 @@ func (this *MockUserService) Update(where entity.User, data dto.UserUpdateDao) (
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (this *MockUserService) UpdateForOrganization(
+	currentOrganization *entity.Organization,
+	targetUserId uint,
+	payload *dto.UpdateUser,
+) (*entity.User, error) {
+	args := this.Called(currentOrganization, targetUserId, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
+}
+
+func (this *MockUserService) UpdateSelf(currentUser *entity.User, payload *dto.UpdateUserSelf) (*entity.User, error) {
+	args := this.Called(currentUser, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
+}
+
 func (this *MockUserService) List(currentUser *entity.User, currentOrganization *entity.Organization, query *dto.UserListQuery) (*dto.GetUsersResponse, error) {
 	args := this.Called(currentUser, currentOrganization, query)
 	if args.Get(0) == nil {
@@ -108,4 +144,9 @@ func (this *MockUserService) FindById(currentUser *entity.User, currentOrganizat
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.User), args.Error(1)
+}
+
+func (this *MockUserService) Track(tag tracking.Tag, payload us.TrackLogin) error {
+	args := this.Called(tag, payload)
+	return args.Error(0)
 }

@@ -293,6 +293,39 @@ affected, err := this.userRepository.Update(
 )
 ```
 
+### A column changed in place
+
+Two shapes of write cannot go through the update dao, and both live in a dedicated
+repository method instead:
+
+**A counter** is an expression, not a value: `UpdateColumn("users_count",
+gorm.Expr("users_count + ?", 1))`. Reading it into Go, adding one and writing it
+back would lose every increment that landed between the two statements.
+
+**A document changed in place** — a jsonb column the service maintains — cannot be
+expressed that way once it nests and evicts, so it is a read-modify-write made safe
+by a row lock:
+
+```go
+func (this *UserPoolRepository) FindOneForUpdate(id string, options ...repo.Option) (*entity.UsersPool, error) {
+	query := this.Query(options...).
+		Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
+		Where("id = ?", id)
+
+	return repo.FirstOrNil[entity.UsersPool](query)
+}
+```
+
+`Query` and not `ListQuery`: the latter applies the default page LIMIT, and this
+reads one row. The service opens the transaction, reads through this, computes the
+new document and writes it with the matching `WriteTracking` — so the two statements
+sit inside one transaction and a concurrent writer waits instead of overwriting.
+`UpdateColumn` on the write, so the change does not move `updated_at`.
+
+Both are named methods rather than dao fields on purpose: it is what keeps the
+column out of reach of any payload. The worked case is
+`docs/specs/2026-09-09-tracking.md`.
+
 ### Several mutations in one unit of work
 
 ```go
@@ -426,8 +459,24 @@ safety net worth keeping, not something to work around with `AllowGlobalUpdate`.
 
 `BuildUpdateMap` returns an empty map and `Update` short circuits to `(0, nil)`
 without touching the database. `RowsAffected == 0` therefore means either "no
-row matched" or "nothing to update" — check the dao first if the distinction
-matters.
+row matched" or "nothing to update".
+
+**Any service that answers 404 on zero rows affected has to ask
+`repo.HasChanges(dao)` first**, or a `PUT` with an empty body answers 404 on a
+row that exists. Every update route does this, and returns the row it already
+read when there is nothing to write:
+
+```go
+if !repo.HasChanges(dao) {
+    return stored, nil
+}
+
+affected, err := this.appRepository.Update(entity.App{ID: id}, dao)
+// ...
+if affected == 0 {
+    return nil, e.ThrowNotFound("App not found in the current organization")
+}
+```
 
 ### A dedicated query may opt out of pagination
 

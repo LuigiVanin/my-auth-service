@@ -10,10 +10,10 @@ import (
 
 	cipher "auth_service/app/modules/utils/cipher"
 	hash "auth_service/app/modules/utils/hash/services"
+	"auth_service/cmd/database/seeds"
 	"auth_service/infra/config"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
-	"auth_service/shared/permissions"
 	"auth_service/shared/utils"
 
 	"github.com/google/uuid"
@@ -31,48 +31,7 @@ const (
 	credentialsFile = "credentials.txt"
 )
 
-// A grant is the authoring format: `as::{feature}::{subfeature?}::{ACTION}`,
-// translated into route patterns by shared/permissions. Writing api by hand is
-// the administration escape hatch, and it is what ADMIN uses on purpose - see
-// below. Every grant here is checked against the catalog by validateSeededGrants.
-var (
-	// The "*" of api matches any registered route, catalogued or not, and the guard
-	// reads that key first. The grant rides along only so the admin reports a grants
-	// list instead of an empty one - it does narrow IsSubsetOf, which prefers an exact
-	// key over "*". See docs/steering/modules/profiles.md.
-	adminPermissions = json.RawMessage(`{"api": {"*": {"methods": ["*"]}}, "grants": ["as::*::*"]}`)
-
-	// Carries the whole auth and otp set because it is the ceiling of
-	// LOGIN_PROFILE, and IsSubsetOf refuses a child that names a route the parent
-	// does not.
-	managerPermissions = json.RawMessage(`{"grants": [
-		"as::apps::CREATE", "as::apps::READ", "as::apps::UPDATE",
-		"as::users::READ", "as::users::me::READ",
-		"as::users_pool::CREATE", "as::users_pool::READ",
-		"as::organizations::CREATE", "as::organizations::READ",
-		"as::organizations::switch::UPDATE", "as::organizations::participants::READ",
-		"as::organizations::participants::UPDATE",
-		"as::profiles::CREATE", "as::profiles::READ", "as::profiles::UPDATE",
-		"as::grants::READ",
-		"as::login::CREATE", "as::register::CREATE", "as::authorize::CREATE",
-		"as::refresh::CREATE", "as::forgot_password::UPDATE", "as::otp::CREATE"
-	]}`)
-
-	// NOTE: nothing enforces /auth yet, so the login and register grants are
-	// expressive rather than effective. They are here because the profile a pool
-	// defaults to is where "may this pool sign users up" belongs.
-	loginPermissions = json.RawMessage(`{"grants": [
-		"as::login::CREATE", "as::register::CREATE",
-		"as::organizations::READ", "as::organizations::switch::UPDATE"
-	]}`)
-
-	// Nothing assigns it yet; seeded for the invite flow.
-	memberPermissions = json.RawMessage(`{"grants": [
-		"as::organizations::READ", "as::organizations::participants::READ"
-	]}`)
-
-	emptyJson = json.RawMessage(`{}`)
-)
+var emptyJson = json.RawMessage(`{}`)
 
 // initSeed holds the values produced by the seed that are needed once the
 // transaction is committed (credentials output).
@@ -86,37 +45,11 @@ type initSeed struct {
 	password       string
 }
 
-// Fails the seed loudly when a literal above names a grant the catalog does not
-// know. Nothing else checks these strings: a key renamed or removed in
-// shared/permissions turns them into rows that grant nothing, silently.
-func validateSeededGrants() error {
-	documents := []json.RawMessage{
-		adminPermissions,
-		managerPermissions,
-		loginPermissions,
-		memberPermissions,
-	}
-
-	for _, document := range documents {
-		parsed, err := permissions.Parse(document)
-
-		if err != nil {
-			return err
-		}
-
-		if err := permissions.ValidateGrants(parsed.Grants); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func run(db *gorm.DB, cfg *config.Config) error {
 	cipherService := cipher.NewCipherService(cfg)
 	hashService := hash.NewHashService()
 
-	if err := validateSeededGrants(); err != nil {
+	if err := seeds.ValidateAll(); err != nil {
 		return fmt.Errorf("seeded profiles carry an unknown grant: %w", err)
 	}
 
@@ -134,7 +67,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		adminProfile, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileAdmin,
 			Name:        "Admin Profile",
-			Permissions: adminPermissions,
+			Permissions: seeds.AdminPermissions,
 			Metadata:    emptyJson,
 		})
 		if err != nil {
@@ -145,7 +78,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		managerProfile, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileManager,
 			Name:        "Manager Profile",
-			Permissions: managerPermissions,
+			Permissions: seeds.ManagerPermissions,
 			Metadata:    emptyJson,
 		})
 		if err != nil {
@@ -156,7 +89,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		if _, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileLogin,
 			Name:        "Login Profile",
-			Permissions: loginPermissions,
+			Permissions: seeds.LoginPermissions,
 			Metadata:    emptyJson,
 		}); err != nil {
 			return fmt.Errorf("failed to insert or retrieve login profile: %w", err)
@@ -166,7 +99,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		if _, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileMember,
 			Name:        "Member Participant Profile",
-			Permissions: memberPermissions,
+			Permissions: seeds.MemberPermissions,
 			Metadata:    emptyJson,
 		}); err != nil {
 			return fmt.Errorf("failed to insert or retrieve member profile: %w", err)
@@ -188,9 +121,15 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			ID:        usersPoolId,
 			Name:      mainPoolName,
 			PublicKey: poolPublicKey,
+			Metadata:  emptyJson,
+			Tracking:  emptyJson,
 
 			// Every other pool is created through the API and starts on LOGIN_PROFILE.
 			DefaultProfileId: managerProfile.ID,
+
+			// The admin user of step 5, which this seed registers by hand instead of
+			// going through ProvisionUser.
+			UsersCount: 1,
 		}
 
 		if err := tx.Create(&usersPool).Error; err != nil {
@@ -261,6 +200,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			CurrentOrganizationId: adminOrganization.ID,
 			PasswordHash:          adminHashedPassword,
 			Metadata:              emptyJson,
+			Tracking:              emptyJson,
 		}
 
 		if err := tx.Create(&adminUser).Error; err != nil {

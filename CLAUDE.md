@@ -111,6 +111,8 @@ cmd/
 ├── main.go                  # appOptions(): the whole FX graph
 ├── main_test.go             # fx.ValidateApp over that graph
 ├── database/                # Seeding (init, reset) and migrations
+│   └── seeds/               # The permission documents of the seeded profiles,
+│                            # importable so tests read them instead of copying
 ├── helpers/                 # make cipher
 └── sandbox/                 # Scratch space, not part of the app
 
@@ -128,18 +130,22 @@ shared/
 ├── models/                  # DTOs shared across modules (RequestInfo)
 ├── permissions/             # Permission documents, the grant catalog and Resolve  → docs/steering/modules/profiles.md
 ├── repository/              # Option, BaseRepository, Tx  → docs/steering/repository-pattern.md
-└── utils/                   # Cipher, JSON, Pair, random, print helpers
+├── tracking/                # The `tracking` column shape and its arithmetic  → docs/specs/2026-09-09-tracking.md
+└── utils/                   # Cipher, JSON merge patch, Detach, Pair, random, print
 
 docs/specs/                  # Feature specs. Read the one for a feature before
-                             # changing it. 2026-08-23-organizations.md is as-built
-                             # and carries the open points; -scoped-profiles.md is
-                             # a plan for a future session
+                             # changing it. -organizations.md, -update-routes.md
+                             # and -tracking.md are as-built and carry the open
+                             # points; -scoped-profiles.md is a plan for a future
+                             # session
 docs/steering/                    # Layer documentation
 tests/
 ├── bootstrap/               # Web server behaviour
 ├── middlewares/             # Guard and middleware behaviour
-├── modules/                 # Per module service tests, plus mock/
-└── shared/                  # Repository pattern and dedicated query tests
+├── modules/                 # Per module service tests, plus mock/ and routes/
+│                            # (route registration order, OpenAPI document build)
+└── shared/                  # Repository pattern, dedicated queries, permission
+                             # algebra, JSON merge patch, tracking documents
 ```
 
 ## Code Style Conventions

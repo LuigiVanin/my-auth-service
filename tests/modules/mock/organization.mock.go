@@ -108,6 +108,18 @@ func (this *MockOrganizationService) CreateForUser(
 	return args.Get(0).(*entity.Organization), args.Error(1)
 }
 
+func (this *MockOrganizationService) UpdateForCaller(
+	organizationId string,
+	currentOrganization *entity.Organization,
+	payload *dto.UpdateOrganization,
+) (*entity.Organization, error) {
+	args := this.Called(organizationId, currentOrganization, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.Organization), args.Error(1)
+}
+
 func (this *MockOrganizationService) UpdateParticipant(
 	organizationId string,
 	participantId string,

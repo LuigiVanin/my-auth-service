@@ -29,6 +29,7 @@ type LoginWithPasswordServiceTestSuite struct {
 	mockOtpService     *mock.MockOtpService
 
 	mockParticipantService *mock.MockParticipantService
+	mockUserService        *mock.MockUserService
 
 	loginService ls.ILoginService
 }
@@ -40,6 +41,7 @@ func (this *LoginWithPasswordServiceTestSuite) SetupTest() {
 	this.mockAuthService = new(mock.MockAuthorizeService)
 	this.mockOtpService = new(mock.MockOtpService)
 	this.mockParticipantService = new(mock.MockParticipantService)
+	this.mockUserService = new(mock.MockUserService)
 	logger := zap.NewNop()
 
 	this.loginService = ls.NewLoginService(
@@ -49,6 +51,7 @@ func (this *LoginWithPasswordServiceTestSuite) SetupTest() {
 		this.mockAuthService,
 		this.mockOtpService,
 		this.mockParticipantService,
+		this.mockUserService,
 		logger,
 	)
 }

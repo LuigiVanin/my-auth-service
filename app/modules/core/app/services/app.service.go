@@ -7,10 +7,12 @@ import (
 	ups "auth_service/app/modules/core/user_pool/services"
 	"auth_service/app/modules/utils/cipher"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/utils"
 
 	entity "auth_service/infra/entities"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type AppService struct {
@@ -214,28 +216,61 @@ func (this *AppService) FindAllUserApps(userId string, currentOrganization *enti
 	return []entity.App{}, e.ThrowInternalServerError("Not Implemented Yet")
 }
 
+// FindById is what carries the scope rule, so the update inherits it: an app of
+// another organization answers 404 and never 403, or the id becomes an oracle.
 func (this *AppService) Update(
-	user *entity.User,
-	app *entity.App,
+	id string,
 	currentOrganization *entity.Organization,
+	payload *dto.UpdateApp,
 ) (*entity.App, error) {
-	if currentOrganization == nil {
-		return nil, e.ThrowInternalServerError("Current organization is required")
+	if currentOrganization == nil || payload == nil {
+		return nil, e.ThrowInternalServerError("Current organization and payload are required")
 	}
 
-	stored, err := this.appRepository.FindOne(entity.App{ID: app.ID})
+	stored, err := this.FindById(id, currentOrganization)
 
 	if err != nil {
-		return nil, e.ThrowInternalServerError("Unable to query app")
+		return nil, err
 	}
 
-	if stored == nil {
-		return nil, e.ThrowNotFound("App with this Id was not found")
+	dao := dto.AppUpdateDao{
+		Name:                       payload.Name,
+		TokenType:                  payload.TokenType,
+		TokenExpirationTime:        payload.TokenExpirationTime,
+		RefreshTokenExpirationTime: payload.RefreshTokenExpirationTime,
+		Private:                    payload.Private,
+		VerifyEmail:                payload.VerifyEmail,
+		Enabled2FA:                 payload.Enabled2FA,
 	}
 
-	if stored.OrganizationId == nil || *stored.OrganizationId != currentOrganization.ID {
-		return nil, e.ThrowUnauthorizedError("The app does not belong to the current organization")
+	if payload.LoginTypes != nil {
+		loginTypes := pq.StringArray(*payload.LoginTypes)
+		dao.LoginTypes = &loginTypes
 	}
 
-	return stored, e.ThrowInternalServerError("Not Implemented Yet")
+	if payload.Metadata != nil {
+		merged, err := utils.MergeJsonPatch(stored.Metadata, *payload.Metadata)
+
+		if err != nil {
+			return nil, e.ThrowBadRequest("`metadata` has to be a JSON object", utils.JSON{"field": "metadata"})
+		}
+
+		dao.Metadata = &merged
+	}
+
+	if !repo.HasChanges(dao) {
+		return stored, nil
+	}
+
+	affected, err := this.appRepository.Update(entity.App{ID: id}, dao)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to update the app")
+	}
+
+	if affected == 0 {
+		return nil, e.ThrowNotFound("App not found in the current organization")
+	}
+
+	return this.FindById(id, currentOrganization)
 }

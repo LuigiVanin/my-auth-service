@@ -13,12 +13,15 @@ import (
 	ss "auth_service/app/modules/core/session/services"
 	udto "auth_service/app/modules/core/user/models"
 	ur "auth_service/app/modules/core/user/repository"
+	us "auth_service/app/modules/core/user/services"
 	dto "auth_service/app/modules/login/models"
 	hs "auth_service/app/modules/utils/hash/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/tracking"
+	"auth_service/shared/utils"
 
 	"go.uber.org/zap"
 )
@@ -32,6 +35,7 @@ type LoginService struct {
 	authorizeService   as.IAuthorizeService
 	otpService         os.IOtpService
 	participantService ps.IParticipantService
+	userService        us.IUserService
 	logger             *zap.Logger
 }
 
@@ -42,6 +46,7 @@ func NewLoginService(
 	authorizeService as.IAuthorizeService,
 	otpService os.IOtpService,
 	participantService ps.IParticipantService,
+	userService us.IUserService,
 	logger *zap.Logger,
 ) *LoginService {
 
@@ -52,6 +57,7 @@ func NewLoginService(
 		authorizeService:   authorizeService,
 		otpService:         otpService,
 		participantService: participantService,
+		userService:        userService,
 		logger:             logger,
 	}
 }
@@ -96,6 +102,15 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 	}
 
 	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
+
+	// The value is built here and not inside the goroutine: `session.User` is
+	// assigned right below, and reading the struct while this goroutine writes it
+	// would be a race. LoginFrom copies the scalars out.
+	login := us.LoginFrom(session)
+
+	utils.Detach(this.logger, "track user login", func() error {
+		return this.userService.Track(tracking.TagLogin, login)
+	})
 
 	// Populate User field in session for CreateAuthorizationCredentials
 	session.User = *user
@@ -168,6 +183,15 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 
 	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
 
+	// The value is built here and not inside the goroutine: `session.User` is
+	// assigned right below, and reading the struct while this goroutine writes it
+	// would be a race. LoginFrom copies the scalars out.
+	login := us.LoginFrom(session)
+
+	utils.Detach(this.logger, "track user login", func() error {
+		return this.userService.Track(tracking.TagLogin, login)
+	})
+
 	session.User = *user
 
 	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
@@ -177,7 +201,10 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 		return nil, err
 	}
 
-	go this.otpService.Invalidate(otp.ID)
+	utils.Detach(this.logger, "invalidate otp", func() error {
+		this.otpService.Invalidate(otp.ID)
+		return nil
+	})
 
 	participation, err := this.participantService.FindForCurrentOrganization(user)
 

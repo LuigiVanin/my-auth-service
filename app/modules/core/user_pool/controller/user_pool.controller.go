@@ -63,6 +63,7 @@ func (this *UserPoolController) CreateUserPool(ctx fiber.Ctx) error {
 
 	userPool, err := this.userPoolService.Create(ups.CreateUserPoolData{
 		Name:             payload.Name,
+		Description:      payload.Description,
 		OwnerUserId:      &currentUser.ID,
 		OrganizationId:   &currentOrganization.ID,
 		DefaultProfileId: payload.DefaultProfileId,
@@ -107,6 +108,25 @@ func (this *UserPoolController) GetUserPool(ctx fiber.Ctx) error {
 
 	if pool == nil {
 		return e.ThrowNotFound("Users pool not found in the current organization")
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(pool)
+}
+
+func (this *UserPoolController) UpdateUserPool(ctx fiber.Ctx) error {
+	var payload dto.UpdateUserPool
+
+	if err := ctx.Bind().Body(&payload); err != nil {
+		return err
+	}
+
+	currentOrganization := ctx.Locals("organization").(*entity.Organization)
+	participant := ctx.Locals("participant").(*entity.Participant)
+
+	pool, err := this.userPoolService.Update(ctx.Params("id"), currentOrganization, participant, &payload)
+
+	if err != nil {
+		return err
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(pool)
@@ -188,5 +208,36 @@ func (this *UserPoolController) Register(server *fiber.App) {
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetUserPool,
+	)
+
+	this.swagger.Add(
+		docs.Validated(
+			docs.PermissionedRoute(this.swagger, "PUT", "/core/users_pool/{id}", openapi.Options{
+				Summary:     "Update a users pool",
+				Description: "Edits a users pool of the current organization. Only the fields present in the body are written, so an absent field and an empty one are not the same request. `metadata` is merged into what is stored instead of replacing it - the request wins on the keys it names, and the only way to remove a key is to send it as `null`. A new `default_profile_id` moves the ceiling every organization born in the pool receives, and is refused with `403` when it grants more than the caller holds here. `public_key` and `users_count` are never writable.",
+				Tags:        []string{docs.TagUserPools},
+			}),
+		).
+			AddPathParam("id", openapi.String, openapi.Options{
+				Required:    true,
+				Description: "Id of the users pool",
+			}).
+			AddBody(dto.UpdateUserPool{}, openapi.Options{
+				Required:    true,
+				Description: "Fields to change - every one of them is optional",
+			}).
+			AddResponse(fiber.StatusOK, entity.UsersPool{}, openapi.Options{
+				Description: "The updated users pool",
+			}).
+			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
+				Description: "No users pool of the current organization matches the given id, or the requested `default_profile_id` does not exist",
+			}),
+	)
+	group.Put("/:id",
+		middleware.BodyValidator[dto.UpdateUserPool](),
+		this.authGuard.Act,
+		this.organizationGuard.Act,
+		this.permissionsGuard.Act,
+		this.UpdateUserPool,
 	)
 }

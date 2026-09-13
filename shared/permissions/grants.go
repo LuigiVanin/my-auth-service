@@ -46,8 +46,16 @@ var catalog = map[string]map[string]Rule{
 		"/core/users":     {Methods: []string{"GET"}},
 		"/core/users/:id": {Methods: []string{"GET"}},
 	},
+	// Editing any user of any pool the organization owns. Editing yourself is
+	// as::users::me::UPDATE, kept apart for the same reason as the READ pair.
+	"as::users::UPDATE": {
+		"/core/users/:id": {Methods: []string{"PUT"}},
+	},
 	"as::users::me::READ": {
 		"/core/users/me": {Methods: []string{"GET"}},
+	},
+	"as::users::me::UPDATE": {
+		"/core/users/me": {Methods: []string{"PUT"}},
 	},
 
 	"as::users_pool::CREATE": {
@@ -57,12 +65,18 @@ var catalog = map[string]map[string]Rule{
 		"/core/users_pool":     {Methods: []string{"GET"}},
 		"/core/users_pool/:id": {Methods: []string{"GET"}},
 	},
+	"as::users_pool::UPDATE": {
+		"/core/users_pool/:id": {Methods: []string{"PUT"}},
+	},
 
 	"as::organizations::CREATE": {
 		"/core/organizations": {Methods: []string{"POST"}},
 	},
 	"as::organizations::READ": {
 		"/core/organizations": {Methods: []string{"GET"}},
+	},
+	"as::organizations::UPDATE": {
+		"/core/organizations/:id": {Methods: []string{"PUT"}},
 	},
 	"as::organizations::switch::UPDATE": {
 		"/core/organizations/switch": {Methods: []string{"PUT"}},

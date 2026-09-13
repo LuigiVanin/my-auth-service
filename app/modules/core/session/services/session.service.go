@@ -12,6 +12,7 @@ import (
 	cipher "auth_service/app/modules/utils/cipher"
 	entity "auth_service/infra/entities"
 	dto "auth_service/shared/models"
+	"auth_service/shared/utils"
 
 	"go.uber.org/zap"
 )
@@ -62,19 +63,11 @@ func (this *SessionService) CreateNew(app *entity.App, user *entity.User, reques
 		return nil, e.ThrowInternalServerError("Failed to find the new session")
 	}
 
-	go func() {
+	utils.Detach(this.logger, "invalidate the other sessions", func() error {
 		_, err := this.repository.InvalidateAllExcept(user.ID, app.ID, session.ID)
 
-		if err != nil {
-			this.logger.Error(
-				"Failed to invalidate all sessions",
-				zap.Error(err),
-				zap.Uint("user_id", user.ID),
-				zap.String("app_id", app.ID),
-				zap.String("session_id", session.ID),
-			)
-		}
-	}()
+		return err
+	})
 
 	return session, nil
 }

@@ -175,6 +175,35 @@ return nil, e.ThrowInternalServerError("Failed to check OTP rate limit")
 Do not log and return the same string; the handler already logs every error with
 method, path, code and status.
 
+## Detached work
+
+Work whose result the response does not carry goes through
+`utils.Detach(logger, name, fn)`, never a bare `go`.
+
+**A panic on a goroutine takes the process down.** The fiber recoverer wraps the
+handler's own stack; a goroutine the handler spawned unwinds on its own and is
+never seen by it. `Detach` recovers, logs with a stack, and logs a returned error
+under the same `name`.
+
+```go
+utils.Detach(this.logger, "track user login", func() error {
+    return this.userService.Track(tracking.TagLogin, login)
+})
+```
+
+Two rules that come with it:
+
+- **Read what you need into a value before the goroutine starts.** Capturing a
+  pointer the caller goes on to mutate is a race, and it is exactly what the four
+  login tracks avoid by building the payload from the session first — `session.User`
+  is assigned right after.
+- **Fire it after the transaction commits**, not inside it, when the work touches a
+  row that transaction wrote: the lock is still held and the goroutine only waits.
+
+In tests, remember `Detach` recovers from any panic — including testify's
+"unexpected call" — so an unstubbed mock on a detached path fails nothing. Stub it
+and assert through a channel.
+
 ## Gotchas seen in this codebase
 
 - **Do not swallow repository errors.** `OtpService.GenerateConsumable` used to

@@ -90,8 +90,8 @@ func (this *MockAppService) FindAllUserApps(userId string, currentOrganization *
 	return args.Get(0).([]entity.App), args.Error(1)
 }
 
-func (this *MockAppService) Update(user *entity.User, app *entity.App, currentOrganization *entity.Organization) (*entity.App, error) {
-	args := this.Called(user, app, currentOrganization)
+func (this *MockAppService) Update(id string, currentOrganization *entity.Organization, payload *dto.UpdateApp) (*entity.App, error) {
+	args := this.Called(id, currentOrganization, payload)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"encoding/json"
+
 	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
@@ -31,4 +33,9 @@ type IUserRepository interface {
 	// `where` cannot express.
 	FindSearch(search UserSearch, options ...repo.Option) ([]entity.User, error)
 	FindSearchCount(search UserSearch, options ...repo.Option) (int64, error)
+
+	// The tracking pair. The column is absent from the update dao, so these two
+	// are the only way it is read for writing and written.
+	FindOneForUpdate(id uint, options ...repo.Option) (*entity.User, error)
+	WriteTracking(id uint, document json.RawMessage, options ...repo.Option) (int64, error)
 }

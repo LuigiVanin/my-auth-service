@@ -2,6 +2,7 @@ package models
 
 import (
 	entity "auth_service/infra/entities"
+	"encoding/json"
 )
 
 // An `api` key in the body is dropped, not refused: the endpoint does not speak
@@ -11,9 +12,12 @@ type CreateProfile struct {
 	Permissions ProfilePermissions `json:"permissions" validate:"required"`
 }
 
+// Metadata is merged into what is stored rather than replacing it, and a key is
+// removed by sending it as `null` - see docs/steering/models-layer.md.
 type UpdateProfile struct {
-	Name        *string             `json:"name" validate:"omitempty,min=1,max=120"`
+	Name        *string             `json:"name" validate:"omitnil,min=1,max=120"`
 	Permissions *ProfilePermissions `json:"permissions"`
+	Metadata    *json.RawMessage    `json:"metadata"`
 }
 
 type ProfilePermissions struct {

@@ -27,5 +27,7 @@ type IAppService interface {
 
 	FindAllUserApps(userId string, currentOrganization *entity.Organization) ([]entity.App, error)
 
-	Update(user *entity.User, app *entity.App, currentOrganization *entity.Organization) (*entity.App, error)
+	// Update writes only the fields the payload filled, and merges Metadata into
+	// what is stored rather than replacing it.
+	Update(id string, currentOrganization *entity.Organization, payload *dto.UpdateApp) (*entity.App, error)
 }

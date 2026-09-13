@@ -125,6 +125,69 @@ func TestUserPoolSearchAlwaysScopesToAnOrganization(t *testing.T) {
 	assert.Contains(t, empty, "users_pool.organization_id = $")
 }
 
+// The counter has to move in the database and never in Go: a read, a plus one and
+// a write would lose every signup that lands between the two statements, and two
+// concurrent registrations into one pool would report one.
+func TestIncrementUsersCountIsAnInPlaceExpression(t *testing.T) {
+	client, _ := newClient(t)
+	repository := uprep.NewUserPoolRepository(client)
+
+	sql := captureUpdate(t, client, func() {
+		_, _ = repository.IncrementUsersCount("pool-1")
+	})
+
+	assert.Contains(t, sql, `"users_count"=users_count + $`)
+	assert.Contains(t, sql, "id = $")
+
+	// UpdateColumn, so a signup does not move `updated_at` of the pool - that
+	// column means "the pool was configured".
+	assert.NotContains(t, sql, "updated_at")
+}
+
+// The lock is the whole correctness argument of the tracking write: the document
+// is read, changed in Go and written back, so without FOR UPDATE two concurrent
+// signups into one pool would lose one of the two.
+func TestTrackingReadsTakeARowLock(t *testing.T) {
+	client, _ := newClient(t)
+
+	poolSql := captureQuery(t, client, func() {
+		_, _ = uprep.NewUserPoolRepository(client).FindOneForUpdate("pool-1")
+	})
+
+	assert.Contains(t, poolSql, "FOR UPDATE")
+	assert.Contains(t, poolSql, "id = $")
+
+	// Query and not ListQuery: a single row read must not carry the page limit.
+	assert.NotContains(t, poolSql, "LIMIT 10")
+
+	userSql := captureQuery(t, client, func() {
+		_, _ = urep.NewUserRepository(client).FindOneForUpdate(7)
+	})
+
+	assert.Contains(t, userSql, "FOR UPDATE")
+}
+
+// UpdateColumn, so a signup does not move `updated_at` of the pool and a login
+// does not move it on the user - those columns mean "the row was configured".
+func TestTrackingWritesOnlyTheTrackingColumn(t *testing.T) {
+	client, _ := newClient(t)
+
+	poolSql := captureUpdate(t, client, func() {
+		_, _ = uprep.NewUserPoolRepository(client).WriteTracking("pool-1", []byte(`{}`))
+	})
+
+	assert.Contains(t, poolSql, `"tracking"=$`)
+	assert.NotContains(t, poolSql, "updated_at")
+	assert.NotContains(t, poolSql, "metadata")
+
+	userSql := captureUpdate(t, client, func() {
+		_, _ = urep.NewUserRepository(client).WriteTracking(7, []byte(`{}`))
+	})
+
+	assert.Contains(t, userSql, `"tracking"=$`)
+	assert.NotContains(t, userSql, "updated_at")
+}
+
 // A global profile has organization_id NULL, and gorm drops a nil pointer out of a
 // typed struct condition - so writing this predicate as a struct would compile to a
 // WHERE with the NULL half missing, and every organization would see every scoped

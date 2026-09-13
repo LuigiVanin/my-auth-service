@@ -152,6 +152,22 @@ A route registered without an entry in `shared/permissions/grants.go` is unreach
 by every grant, wildcard included, and only `ADMIN` gets to it. Nothing checks this
 automatically.
 
+**And adding a map entry is a permission change, not a translation.** Every
+organization's own `Admin` profile is `{"grants": ["as::*::*"]}`, so a new key is
+reached by every organization owner the moment it lands - clamped by the ceiling of
+their organization, which is what keeps a LOGIN-ceilinged one out. Review a new
+entry with that in mind, and expect the output of `GET /core/grants` to change with
+it.
+
+The update routes added four keys, and the split of `as::users::UPDATE` from
+`as::users::me::UPDATE` is the one worth explaining. It mirrors the READ pair for
+the same reason: `/core/users/:id` edits any user of any pool the organization owns,
+so handing it to a pool default profile - which is what would be needed for an
+ordinary user to edit its own name - would hand out the administration of every user
+in that pool. `LOGIN_PROFILE` therefore holds `as::users::me::UPDATE` only, and the
+self route carries no scope check because its target is the caller, resolved by the
+`AuthGuard` and never read from the request.
+
 The map also covers `/auth` and `/otp`, which no guard enforces today. Those entries
 are expressive rather than effective, and they exist because the profile a users pool
 defaults to is where "may this pool sign users up" belongs.
@@ -212,7 +228,7 @@ reason the rule is a read back rather than a filter: a document written entirely
 unprivileged to everything that read grants, a frontend gate most of all.
 
 **A wildcard is reported expanded, never as authored.** `as::*::*` under a ceiling
-that reaches the whole catalog reports the 22 concrete keys. No consumer can expand
+that reaches the whole catalog reports every concrete key. No consumer can expand
 `as::*::*` on its own without shipping a copy of this catalog, so the resolved list
 does it for them. All or nothing still holds on the way *in*: the wildcard only
 reaches the whole catalog when every layer above it does.
@@ -403,7 +419,11 @@ organization.
 
 ## The seeded profiles
 
-Created by `cmd/database/init.go`. Keys live in `shared/constants/profile.go` -
+Written in `cmd/database/seeds/profiles.go` and inserted by `cmd/database/init.go`.
+The documents live in a package of their own because `init.go` is `package main`
+and no test can import it, which is how `tests/shared/permissions` came to keep a
+copy of them that then drifted by four grants - the copy is gone and the test reads
+`seeds.ManagerPermissions` directly. Keys live in `shared/constants/profile.go` -
 compare against those constants, never against a literal. They exist for the seed
 and for `resolveDefaultProfile`; they are not part of any request or response
 contract.
@@ -411,17 +431,19 @@ contract.
 | Key | Written in | Grants |
 | --- | --- | --- |
 | `ADMIN` | both | `{"api": {"*": …}, "grants": ["as::*::*"]}` - the platform administrator's organization only, and the one seeded profile that is **scoped**: the last step of the seed sets its `organization_id` to `admin_organization`. The two keys are deliberate: see the Wildcards section |
-| `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants and profiles - an organization that builds the platform out. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
-| `LOGIN_PROFILE` | grants | list your organizations and switch between them, plus login and signup; the default for any pool created through the API, so a new pool is born closed |
+| `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants and profiles, read and write - an organization that builds the platform out. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
+| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), plus login and signup; the default for any pool created through the API, so a new pool is born closed |
 | `MEMBER_PROFILE` | grants | read only; nothing assigns it yet, it is seeded for the invite flow |
 
 Adding a route means adding a map entry, and then updating every profile that should
 reach it. The guard still denies by default; it no longer constrains query
 parameters for these profiles, because grants leave the query open.
 
-`cmd/database/init.go` runs `permissions.ValidateGrants` over these literals before
-seeding, so a key renamed or removed in the map fails the seed instead of quietly
-producing rows that grant nothing.
+`seeds.ValidateAll` runs `permissions.ValidateGrants` over these documents before
+the seed writes anything, so a key renamed or removed in the map fails the seed
+instead of quietly producing rows that grant nothing.
+`TestSeededProfilesFitUnderTheirCeiling` calls it too, so it fails at test time
+rather than at `make seed init`.
 
 Permission keys are matched against `ctx.Route().Path` - the registered route
 pattern - so a key is written `/core/apps/:id`, never `/core/apps/9f3c...`.

@@ -29,6 +29,14 @@ type IOrganizationService interface {
 		payload *dto.CreateOrganizationPayload,
 	) (*entity.Organization, error)
 
+	// UpdateForCaller edits the organization the caller is currently in, and
+	// refuses any other id. Metadata is merged into what is stored.
+	UpdateForCaller(
+		organizationId string,
+		currentOrganization *entity.Organization,
+		payload *dto.UpdateOrganization,
+	) (*entity.Organization, error)
+
 	// The caller is its own participation, not its user: it is both what caps the
 	// profile being handed out and one of the participations that may not be moved.
 	UpdateParticipant(

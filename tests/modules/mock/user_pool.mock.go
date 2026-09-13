@@ -1,11 +1,14 @@
 package mock
 
 import (
+	"encoding/json"
+
 	dto "auth_service/app/modules/core/user_pool/models"
 	upr "auth_service/app/modules/core/user_pool/repository"
 	ups "auth_service/app/modules/core/user_pool/services"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/tracking"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -51,6 +54,24 @@ func (this *MockUserPoolRepository) FindSearchCount(search upr.UserPoolSearch, o
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (this *MockUserPoolRepository) IncrementUsersCount(id string, options ...repo.Option) (int64, error) {
+	args := this.Called(id, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockUserPoolRepository) FindOneForUpdate(id string, options ...repo.Option) (*entity.UsersPool, error) {
+	args := this.Called(id, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.UsersPool), args.Error(1)
+}
+
+func (this *MockUserPoolRepository) WriteTracking(id string, document json.RawMessage, options ...repo.Option) (int64, error) {
+	args := this.Called(id, document, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // MockUserPoolService represents a mock implementation of IUserPoolService
 type MockUserPoolService struct {
 	mock.Mock
@@ -82,10 +103,28 @@ func (this *MockUserPoolService) FindByIdInOrganization(id string, organizationI
 	return args.Get(0).(*entity.UsersPool), args.Error(1)
 }
 
+func (this *MockUserPoolService) Update(
+	id string,
+	granter *entity.Organization,
+	caller *entity.Participant,
+	payload *dto.UpdateUserPool,
+) (*entity.UsersPool, error) {
+	args := this.Called(id, granter, caller, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.UsersPool), args.Error(1)
+}
+
 func (this *MockUserPoolService) List(currentOrganization *entity.Organization, query *dto.UserPoolListQuery) (*dto.GetUserPoolsResponse, error) {
 	args := this.Called(currentOrganization, query)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*dto.GetUserPoolsResponse), args.Error(1)
+}
+
+func (this *MockUserPoolService) Track(tag tracking.Tag, payload ups.TrackSignup) error {
+	args := this.Called(tag, payload)
+	return args.Error(0)
 }

@@ -9,10 +9,12 @@ import (
 // AppUpdateDao is the allow list of updatable columns of entity.App.
 // Every field is a pointer: nil means "do not touch", a filled pointer is
 // written as is, including false / 0 / "".
+//
+// UsersPoolId and ParentAppId are absent: the users of an app live in its pool,
+// so moving it would leave every one of them behind - the same invariant
+// OrganizationUpdateDao protects.
 type AppUpdateDao struct {
-	UsersPoolId *string
 	OwnerUserId *uint
-	ParentAppId *string
 
 	PublicKey *string
 	SecretKey *string

@@ -20,8 +20,14 @@ type User struct {
 	TwoFactorEnabled bool            `gorm:"not null;default:false" json:"twoFactorEnabled"`
 	PasswordHash     string          `gorm:"not null" json:"-"`
 	Metadata         json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`
-	CreatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null" json:"createdAt"`
-	UpdatedAt        time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updatedAt"`
+
+	// Written only by UserRepository.WriteTracking, and never serialized through
+	// the entity: it carries the ip history of the user, and entity.User is embedded
+	// in the login, register, refresh and listing responses. See
+	// docs/specs/2026-09-09-tracking.md.
+	Tracking  json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"-"`
+	CreatedAt time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null" json:"createdAt"`
+	UpdatedAt time.Time       `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updatedAt"`
 
 	UsersPool           *UsersPool    `gorm:"foreignKey:UsersPoolId" json:"-"`
 	CurrentOrganization *Organization `gorm:"foreignKey:CurrentOrganizationId" json:"current_organization,omitempty"`

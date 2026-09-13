@@ -239,7 +239,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 		docs.Validated(
 			docs.PermissionedRoute(this.swagger, "PUT", "/core/profiles/{id}", openapi.Options{
 				Summary:     "Update a profile",
-				Description: "Edits a profile scoped to the current organization. `key` is never editable, and only the `grants` half of the document is touched - a hand written `api` half is left as it is. Refused with `403` on a global profile, on the `Admin` profile of the organization, on the profile the caller itself participates with, and whenever the requested grants exceed what the caller holds here.",
+				Description: "Edits a profile scoped to the current organization. `key` is never editable, and only the `grants` half of the document is touched - a hand written `api` half is left as it is. Only the fields present in the body are written, and `metadata` is merged into what is stored rather than replacing it: a key is removed by sending it as `null`. Refused with `403` on a global profile, on the `Admin` profile of the organization, on the profile the caller itself participates with, and whenever the requested grants exceed what the caller holds here.",
 				Tags:        []string{docs.TagProfiles},
 			}),
 		).
@@ -249,7 +249,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 			}).
 			AddBody(dto.UpdateProfile{}, openapi.Options{
 				Required:    true,
-				Description: "Name and grants to write - an absent `permissions` leaves the document untouched",
+				Description: "Name, grants and metadata to write - every field is optional, and an absent `permissions` leaves the document untouched",
 			}).
 			AddResponse(fiber.StatusOK, entity.Profile{}, openapi.Options{
 				Description: "The updated profile",

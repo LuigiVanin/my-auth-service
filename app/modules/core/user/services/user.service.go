@@ -1,21 +1,30 @@
 package services
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
 	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
-	"strings"
 
 	e "auth_service/app/errors"
 	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user/repository"
 	ups "auth_service/app/modules/core/user_pool/services"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/tracking"
+	"auth_service/shared/utils"
+
+	"go.uber.org/zap"
 )
 
 type UserService struct {
 	userRepository  ur.IUserRepository
 	appRepository   ar.IAppRepository
 	userPoolService ups.IUserPoolService
+	txManager       repo.ITransactionManager
+	logger          *zap.Logger
 }
 
 var _ IUserService = &UserService{}
@@ -24,11 +33,15 @@ func NewUserService(
 	userRepository ur.IUserRepository,
 	appRepository ar.IAppRepository,
 	userPoolService ups.IUserPoolService,
+	txManager repo.ITransactionManager,
+	logger *zap.Logger,
 ) *UserService {
 	return &UserService{
 		userRepository:  userRepository,
 		appRepository:   appRepository,
 		userPoolService: userPoolService,
+		txManager:       txManager,
+		logger:          logger,
 	}
 }
 
@@ -55,6 +68,229 @@ func (this *UserService) FindUserInPool(email string, usersPoolId string) (*enti
 
 func (this *UserService) Update(where entity.User, data dto.UserUpdateDao) (int64, error) {
 	return this.userRepository.Update(where, data)
+}
+
+// UpdateForOrganization is the administration write: the target has to sit in a
+// pool the current organization owns.
+//
+// It deliberately does not go through FindById, whose self branch returns before
+// the pool check - inheriting it would make editing yourself unrestricted, and
+// PUT /core/users/me is the route that is allowed to do that.
+func (this *UserService) UpdateForOrganization(
+	currentOrganization *entity.Organization,
+	targetUserId uint,
+	payload *dto.UpdateUser,
+) (*entity.User, error) {
+	if currentOrganization == nil || payload == nil {
+		return nil, e.ThrowInternalServerError("Current organization and payload are required")
+	}
+
+	stored, err := this.findInOwnedPool(currentOrganization, targetUserId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dao := dto.UserUpdateDao{
+		Name:             payload.Name,
+		Phone:            payload.Phone,
+		VerifyEmail:      payload.VerifyEmail,
+		TwoFactorEnabled: payload.TwoFactorEnabled,
+	}
+
+	if payload.Email != nil {
+		email, err := this.availableEmail(*payload.Email, stored)
+
+		if err != nil {
+			return nil, err
+		}
+
+		dao.Email = email
+	}
+
+	if err := this.mergeMetadata(&dao, stored, payload.Metadata); err != nil {
+		return nil, err
+	}
+
+	return this.applyUpdate(stored, dao)
+}
+
+// UpdateSelf needs no scope check: the target is the caller, resolved by the
+// AuthGuard and never read from the request.
+func (this *UserService) UpdateSelf(
+	currentUser *entity.User,
+	payload *dto.UpdateUserSelf,
+) (*entity.User, error) {
+	if currentUser == nil || payload == nil {
+		return nil, e.ThrowInternalServerError("Current user and payload are required")
+	}
+
+	dao := dto.UserUpdateDao{
+		Name:  payload.Name,
+		Phone: payload.Phone,
+	}
+
+	if err := this.mergeMetadata(&dao, currentUser, payload.Metadata); err != nil {
+		return nil, err
+	}
+
+	return this.applyUpdate(currentUser, dao)
+}
+
+func (this *UserService) applyUpdate(stored *entity.User, dao dto.UserUpdateDao) (*entity.User, error) {
+	if !repo.HasChanges(dao) {
+		return stored, nil
+	}
+
+	affected, err := this.userRepository.Update(entity.User{ID: stored.ID}, dao)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to update the user")
+	}
+
+	if affected == 0 {
+		return nil, e.ThrowNotFound("User not found")
+	}
+
+	updated, err := this.userRepository.FindOne(
+		entity.User{ID: stored.ID},
+		repo.Option{With: []string{"CurrentOrganization", "CurrentOrganization.Profile"}},
+	)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to find the user")
+	}
+
+	if updated == nil {
+		return nil, e.ThrowNotFound("User not found")
+	}
+
+	return updated, nil
+}
+
+// Track pushes one login onto the queue of the user, dropping whatever no longer
+// fits. The row lock is what keeps two concurrent logins of the same user from
+// losing one another's event - the document is read, changed and written back, and
+// `+ 1` in SQL cannot express a queue.
+func (this *UserService) Track(tag tracking.Tag, payload TrackLogin) error {
+	if tag != tracking.TagLogin {
+		return e.ThrowInternalServerError(fmt.Sprintf("A user does not track `%s`", tag))
+	}
+
+	if payload.UserId == 0 {
+		return e.ThrowInternalServerError("The user of a login is required")
+	}
+
+	tx, err := this.txManager.Tx()
+
+	if err != nil {
+		return e.ThrowInternalServerError("Failed to open transaction")
+	}
+
+	defer tx.Rollback()
+
+	option := repo.Option{Tx: tx}
+
+	stored, err := this.userRepository.FindOneForUpdate(payload.UserId, option)
+
+	if err != nil {
+		return e.ThrowInternalServerError("Failed to lock the user")
+	}
+
+	if stored == nil {
+		return e.ThrowNotFound("User not found")
+	}
+
+	document, err := tracking.RecordLogin(stored.Tracking, payload.Event)
+
+	if err != nil {
+		this.logger.Error(
+			"Failed to fold a login into the tracking of a user",
+			zap.Uint("user_id", payload.UserId),
+			zap.Error(err),
+		)
+
+		return e.ThrowInternalServerError("Failed to build the tracking document")
+	}
+
+	if _, err := this.userRepository.WriteTracking(payload.UserId, document, option); err != nil {
+		return e.ThrowInternalServerError("Failed to write the tracking of the user")
+	}
+
+	return tx.Commit()
+}
+
+// Tracking is not reachable from here: it is a column of its own, absent from the
+// dao, written only by UserRepository.WriteTracking.
+func (this *UserService) mergeMetadata(
+	dao *dto.UserUpdateDao,
+	stored *entity.User,
+	patch *json.RawMessage,
+) error {
+	if patch == nil {
+		return nil
+	}
+
+	merged, err := utils.MergeJsonPatch(stored.Metadata, *patch)
+
+	if err != nil {
+		return e.ThrowBadRequest("`metadata` has to be a JSON object", utils.JSON{"field": "metadata"})
+	}
+
+	dao.Metadata = &merged
+
+	return nil
+}
+
+// Emails are stored lowercased, and unique per pool. Checked here so a collision
+// is a 409 naming the field instead of a unique index violation surfacing as a 500.
+func (this *UserService) availableEmail(email string, stored *entity.User) (*string, error) {
+	normalized := strings.ToLower(email)
+
+	if normalized == stored.Email {
+		return nil, nil
+	}
+
+	taken, err := this.FindUserInPool(normalized, stored.UsersPoolId)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to check the email")
+	}
+
+	if taken != nil {
+		return nil, e.ThrowUserAlreadyExists("Another user of this pool already uses this email")
+	}
+
+	return &normalized, nil
+}
+
+// The read half of the administration write, with the same folding of "belongs to
+// another organization" into "does not exist" that assertPoolInOrganization does.
+//
+// Preloaded like the read back after the write, so an empty payload answers the
+// same shape a real update does.
+func (this *UserService) findInOwnedPool(
+	currentOrganization *entity.Organization,
+	targetUserId uint,
+) (*entity.User, error) {
+	user, err := this.userRepository.FindOne(
+		entity.User{ID: targetUserId},
+		repo.Option{With: []string{"CurrentOrganization", "CurrentOrganization.Profile"}},
+	)
+
+	if err != nil {
+		return nil, e.ThrowInternalServerError("Failed to find the user")
+	}
+
+	if user == nil {
+		return nil, e.ThrowNotFound("User not found")
+	}
+
+	if err := this.assertPoolInOrganization(currentOrganization, user.UsersPoolId); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 // assertPoolInOrganization is the visibility rule every user read goes through:

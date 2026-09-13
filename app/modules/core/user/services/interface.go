@@ -8,7 +8,7 @@ import (
 
 // TrackLogin is one login. It is the whole event and not a counter, which is the
 // one place the tracking rule is broken on purpose - see
-// docs/specs/2026-09-09-tracking.md.
+// docs/features/2026-09-09-tracking/spec.md.
 type TrackLogin struct {
 	UserId uint
 	Event  tracking.LoginEvent

@@ -24,7 +24,7 @@ e `""`, ou sobrescreve toda coluna que o chamador não mencionou.
 
 A regra, os detalhes de validação (`omitnil`, o `min=1` junto do `dive`) e a
 relação com o dao estão em
-[docs/steering/models-layer.md](../steering/models-layer.md).
+[docs/steering/models-layer.md](../../../steering/models-layer.md).
 
 ### 2. Colunas JSON abertas são mescladas, nunca sobrescritas
 
@@ -77,7 +77,7 @@ a nomeasse. **Ela foi removida.** O histórico de login que ia ocupá-la virou c
 própria — `users.tracking` — e a proteção passou a ser a fronteira que já existia:
 uma coluna ausente do update dao nunca é escrita, qualquer que seja o payload.
 
-Ver [2026-09-09-tracking.md](2026-09-09-tracking.md), que explica por que a coluna
+Ver [2026-09-09-tracking.md](../2026-09-09-tracking/spec.md), que explica por que a coluna
 ganhou da chave no blob.
 
 `utils.MergeJsonPatch` continua no lugar: é o que mescla o `metadata` do cliente nas
@@ -102,7 +102,7 @@ quatro no instante em que elas entram — limitado pelo teto da organização, o
 mantém uma org com teto LOGIN de fora. A saída de `GET /core/grants` muda junto.
 
 O porquê da separação `as::users::UPDATE` / `as::users::me::UPDATE` está em
-[docs/steering/modules/profiles.md](../steering/modules/profiles.md).
+[docs/steering/modules/profiles.md](../../../steering/modules/profiles.md).
 
 ## O contador da users_pool
 
@@ -160,7 +160,7 @@ por que isso precisa de teste e não de comentário.
 | `apps.public_key`, `apps.secret_key` | Nunca editáveis. A pública é derivada do id, a secreta é write-once na criação |
 | `users_pool.users_count` | Fora do dao. É contador de cadastro, não pode ser settável por HTTP |
 | `users.password_hash` | Nunca vem de payload; só é derivado pelo hash service no fluxo de esqueci-a-senha |
-| `organizations.profile_id` | É o teto da organização. Mover teto por rota precisa do clamp que o ponto aberto 11 de [2026-08-23-scoped-profiles.md](2026-08-23-scoped-profiles.md) deixou aberto |
+| `organizations.profile_id` | É o teto da organização. Mover teto por rota precisa do clamp que o ponto aberto 11 de [2026-08-23-scoped-profiles.md](../2026-08-23-scoped-profiles.md) deixou aberto |
 | `organizations.owner_user_id` | Transferir organização tem que mover a participação na mesma transação: é fluxo próprio |
 | `profiles.key` | Já era imutável; é o handle que o seed e os payloads resolvem |
 
@@ -194,4 +194,4 @@ por que isso precisa de teste e não de comentário.
    coluna é uma query dedicada com subselect e um campo `gorm:"->"`.
 4. **A validação de corpo continua rodando antes dos guards** em todas as rotas
    novas, seguindo a ordem existente — a inconsistência já registrada em
-   [controller-layer.md](../steering/controller-layer.md) vale para elas também.
+   [controller-layer.md](../../../steering/controller-layer.md) vale para elas também.

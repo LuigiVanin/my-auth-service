@@ -345,7 +345,7 @@ func (this *UserPoolUpdateTestSuite) TestTrackNeedsThePoolAndTheApp() {
 }
 
 // The tracking column is not in the update dao, which is what makes it
-// unreachable from PUT /core/users_pool/{id} - see docs/steering/models-layer.md.
+// unreachable from PUT /core/users_pool/{id} - see steering/models-layer.md.
 func (this *UserPoolUpdateTestSuite) TestTheUpdateDaoCannotWriteTracking() {
 	document := json.RawMessage(`{"signup":{}}`)
 

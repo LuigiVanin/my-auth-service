@@ -225,7 +225,7 @@ func buildGrantExpansions() map[string]map[string]ResolvedRule {
 // not filtered out of what the documents declared, so the answer does not depend on
 // whether a profile was written in grants or in api - which is what left a document
 // written only in api reporting nothing while reaching everything.
-// See docs/steering/modules/profiles.md.
+// See steering/modules/profiles.md.
 func grantsWithin(api map[string]ResolvedRule) []string {
 	granted := []string{}
 

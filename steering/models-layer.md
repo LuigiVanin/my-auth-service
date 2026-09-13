@@ -160,7 +160,7 @@ Two details that come with it:
 
 Where the write is a counter or a document changed in place, the concurrency rules
 are in [repository-pattern.md](repository-pattern.md) and the worked case is
-`docs/specs/2026-09-09-tracking.md`.
+`docs/features/2026-09-09-tracking/spec.md`.
 
 ### Query structs
 

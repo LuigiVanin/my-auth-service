@@ -170,7 +170,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		// NOTE: it lives inside the very pool it goes on to own, and this is the ONLY
 		// place where that is allowed - everywhere else the owning organization sits
 		// in the parent pool, which is what keeps a user from seeing the pool it
-		// belongs to. See docs/specs/2026-08-23-organizations.md.
+		// belongs to. See docs/features/2026-08-23-organizations.md.
 		adminOrganization := entity.Organization{
 			UsersPoolId: usersPool.ID,
 			ProfileId:   adminProfile.ID,

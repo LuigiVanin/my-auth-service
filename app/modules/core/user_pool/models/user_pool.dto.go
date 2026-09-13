@@ -15,7 +15,7 @@ type CreateUserPool struct {
 }
 
 // Every field is a pointer so an absent one can be told apart from an empty
-// string. Metadata is merged, not replaced - see docs/steering/models-layer.md.
+// string. Metadata is merged, not replaced - see steering/models-layer.md.
 type UpdateUserPool struct {
 	Name        *string `json:"name" validate:"omitnil,min=1"`
 	Description *string `json:"description"`

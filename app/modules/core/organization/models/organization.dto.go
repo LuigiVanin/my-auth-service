@@ -29,11 +29,11 @@ type CreateOrganizationPayload struct {
 }
 
 // Every field is a pointer, and Metadata is merged rather than replaced - see
-// docs/steering/models-layer.md.
+// steering/models-layer.md.
 //
 // `profile_id` is absent: it is the permission ceiling of the organization, and
 // moving a ceiling from a route needs the clamp that
-// docs/specs/2026-08-23-scoped-profiles.md leaves open. `owner_user_id` is absent
+// docs/features/2026-08-23-scoped-profiles.md leaves open. `owner_user_id` is absent
 // too - transferring an organization has to move the participation in the same
 // transaction, so it is a flow of its own.
 type UpdateOrganization struct {

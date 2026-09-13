@@ -128,7 +128,7 @@ propósito: um warning no log não seria notado.
 
 ## Permissões
 
-Documentado por inteiro em **[docs/steering/modules/profiles.md](../../docs/steering/modules/profiles.md)**.
+Documentado por inteiro em **[docs/steering/modules/profiles.md](../../steering/modules/profiles.md)**.
 Resumo do que existe:
 
 - `shared/permissions` — pacote sem dependências com `Document`, `Resolved`,
@@ -184,7 +184,7 @@ mesmo com o repositório de participante.
 O motivo é o `repo.Option`: passar a escrita pelo service do outro módulo obrigaria
 a atravessar a option por uma fronteira de service — ou, pior, a perder a transação
 silenciosamente. Regra registrada em
-[docs/steering/service-layer.md](../../docs/steering/service-layer.md).
+[docs/steering/service-layer.md](../../steering/service-layer.md).
 
 `IOrganizationService.Create`, `SetOwner` e `IParticipantService.Create` continuam
 existindo mas **não são chamados por ninguém hoje**, e já não recebem

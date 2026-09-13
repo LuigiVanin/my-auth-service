@@ -114,7 +114,7 @@ ruidosa em vez de descartar todo evento em silêncio.
 dele a transação ainda segura `FOR NO KEY UPDATE` na linha da pool por causa do
 incremento do `users_count`, e o `FOR UPDATE` da goroutine conflita. Não é deadlock
 — a goroutine não segura nada que a transação queira — mas é espera jogada fora. É
-a mesma invariante que [2026-09-09-update-routes.md](2026-09-09-update-routes.md)
+a mesma invariante que [2026-09-09-update-routes.md](../2026-09-09-update-routes/spec.md)
 registrou.
 
 **A outra interação é benigna.** O `FOR UPDATE` conflita também com o `UPDATE` de um

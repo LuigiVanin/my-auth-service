@@ -18,8 +18,8 @@ type Profile struct {
 
 	Organization *Organization `gorm:"foreignKey:OrganizationId" json:"-"`
 
-	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"createdAt"`
-	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updatedAt"`
+	CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"created_at"`
+	UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP;not null" json:"updated_at"`
 }
 
 func (Profile) TableName() string {

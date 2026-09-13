@@ -280,7 +280,7 @@ hand out:
 The last one is the odd one out, and knowingly: closing it the same way would mean a
 narrow participant delegated "create organization" could only ever produce narrow
 organizations. It is a product decision, deferred — open point 11 in
-[2026-08-23-scoped-profiles.md](../../specs/2026-08-23-scoped-profiles.md). Whoever
+[2026-08-23-scoped-profiles.md](../../docs/features/2026-08-23-scoped-profiles.md). Whoever
 picks it up has to look at the branch where `profile_id` is omitted at the same time:
 `resolveCeiling` returns the default profile of the pool with an early `return` and
 checks nothing at all, which is the only one of the three with an unchecked path.
@@ -386,7 +386,7 @@ is no way to transfer one; that needs a flow of its own, moving
 `organizations.owner_user_id` and the participation in the same transaction.
 
 The escalation paths each rule closes are in
-[2026-08-23-scoped-profiles.md, Fase 8](../../specs/2026-08-23-scoped-profiles.md#fase-8--quem-pode-escrever-permissão-de-quem).
+[2026-08-23-scoped-profiles.md, Fase 8](../../docs/features/2026-08-23-scoped-profiles.md#fase-8--quem-pode-escrever-permissão-de-quem).
 
 ## What is exposed
 

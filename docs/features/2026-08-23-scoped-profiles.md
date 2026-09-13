@@ -34,7 +34,7 @@
 > [2026-09-03-permission-grants.md](2026-09-03-permission-grants.md), e por isso não
 > podiam ser escritas antes.
 >
-> **Leia antes:** [docs/steering/modules/profiles.md](../../docs/steering/modules/profiles.md) — o modelo de
+> **Leia antes:** [docs/steering/modules/profiles.md](../../steering/modules/profiles.md) — o modelo de
 > permissão e a hierarquia já estão lá. Este plano adiciona escopo, endpoints e as
 > regras de quem escreve o quê. Ele não muda `permissions.Resolve` nem `IsSubsetOf`,
 > mas acrescenta um `IsWithin` ao lado deles.

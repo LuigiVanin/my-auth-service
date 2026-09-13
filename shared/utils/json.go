@@ -13,7 +13,7 @@ var ErrPatchNotAnObject = errors.New("the patch has to be a JSON object")
 
 // MergeJsonPatch applies patch on top of stored with RFC 7386 semantics: objects
 // are merged key by key, a null value deletes the key, anything else replaces
-// what was there. See docs/steering/models-layer.md.
+// what was there. See steering/models-layer.md.
 func MergeJsonPatch(stored json.RawMessage, patch json.RawMessage) (json.RawMessage, error) {
 	document := map[string]any{}
 

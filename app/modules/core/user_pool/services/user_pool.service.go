@@ -232,7 +232,7 @@ func (this *UserPoolService) Update(
 }
 
 // Track counts one signup against the month it happened in and the app it came
-// through. It writes no individual event - see docs/specs/2026-09-09-tracking.md.
+// through. It writes no individual event - see docs/features/2026-09-09-tracking/spec.md.
 //
 // The row lock is what makes the read-modify-write safe: `count + 1` cannot be
 // expressed over a nested document with FIFO eviction, so two concurrent signups

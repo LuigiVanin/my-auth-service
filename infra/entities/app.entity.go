@@ -34,7 +34,7 @@ type App struct {
 
 	Private bool `gorm:"default:false;not null" json:"private"`
 
-	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date"`
+	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date" json:"verified_email_date,omitempty"`
 	VerifyEmail       bool       `gorm:"default:true;not null" json:"verify_email"`
 
 	Enabled2FA bool `gorm:"default:true;not null" json:"enabled_2fa"`

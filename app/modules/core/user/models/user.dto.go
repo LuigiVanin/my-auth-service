@@ -21,7 +21,7 @@ type UserListQuery struct {
 // UpdateUser is PUT /core/users/{id}, the administration route: whoever owns the
 // pool of the target user. Every field is a pointer, so an absent one is not the
 // same as an empty one, and Metadata is merged rather than replaced - see
-// docs/steering/models-layer.md.
+// steering/models-layer.md.
 //
 // The password is absent: it is never carried by a payload, only derived by the
 // hash service from the forgot password flow.

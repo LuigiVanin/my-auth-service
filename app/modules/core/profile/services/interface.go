@@ -7,7 +7,7 @@ import (
 
 // The permission algebra is not here: it is pure computation over two documents
 // and lives in shared/permissions, so a guard or an entity can reach it without a
-// dependency. See docs/steering/modules/profiles.md.
+// dependency. See steering/modules/profiles.md.
 type IProfileService interface {
 	// FindByIdVisibleTo replaces the unrestricted FindById. Returns nil, nil when the
 	// profile does not exist OR is scoped to another organization - the caller cannot

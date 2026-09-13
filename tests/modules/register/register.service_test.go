@@ -38,7 +38,7 @@ const (
 
 // The four writes of a provisioning go straight to the repositories, so the suite
 // mocks those and not the services that wrap them - see
-// docs/steering/service-layer.md.
+// steering/service-layer.md.
 type RegisterWithPasswordServiceTestSuite struct {
 	suite.Suite
 	mockUserRepo         *mock.MockUserRepository

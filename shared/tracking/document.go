@@ -6,7 +6,7 @@
 // over two JSON values - the same reason shared/permissions is not a service
 // method. Nothing here touches a repository or a database.
 //
-// See docs/specs/2026-09-09-tracking.md.
+// See docs/features/2026-09-09-tracking/spec.md.
 package tracking
 
 import (

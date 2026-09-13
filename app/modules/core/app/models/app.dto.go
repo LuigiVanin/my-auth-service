@@ -30,7 +30,7 @@ type CreateAppPayload struct {
 
 // Every field is a pointer so an absent one can be told apart from a zero one:
 // `{"private": false}` writes false, an absent `private` writes nothing. Metadata
-// is merged, not replaced - see docs/steering/models-layer.md.
+// is merged, not replaced - see steering/models-layer.md.
 //
 // `user_pool` is absent on purpose: the users of an app live in its pool, so
 // moving the app would leave every one of them behind.

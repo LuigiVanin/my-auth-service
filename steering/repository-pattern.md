@@ -324,7 +324,7 @@ sit inside one transaction and a concurrent writer waits instead of overwriting.
 
 Both are named methods rather than dao fields on purpose: it is what keeps the
 column out of reach of any payload. The worked case is
-`docs/specs/2026-09-09-tracking.md`.
+`docs/features/2026-09-09-tracking/spec.md`.
 
 ### Several mutations in one unit of work
 

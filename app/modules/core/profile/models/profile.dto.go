@@ -13,7 +13,7 @@ type CreateProfile struct {
 }
 
 // Metadata is merged into what is stored rather than replacing it, and a key is
-// removed by sending it as `null` - see docs/steering/models-layer.md.
+// removed by sending it as `null` - see steering/models-layer.md.
 type UpdateProfile struct {
 	Name        *string             `json:"name" validate:"omitnil,min=1,max=120"`
 	Permissions *ProfilePermissions `json:"permissions"`

@@ -7,9 +7,9 @@
 > A Fase 4 (filtro de escrita) **não** foi implementada: não existe endpoint que
 > escreva profile. Ela continua valendo como especificação do que esse endpoint
 > terá que fazer, e está resumida em
-> [profiles.md](../steering/modules/profiles.md#authoring-a-document--clamp).
+> [profiles.md](../../steering/modules/profiles.md#authoring-a-document--clamp).
 >
-> **Leia antes:** [docs/steering/modules/profiles.md](../steering/modules/profiles.md) — o
+> **Leia antes:** [docs/steering/modules/profiles.md](../../steering/modules/profiles.md) — o
 > modelo de permissão, a hierarquia e a distinção clamp vs recusar. Este plano
 > adiciona uma segunda **forma de escrever** o mesmo documento; não muda a álgebra.
 >

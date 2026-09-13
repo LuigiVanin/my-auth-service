@@ -5,7 +5,7 @@
 //
 // The PermissionsGuard matches on ctx.Route().Path, so a swallowed literal does
 // not 404 - it silently resolves to the wrong permission key and answers 403 to
-// everyone holding the grant of the literal. See docs/steering/guards-and-middlewares.md.
+// everyone holding the grant of the literal. See steering/guards-and-middlewares.md.
 package routes_test
 
 import (

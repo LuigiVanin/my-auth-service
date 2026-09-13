@@ -20,7 +20,7 @@ var (
 	// The "*" of api matches any registered route, catalogued or not, and the guard
 	// reads that key first. The grant rides along only so the admin reports a grants
 	// list instead of an empty one - it does narrow IsSubsetOf, which prefers an exact
-	// key over "*". See docs/steering/modules/profiles.md.
+	// key over "*". See steering/modules/profiles.md.
 	AdminPermissions = json.RawMessage(`{"api": {"*": {"methods": ["*"]}}, "grants": ["as::*::*"]}`)
 
 	// Carries the whole auth and otp set because it is the ceiling of

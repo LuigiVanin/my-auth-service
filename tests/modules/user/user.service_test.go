@@ -295,7 +295,7 @@ func (this *UserUpdateTestSuite) TestLoginFromReadsTheSession() {
 }
 
 // The tracking column is not in the update dao, which is what makes it
-// unreachable from PUT /core/users/{id} - see docs/steering/models-layer.md.
+// unreachable from PUT /core/users/{id} - see steering/models-layer.md.
 func (this *UserUpdateTestSuite) TestTheUpdateDaoCannotWriteTracking() {
 	document := json.RawMessage(`{"login":{}}`)
 

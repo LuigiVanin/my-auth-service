@@ -338,6 +338,37 @@ func (this *AuthorizeService) SetPassword(user *entity.User, newPassword string)
 	return nil
 }
 
+func (this *AuthorizeService) VerifyUserEmail(user *entity.User) error {
+
+	value := true
+
+	_, err := this.userService.Update(
+		entity.User{ID: user.ID},
+		udto.UserUpdateDao{VerifyEmail: &value},
+	)
+
+	return err
+}
+
+func (this *AuthorizeService) checkOtpMetadata(otp entity.Otp, email string) (odto.OtpStoredMetadata, error) {
+
+	var metadata odto.OtpStoredMetadata
+
+	if err := json.Unmarshal(otp.Metadata, &metadata); err != nil {
+		return metadata, e.ThrowInternalServerError("Failed to parse OTP metadata")
+	}
+
+	if metadata.Payload.Email == "" {
+		return metadata, e.ThrowBadRequest("Email is required in OTP metadata")
+	}
+
+	if !strings.EqualFold(metadata.Payload.Email, email) {
+		return metadata, e.ThrowUnauthorizedError("Email does not match OTP metadata")
+	}
+
+	return metadata, nil
+}
+
 func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPasswordPayload) (*entity.User, error) {
 
 	otpResponse, err := this.otpService.ValidateConsumable(payload.Otp, app.ID, constants.ActionForgotPassword)
@@ -345,18 +376,10 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 		return nil, err
 	}
 
-	var metadata odto.OtpStoredMetadata
+	_, err = this.checkOtpMetadata(*otpResponse, payload.Email)
 
-	if err := json.Unmarshal(otpResponse.Metadata, &metadata); err != nil {
-		return nil, e.ThrowInternalServerError("Failed to parse OTP metadata")
-	}
-
-	if metadata.Payload.Email == "" {
-		return nil, e.ThrowBadRequest("Email is required in OTP metadata")
-	}
-
-	if !strings.EqualFold(metadata.Payload.Email, payload.Email) {
-		return nil, e.ThrowUnauthorizedError("Email does not match OTP metadata")
+	if err != nil {
+		return nil, err
 	}
 
 	user, err := this.userService.FindUserInPool(payload.Email, app.UsersPool.ID)
@@ -376,4 +399,34 @@ func (this *AuthorizeService) ResetPassword(app *entity.App, payload dto.ResetPa
 	this.otpService.Invalidate(otpResponse.ID)
 
 	return user, nil
+}
+
+func (this *AuthorizeService) VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) error {
+	otpResponse, err := this.otpService.ValidateConsumable(payload.Otp, app.ID, constants.ActionVerifyEmail)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = this.checkOtpMetadata(*otpResponse, payload.Email)
+
+	if err != nil {
+		return err
+	}
+
+	user, err = this.userService.FindUserInPool(payload.Email, app.UsersPool.ID)
+
+	if err != nil {
+		return e.ThrowInternalServerError("Failed to find user")
+	}
+
+	if user == nil {
+		return e.ThrowNotFound("User not found")
+	}
+
+	if err := this.VerifyUserEmail(user); err != nil {
+		return err
+	}
+
+	return nil
 }

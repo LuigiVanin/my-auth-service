@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var _ services.IAuthorizeService = &MockAuthorizeService{}
+
 type MockAuthorizeService struct {
 	mock.Mock
 }
@@ -42,4 +44,9 @@ func (this *MockAuthorizeService) ResetPassword(app *entity.App, payload dto.Res
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.User), args.Error(1)
+}
+
+func (this *MockAuthorizeService) VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) error {
+	args := this.Called(app, user, payload)
+	return args.Error(0)
 }

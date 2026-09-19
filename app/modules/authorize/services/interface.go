@@ -29,4 +29,6 @@ type IAuthorizeService interface {
 	) (*AuthorizationCredentials, error)
 
 	ResetPassword(app *entity.App, payload dto.ResetPasswordPayload) (*entity.User, error)
+
+	VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) error
 }

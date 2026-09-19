@@ -1,5 +1,7 @@
 github.com/LuigiVanin/openapi-builder v0.2.1 h1:pHd67pL+XL0orrAD1DSssy0vaxT3MEIGcrqrABtQWwk=
 github.com/LuigiVanin/openapi-builder v0.2.1/go.mod h1:xfJ3qh2tNGJNrzGAmHw8uhSjXbNrbY43dAKhp6rPook=
+github.com/LuigiVanin/openapi-builder v0.2.3 h1:Fy3Iqr0saJBPRg5Z1vggXDnk4HDlkD5cbJ25CoMpwjA=
+github.com/LuigiVanin/openapi-builder v0.2.3/go.mod h1:xfJ3qh2tNGJNrzGAmHw8uhSjXbNrbY43dAKhp6rPook=
 github.com/andybalholm/brotli v1.2.2 h1:HzTuoo2ErYQqf5qvcJInB8uvqSVxRttzkFexPWtnceM=
 github.com/andybalholm/brotli v1.2.2/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

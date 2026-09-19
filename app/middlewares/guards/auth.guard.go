@@ -4,10 +4,13 @@ import (
 	e "auth_service/app/errors"
 	"auth_service/app/modules/authorize/services"
 	entity "auth_service/infra/entities"
+	i "auth_service/shared/interfaces"
 
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
+
+var _ i.IGuard = &AuthGuard{}
 
 type AuthGuard struct {
 	authService services.IAuthorizeService
@@ -21,12 +24,15 @@ func NewAuthGuard(authService services.IAuthorizeService, logger *zap.Logger) *A
 	}
 }
 
-func (this *AuthGuard) Act(ctx fiber.Ctx) error {
+// Authenticate decides and writes into Locals without continuing the chain, so a
+// guard composing this one owns the single ctx.Next(). Chained as a handler on
+// its own it authorizes and then answers 200 with an empty body.
+func (this *AuthGuard) Authenticate(ctx fiber.Ctx) error {
 	this.logger.Info("Auth Guard Triggered")
 
 	app, ok := ctx.Locals("app").(*entity.App)
 	if !ok || app == nil {
-		return e.ThrowInternalServerError("App context missing in AuthGuard - should be run before AuthGuard")
+		return e.ThrowInternalServerError("App context missing in AuthGuard - should be run after AppGuard")
 	}
 
 	authorization := ctx.Get("Authorization")
@@ -57,6 +63,14 @@ func (this *AuthGuard) Act(ctx fiber.Ctx) error {
 	ctx.Locals("user", &res.User)
 	ctx.Locals("session_id", res.SessionId)
 	ctx.Locals("token_type", res.TokenType)
+
+	return nil
+}
+
+func (this *AuthGuard) Act(ctx fiber.Ctx) error {
+	if err := this.Authenticate(ctx); err != nil {
+		return err
+	}
 
 	return ctx.Next()
 }

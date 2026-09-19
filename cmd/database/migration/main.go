@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// 2. Create Enums
-	createEnum(db, "auth_method", "WITH_LOGIN", "WITH_OTP", "WITH_PASSWORD")
+	createEnum(db, "auth_method", "WITH_OTP", "WITH_PASSWORD")
 	createEnum(db, "auth_action", constants.AuthActions...)
 	createEnum(db, "token_type", "JWT", "FAST_JWT", "SESSION_UUID")
 	createEnum(db, "app_role", "ADMIN", "USER")

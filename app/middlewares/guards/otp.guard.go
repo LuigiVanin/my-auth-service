@@ -25,12 +25,14 @@ func NewOtpGuard(authGuard *AuthGuard, logger *zap.Logger) *OtpGuard {
 	}
 }
 
-func (this *OtpGuard) Act(ctx fiber.Ctx) error {
+// Authenticate composes AuthGuard.Authenticate, not AuthGuard.Act: the chain is
+// continued once, by Act below.
+func (this *OtpGuard) Authenticate(ctx fiber.Ctx) error {
 	this.logger.Info("Otp Guard Triggered")
 
 	app, ok := ctx.Locals("app").(*entity.App)
 	if !ok || app == nil {
-		return e.ThrowInternalServerError("App context missing in AuthGuard - should be run before AuthGuard")
+		return e.ThrowInternalServerError("App context missing in OtpGuard - should be run after AppGuard")
 	}
 
 	// Extract action from query params
@@ -49,13 +51,15 @@ func (this *OtpGuard) Act(ctx fiber.Ctx) error {
 		},
 		constants.AuthAction(action),
 	) {
-		return ctx.Next()
+		return nil
 	}
 
 	// For other actions, require authentication
-	err := this.authGuard.Act(ctx)
+	return this.authGuard.Authenticate(ctx)
+}
 
-	if err != nil {
+func (this *OtpGuard) Act(ctx fiber.Ctx) error {
+	if err := this.Authenticate(ctx); err != nil {
 		return err
 	}
 

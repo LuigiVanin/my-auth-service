@@ -164,6 +164,15 @@ Each of these was a real defect here, not a hypothetical.
 > is assigned right after. A captured pointer there is a data race the tests only
 > find under `-race`.
 
+### ❌ A guard calling another guard's `Act`
+
+> `AuthGuard.Act` ends in `ctx.Next()`, so calling it from `OtpGuard.Act` ran the
+> whole chain inside it — the handler created the OTP, sent the email and wrote its
+> 200. The `ctx.Next()` that followed walked past the last handler and fiber
+> answered a bare 404 over that response. A guard composes another guard's
+> `Authenticate`, never its `Act`. Pinned by
+> `tests/middlewares/otp_guard_test.go`.
+
 ### ❌ A parameter route registered before the literal it shadows
 
 > `PUT /core/organizations/:id` before `/switch` does not 404 — the

@@ -27,18 +27,20 @@ var _ interfaces.IController = &AuthorizeController{}
 type AuthorizeController struct {
 	authService services.IAuthorizeService
 	appGuard    *guards.AppGuard
-
-	swagger *openapi.Builder
+	authGuard   *guards.AuthGuard
+	swagger     *openapi.Builder
 }
 
 func NewAuthorizeController(
 	authorizeService services.IAuthorizeService,
 	appGuard *guards.AppGuard,
+	authGuard *guards.AuthGuard,
 	builder *openapi.Builder,
 ) *AuthorizeController {
 	return &AuthorizeController{
 		authService: authorizeService,
 		appGuard:    appGuard,
+		authGuard:   authGuard,
 		swagger:     builder,
 	}
 }
@@ -102,6 +104,31 @@ func (this *AuthorizeController) ForgotPassword(ctx fiber.Ctx) error {
 		})
 }
 
+func (this *AuthorizeController) Revoke(ctx fiber.Ctx) error {
+	return e.ThrowNotImplementedError("Logout not implemented")
+}
+
+func (this *AuthorizeController) VerifyEmail(ctx fiber.Ctx) error {
+	var payload dto.VerifyEmailBody
+	if err := ctx.Bind().Body(&payload); err != nil {
+		return e.ThrowBadRequest("Invalid request body")
+	}
+
+	app := ctx.Locals("app").(*entity.App)
+	user := ctx.Locals("user").(*entity.User)
+
+	err := this.authService.VerifyEmail(app, user, payload)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusCreated).JSON(utils.JSON{
+		"message": "email verified with success",
+		"user":    user,
+	})
+}
+
 func (this *AuthorizeController) Register(server *fiber.App) {
 	group := server.Group("/auth")
 
@@ -163,5 +190,12 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 		// unconstrained lookup.
 		middleware.BodyValidator[dto.ResetPasswordPayload](),
 		this.ForgotPassword,
+	)
+
+	group.Put(
+		"/verify_email",
+		middleware.BodyValidator[dto.VerifyEmailBody](),
+		this.authGuard.Act,
+		this.VerifyEmail,
 	)
 }

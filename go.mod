@@ -3,7 +3,7 @@ module auth_service
 go 1.25.3
 
 require (
-	github.com/LuigiVanin/openapi-builder v0.2.1
+	github.com/LuigiVanin/openapi-builder v0.2.3
 	github.com/flowchartsman/swaggerui v0.0.0-20221017034628-909ed4f3701b
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/goccy/go-yaml v1.19.2

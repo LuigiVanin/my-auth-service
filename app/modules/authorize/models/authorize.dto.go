@@ -34,3 +34,8 @@ type ResetPasswordPayload struct {
 	NewPassword string                `json:"new_password" validate:"required,min=8"`
 	Otp         otpDto.PayloadOtpData `json:"otp" validate:"required"`
 }
+
+type VerifyEmailBody struct {
+	Email string                `json:"email" validate:"required,email"`
+	Otp   otpDto.PayloadOtpData `json:"otp" validate:"required"`
+}

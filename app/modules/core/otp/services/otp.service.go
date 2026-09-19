@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -78,6 +79,10 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 	switch action {
 	case constants.ActionRegister:
 		if payload.Contact == "" {
+			if !slices.Contains(app.LoginTypes, "WITH_OTP") {
+				return nil, e.ThrowNotAllowed("This app does not allow login with OTP")
+			}
+
 			// Try to get email from payload
 			if email, ok := payload.Payload["email"].(string); ok {
 				payload.Contact = email
@@ -113,11 +118,11 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 				return nil, e.ThrowNotFound("User not found in User Pool")
 			}
 		}
-	case constants.ActionForgotPassword:
+	case constants.ActionForgotPassword, constants.ActionVerifyEmail:
 		if email, ok := payload.Payload["email"].(string); ok {
 			payload.Contact = email
 		} else {
-			return nil, e.ThrowBadRequest("Email is required for RESET PASSWORD action")
+			return nil, e.ThrowBadRequest(fmt.Sprintf("Email is required for %s action", action))
 		}
 
 		exists, err := this.userService.IsAlreadyCreated(payload.Contact, app)

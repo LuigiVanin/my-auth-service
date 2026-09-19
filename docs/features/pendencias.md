@@ -197,3 +197,11 @@ foram **reconstruídas depois** da implementação — exatamente o antipadrão 
 regra existe para evitar, mantidas porque o histórico vale mais que a consistência.
 
 Da próxima feature em diante, o par nasce antes do código.
+
+### 21. `steering/guards-and-middlewares.md` descreve quatro guards, e existem cinco
+
+A seção "The guards" abre com "All four implement `interfaces.IGuard`" e não tem
+uma entrada para o `OrganizationGuard`, que é encadeado em quase toda rota de
+`/core` e escreve `organization` e `participant` em `Locals`. Quem ler o documento
+para descobrir o que cada guard exige e o que deixa no contexto não encontra o
+único que resolve o escopo da requisição.

@@ -65,6 +65,16 @@ All four implement `interfaces.IGuard`, a single `Act(ctx fiber.Ctx) error`, and
 are provided to the container as concrete pointers in `appOptions()` — not as
 interfaces, because a controller injects the specific guard it chains.
 
+**`Act` continues the chain, so a guard that composes another calls its
+`Authenticate`, never its `Act`.** `AuthGuard` and `OtpGuard` are split in two for
+exactly that: `Authenticate` decides and writes into `Locals` and returns `nil`,
+`Act` is the handler shape that calls it and returns `ctx.Next()`. Chaining both
+`Act`s advances the chain twice — the second `ctx.Next()` walks past the last
+handler, fiber returns `ErrNotFound`, and the caller reads a bare 404 over the
+response the handler had already written. Only the two guards that compose carry
+the pair; the others have `Act` alone. Pinned by
+[tests/middlewares/otp_guard_test.go](../tests/middlewares/otp_guard_test.go).
+
 ### AppGuard
 
 Identifies the calling application. Mounted by prefix, not per route.
@@ -92,6 +102,9 @@ Identifies the user behind the access token.
 It delegates to `IAuthorizeService.Authorize`, which is where token parsing,
 session lookup and IP checking live. The guard itself holds no auth logic.
 
+`Authenticate` is where all of that sits; `Act` only calls it and continues the
+chain. `OtpGuard` composes the first of the two.
+
 ### OtpGuard
 
 Conditional authentication for the OTP routes.
@@ -103,9 +116,9 @@ Conditional authentication for the OTP routes.
 | Fails with | 500 if `app` is missing; 400 if `action` is absent |
 
 `REGISTER`, `LOGIN` and `FORGOT_PASSWORD` are reachable without a token — the
-caller has no session yet. Every other action falls through to `AuthGuard`.
-Adding an action to `constants.AuthAction` does **not** make it unauthenticated;
-that list is explicit in the guard.
+caller has no session yet. Every other action falls through to
+`AuthGuard.Authenticate`. Adding an action to `constants.AuthAction` does **not**
+make it unauthenticated; that list is explicit in the guard.
 
 ### PermissionsGuard
 
@@ -207,6 +220,9 @@ Checklist:
   global exists for code that has no container access, which a guard always has.
 - Return `ctx.Next()` on success — a guard that forgets it silently ends the
   chain and answers 200 with an empty body.
+- **Composing another guard means calling its `Authenticate`, not its `Act`**, and
+  splitting the composed guard in two if it is not split yet. Two `ctx.Next()` in
+  one chain answer 404 after the handler has already run and written its response.
 - Provide it in `appOptions()` next to the other guards, as a concrete pointer.
 - Add the credentials it requires to a constructor in [app/docs](../app/docs) so
   every route behind it documents them identically. See

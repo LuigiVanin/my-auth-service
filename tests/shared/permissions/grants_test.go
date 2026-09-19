@@ -283,9 +283,8 @@ func TestSeededProfilesFitUnderTheirCeiling(t *testing.T) {
 
 	manager := seeds.ManagerPermissions
 	login := seeds.LoginPermissions
-	member := seeds.MemberPermissions
 
-	for name, child := range map[string]json.RawMessage{"login": login, "member": member} {
+	for name, child := range map[string]json.RawMessage{"login": login} {
 		within, err := permissions.IsSubsetOf(child, manager)
 
 		assert.NoError(t, err)
@@ -296,7 +295,7 @@ func TestSeededProfilesFitUnderTheirCeiling(t *testing.T) {
 	// and as::*::* so the document says in the authoring format what it grants.
 	admin := seeds.AdminPermissions
 
-	for name, child := range map[string]json.RawMessage{"manager": manager, "login": login, "member": member} {
+	for name, child := range map[string]json.RawMessage{"manager": manager, "login": login} {
 		within, err := permissions.IsSubsetOf(child, admin)
 
 		assert.NoError(t, err)

@@ -31,6 +31,15 @@ const (
 	credentialsFile = "credentials.txt"
 )
 
+// Fixed so a `make fresh` keeps answering the same X-Pool-Key and X-Public-Key:
+// EncryptUuid is a single AES block with no iv, so the same uuid under the same
+// cipher key always ciphers to the same token. Changing either value invalidates
+// every client already configured with the old keys.
+const (
+	mainPoolId = "7822c6ec-0db0-4038-8b78-342647e24433"
+	mainAppId  = "eb14b446-1bf9-4a1b-b233-8aac5b2e422b"
+)
+
 var emptyJson = json.RawMessage(`{}`)
 
 // initSeed holds the values produced by the seed that are needed once the
@@ -75,7 +84,6 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("Admin Profile created/retrieved")
 
-		// NOTE: Removendo Manager Profile do Global
 		managerProfile, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileManager,
 			Name:        "Manager Profile",
@@ -87,21 +95,24 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("Manager Profile created/retrieved")
 
-		if _, err := upsertProfile(tx, entity.Profile{
+		// The only profile that stays global. Everything else the seed writes is
+		// scoped to the admin organization in step 9.
+		loginProfile, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileLogin,
 			Name:        "Login Profile",
 			Permissions: seeds.LoginPermissions,
 			Metadata:    emptyJson,
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("failed to insert or retrieve login profile: %w", err)
 		}
 		utils.PrintSuccess("Login Profile created/retrieved")
 
 		// 2. Create Users Pool
-		// The id is generated upfront so its ciphered version (the public key)
-		// can be persisted on the same insert, mirroring what the user pool
-		// repository does at runtime.
-		usersPoolId := uuid.New().String()
+		// The id is known upfront so its ciphered version (the public key) can be
+		// persisted on the same insert, mirroring what the user pool repository
+		// does at runtime.
+		usersPoolId := mainPoolId
 
 		poolPublicKey, err := cipherService.EncryptUuidIntoToken(usersPoolId)
 		if err != nil {
@@ -115,8 +126,11 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			Metadata:  emptyJson,
 			Tracking:  emptyJson,
 
-			// Every other pool is created through the API and starts on LOGIN_PROFILE.
-			DefaultProfileId: managerProfile.ID,
+			// LOGIN_PROFILE, like every pool created through the API. The default is
+			// what an organization registering into this pool is born with, and
+			// MANAGER_PROFILE is scoped to the admin organization in step 9 - a new
+			// organization would hold a profile it cannot see.
+			DefaultProfileId: loginProfile.ID,
 
 			// The admin user of step 5, which this seed registers by hand instead of
 			// going through ProvisionUser.
@@ -129,7 +143,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		utils.PrintSuccess("Users Pool created")
 
 		// 3. Create App
-		appId := uuid.New().String()
+		appId := mainAppId
 
 		appPublicKey, err := cipherService.EncryptUuidIntoToken(appId)
 		if err != nil {
@@ -235,16 +249,17 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("Users Pool and App bound to the Admin Organization")
 
-		// 9. ADMIN is born global because its organization does not exist yet when
-		// the profiles are written, and is scoped here. The other three stay global:
-		// main_app_pool defaults to MANAGER_PROFILE, so no existing path starts
-		// depending on a profile it cannot see.
+		// 9. ADMIN and MANAGER are born global because the organization that owns
+		// them does not exist yet when step 1 runs; they are scoped here. LOGIN stays
+		// global on purpose - it is the fallback `resolveDefaultProfile` looks up by
+		// key, from any organization, and the ceiling every pool created through the
+		// API is born on.
 		if err := tx.Model(&entity.Profile{}).
-			Where("id = ?", adminProfile.ID).
+			Where("id IN ?", []string{adminProfile.ID, managerProfile.ID}).
 			Update("organization_id", adminOrganization.ID).Error; err != nil {
-			return fmt.Errorf("failed to scope the admin profile to the admin organization: %w", err)
+			return fmt.Errorf("failed to scope the seeded profiles to the admin organization: %w", err)
 		}
-		utils.PrintSuccess("Admin Profile scoped to the Admin Organization")
+		utils.PrintSuccess("Admin and Manager Profiles scoped to the Admin Organization")
 
 		seed = initSeed{
 			usersPoolId:    usersPool.ID,

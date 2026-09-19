@@ -51,21 +51,15 @@ var (
 		"as::users::me::UPDATE",
 		"as::organizations::READ", "as::organizations::switch::UPDATE"
 	]}`)
-
-	// Nothing assigns it yet; seeded for the invite flow.
-	MemberPermissions = json.RawMessage(`{"grants": [
-		"as::organizations::READ", "as::organizations::participants::READ"
-	]}`)
 )
 
 // All is every seeded document, in ceiling order: Admin, then Manager, then the
-// two that have to fit under Manager.
+// one that has to fit under Manager.
 func All() []json.RawMessage {
 	return []json.RawMessage{
 		AdminPermissions,
 		ManagerPermissions,
 		LoginPermissions,
-		MemberPermissions,
 	}
 }
 

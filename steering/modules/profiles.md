@@ -5,9 +5,9 @@ different roles, and which one a row plays is decided by what points at it:
 
 | Pointed at by | Role | Seeded keys |
 | --- | --- | --- |
-| `users_pool.default_profile_id` | The ceiling handed to every organization born in that pool | `MANAGER_PROFILE`, `LOGIN_PROFILE` |
+| `users_pool.default_profile_id` | The ceiling handed to every organization born in that pool | `LOGIN_PROFILE` - every pool, seeded or created through the API |
 | `organizations.profile_id` | The ceiling of that organization - nothing inside it may exceed this | `ADMIN`, `MANAGER_PROFILE`, `LOGIN_PROFILE` |
-| `participants.profile_id` | What one user holds inside one organization | the organization's own `Admin` profile, or `MEMBER_PROFILE` |
+| `participants.profile_id` | What one user holds inside one organization | the organization's own `Admin` profile, or one that organization created for itself - nothing seeded |
 
 `users.profile_id` does not exist. A user has no permissions of its own: it has
 permissions *in an organization*, through its participation.
@@ -192,8 +192,8 @@ force a DI edge for pure computation over two JSON values.
 
 **This is the only correct answer to "what may this caller do".** A participant
 profile read on its own overstates whenever the ceiling above it is narrower: a
-`MEMBER_PROFILE` participation says "list organizations", but in an organization
-whose ceiling does not reach that route the member may not. Only the resolved
+a participation that says "list organizations" means nothing in an organization
+whose ceiling does not reach that route. Only the resolved
 document is the truth, and it is what the guard enforces.
 
 Resolution rules, in order:
@@ -430,10 +430,20 @@ contract.
 
 | Key | Written in | Grants |
 | --- | --- | --- |
-| `ADMIN` | both | `{"api": {"*": …}, "grants": ["as::*::*"]}` - the platform administrator's organization only, and the one seeded profile that is **scoped**: the last step of the seed sets its `organization_id` to `admin_organization`. The two keys are deliberate: see the Wildcards section |
-| `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants and profiles, read and write - an organization that builds the platform out. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
-| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), plus login and signup; the default for any pool created through the API, so a new pool is born closed |
-| `MEMBER_PROFILE` | grants | read only; nothing assigns it yet, it is seeded for the invite flow |
+| `ADMIN` | both | `{"api": {"*": …}, "grants": ["as::*::*"]}` - the platform administrator's organization only, and **scoped** to it: the last step of the seed sets its `organization_id` to `admin_organization`. The two keys are deliberate: see the Wildcards section |
+| `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants and profiles, read and write - an organization that builds the platform out. **Scoped** to `admin_organization` in the same step as `ADMIN`. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
+| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), plus login and signup; **the only global profile**, and the default of every pool - the seeded one included - so a new pool is born closed |
+
+Only `LOGIN_PROFILE` stays global, and it has to: `resolveDefaultProfile` looks it up
+**by key** from any organization, and it is the ceiling every organization registering
+into a pool is born with. A scoped profile there would hand a new organization a row
+`FindByIdVisibleTo` then refuses to show it.
+
+`MEMBER_PROFILE` was removed on 2026-09-19. Nothing ever assigned it, and a seeded
+participant role was a claim the model does not make: a participant holds either the
+organization's own `Admin` profile or one that organization created for itself. The
+older specs in `docs/features/` still describe it - they are as-built records of when
+it existed.
 
 Adding a route means adding a map entry, and then updating every profile that should
 reach it. The guard still denies by default; it no longer constrains query

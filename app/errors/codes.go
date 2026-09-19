@@ -43,6 +43,11 @@ var (
 		Second: fiber.StatusForbidden,
 	}
 
+	UnverifiedUserEmail ErrorCodePair = ErrorCodePair{
+		First:  "UNVERIFIED_USER_EMAIL",
+		Second: fiber.StatusForbidden,
+	}
+
 	// Distinct from PERMISSION_DENIED because the client reacts differently: the
 	// scope is the problem, not the profile, so the fix is to switch organization.
 	NotAParticipantErrorCode ErrorCodePair = ErrorCodePair{

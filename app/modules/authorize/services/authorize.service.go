@@ -341,10 +341,14 @@ func (this *AuthorizeService) SetPassword(user *entity.User, newPassword string)
 func (this *AuthorizeService) VerifyUserEmail(user *entity.User) error {
 
 	value := true
+	time := time.Now()
 
 	_, err := this.userService.Update(
 		entity.User{ID: user.ID},
-		udto.UserUpdateDao{VerifyEmail: &value},
+		udto.UserUpdateDao{
+			VerifyEmail:       &value,
+			VerifiedEmailDate: &time,
+		},
 	)
 
 	return err
@@ -422,6 +426,10 @@ func (this *AuthorizeService) VerifyEmail(app *entity.App, user *entity.User, pa
 
 	if user == nil {
 		return e.ThrowNotFound("User not found")
+	}
+
+	if !user.VerifyEmail {
+		return nil
 	}
 
 	if err := this.VerifyUserEmail(user); err != nil {

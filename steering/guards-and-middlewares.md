@@ -61,9 +61,9 @@ in `ctx.Locals`.
 
 ## The guards
 
-All four implement `interfaces.IGuard`, a single `Act(ctx fiber.Ctx) error`, and
-are provided to the container as concrete pointers in `appOptions()` — not as
-interfaces, because a controller injects the specific guard it chains.
+Each of them implements `interfaces.IGuard`, a single `Act(ctx fiber.Ctx) error`,
+and they are provided to the container as concrete pointers in `appOptions()` —
+not as interfaces, because a controller injects the specific guard it chains.
 
 **`Act` continues the chain, so a guard that composes another calls its
 `Authenticate`, never its `Act`.** `AuthGuard` and `OtpGuard` are split in two for
@@ -119,6 +119,32 @@ Conditional authentication for the OTP routes.
 caller has no session yet. Every other action falls through to
 `AuthGuard.Authenticate`. Adding an action to `constants.AuthAction` does **not**
 make it unauthenticated; that list is explicit in the guard.
+
+### EmailVerificationGuard
+
+Refuses a caller whose email is not verified, when the application demands it.
+
+| | |
+| --- | --- |
+| Requires | `AppGuard` and `AuthGuard` first |
+| Sets | nothing |
+| Fails with | 500 if `app` or `user` is missing; 403 `UNVERIFIED_USER_EMAIL` when `apps.verify_email` is true and `users.verify_email` is not |
+
+The decision is the application's: `apps.verify_email` defaults to true but is per
+application, so the same user is refused in one and let through in another.
+
+**It is chained per route, after `AuthGuard`, and never mounted by prefix.**
+Mounted on `/core` it would run before the route level `AuthGuard` — the prefix
+handlers are registered first — so `user` would never be in `Locals` and every
+route under it would answer the 500 above, verified callers included. Pinned by
+[tests/middlewares/email_verification_guard_test.go](../tests/middlewares/email_verification_guard_test.go).
+
+It sits right after `AuthGuard` and before `OrganizationGuard` so the refusal
+happens before the participation lookup reaches the database.
+
+Every `/core` route carries it. The routes under `/auth` deliberately do not:
+`login`, `register`, `refresh` and `forgot_password` have no `AuthGuard` at all,
+and `verify_email` is the route an unverified user calls to stop being one.
 
 ### PermissionsGuard
 

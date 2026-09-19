@@ -64,6 +64,7 @@ func AppBootstrap() fx.Option {
 		fx.Provide(guards.NewOtpGuard),
 		fx.Provide(guards.NewOrganizationGuard),
 		fx.Provide(guards.NewPermissionsGuard),
+		fx.Provide(guards.NewEmailVerificationGuard),
 
 		// Utils
 		cipher.Module,

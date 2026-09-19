@@ -35,11 +35,11 @@ func registerCoreRoutes(t *testing.T) *fiber.App {
 	builder := openapi.NewBuilder("test", "test", "test")
 	logger := zap.NewNop()
 
-	appcontroller.NewAppController(nil, nil, nil, nil, logger, builder).Register(server)
-	poolcontroller.NewUserPoolController(nil, nil, nil, nil, builder).Register(server)
-	usercontroller.NewUserController(nil, nil, nil, logger, builder, nil).Register(server)
-	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, logger, builder).Register(server)
-	profilecontroller.NewProfileController(nil, nil, nil, nil, builder).Register(server)
+	appcontroller.NewAppController(nil, nil, nil, nil, nil, logger, builder).Register(server)
+	poolcontroller.NewUserPoolController(nil, nil, nil, nil, nil, builder).Register(server)
+	usercontroller.NewUserController(nil, nil, nil, nil, logger, builder, nil).Register(server)
+	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, nil, logger, builder).Register(server)
+	profilecontroller.NewProfileController(nil, nil, nil, nil, nil, builder).Register(server)
 
 	return server
 }
@@ -127,11 +127,11 @@ func TestTheOpenApiDocumentBuildsWithTheUpdatePayloads(t *testing.T) {
 	builder := openapi.NewBuilder("test", "test", "test")
 	logger := zap.NewNop()
 
-	appcontroller.NewAppController(nil, nil, nil, nil, logger, builder).Register(server)
-	poolcontroller.NewUserPoolController(nil, nil, nil, nil, builder).Register(server)
-	usercontroller.NewUserController(nil, nil, nil, logger, builder, nil).Register(server)
-	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, logger, builder).Register(server)
-	profilecontroller.NewProfileController(nil, nil, nil, nil, builder).Register(server)
+	appcontroller.NewAppController(nil, nil, nil, nil, nil, logger, builder).Register(server)
+	poolcontroller.NewUserPoolController(nil, nil, nil, nil, nil, builder).Register(server)
+	usercontroller.NewUserController(nil, nil, nil, nil, logger, builder, nil).Register(server)
+	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, nil, logger, builder).Register(server)
+	profilecontroller.NewProfileController(nil, nil, nil, nil, nil, builder).Register(server)
 
 	document := builder.Build()
 

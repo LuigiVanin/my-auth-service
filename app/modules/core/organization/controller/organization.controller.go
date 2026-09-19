@@ -21,9 +21,10 @@ type OrganizationController struct {
 	organizationService services.IOrganizationService
 	participantService  ps.IParticipantService
 
-	authGuard         *guards.AuthGuard
-	organizationGuard *guards.OrganizationGuard
-	permissionsGuard  *guards.PermissionsGuard
+	authGuard              *guards.AuthGuard
+	emailVerificationGuard *guards.EmailVerificationGuard
+	organizationGuard      *guards.OrganizationGuard
+	permissionsGuard       *guards.PermissionsGuard
 
 	logger  *zap.Logger
 	swagger *openapi.Builder
@@ -35,19 +36,21 @@ func NewOrganizationController(
 	organizationService services.IOrganizationService,
 	participantService ps.IParticipantService,
 	authGuard *guards.AuthGuard,
+	emailVerificationGuard *guards.EmailVerificationGuard,
 	organizationGuard *guards.OrganizationGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	logger *zap.Logger,
 	builder *openapi.Builder,
 ) *OrganizationController {
 	return &OrganizationController{
-		organizationService: organizationService,
-		participantService:  participantService,
-		authGuard:           authGuard,
-		organizationGuard:   organizationGuard,
-		permissionsGuard:    permissionsGuard,
-		logger:              logger,
-		swagger:             builder,
+		organizationService:    organizationService,
+		participantService:     participantService,
+		authGuard:              authGuard,
+		emailVerificationGuard: emailVerificationGuard,
+		organizationGuard:      organizationGuard,
+		permissionsGuard:       permissionsGuard,
+		logger:                 logger,
+		swagger:                builder,
 	}
 }
 
@@ -196,6 +199,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 	group.Get(
 		"/organizations",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetOrganizations,
@@ -221,6 +225,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 		"/organizations",
 		middleware.BodyValidator[dto.CreateOrganizationPayload](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.CreateOrganization,
@@ -246,6 +251,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 		"/organizations/switch",
 		middleware.BodyValidator[dto.SwitchOrganizationPayload](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.SwitchOrganization,
@@ -279,6 +285,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 		"/organizations/:id",
 		middleware.BodyValidator[dto.UpdateOrganization](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateOrganization,
@@ -307,6 +314,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 	group.Get(
 		"/organizations/:id/participants",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetParticipants,
@@ -343,6 +351,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 		"/organizations/:id/participants/:participant_id",
 		middleware.BodyValidator[pdto.UpdateParticipant](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateParticipant,

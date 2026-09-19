@@ -17,11 +17,12 @@ import (
 )
 
 type AppController struct {
-	appService        services.IAppService
-	authGuard         *guards.AuthGuard
-	organizationGuard *guards.OrganizationGuard
-	permissionsGuard  *guards.PermissionsGuard
-	logger            *zap.Logger
+	appService             services.IAppService
+	authGuard              *guards.AuthGuard
+	emailVerificationGuard *guards.EmailVerificationGuard
+	organizationGuard      *guards.OrganizationGuard
+	permissionsGuard       *guards.PermissionsGuard
+	logger                 *zap.Logger
 
 	swagger *openapi.Builder
 }
@@ -30,6 +31,7 @@ var _ interfaces.IController = &AppController{}
 
 func NewAppController(
 	authGuard *guards.AuthGuard,
+	emailVerificationGuard *guards.EmailVerificationGuard,
 	organizationGuard *guards.OrganizationGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	appService services.IAppService,
@@ -37,12 +39,13 @@ func NewAppController(
 	builder *openapi.Builder,
 ) *AppController {
 	return &AppController{
-		authGuard:         authGuard,
-		organizationGuard: organizationGuard,
-		appService:        appService,
-		permissionsGuard:  permissionsGuard,
-		logger:            logger,
-		swagger:           builder,
+		authGuard:              authGuard,
+		emailVerificationGuard: emailVerificationGuard,
+		organizationGuard:      organizationGuard,
+		appService:             appService,
+		permissionsGuard:       permissionsGuard,
+		logger:                 logger,
+		swagger:                builder,
 	}
 }
 
@@ -140,6 +143,7 @@ func (this *AppController) Register(server *fiber.App) {
 		"/apps",
 		middleware.BodyValidator[dto.CreateAppPayload](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.CreateApp,
@@ -167,7 +171,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Description: "Page of applications - the keys of each application are omitted from the listing",
 			}),
 	)
-	group.Get("/apps", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetApps)
+	group.Get("/apps", this.authGuard.Act, this.emailVerificationGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetApps)
 
 	this.swagger.Add(
 		docs.PermissionedRoute(this.swagger, "GET", "/core/apps/{id}", openapi.Options{
@@ -186,7 +190,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Description: "No application of the current organization matches the given id",
 			}),
 	)
-	group.Get("/apps/:id", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetApp)
+	group.Get("/apps/:id", this.authGuard.Act, this.emailVerificationGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetApp)
 
 	this.swagger.Add(
 		docs.Validated(
@@ -215,6 +219,7 @@ func (this *AppController) Register(server *fiber.App) {
 		"/apps/:id",
 		middleware.BodyValidator[dto.UpdateApp](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateApp,

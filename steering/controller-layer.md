@@ -115,25 +115,27 @@ group.Post(
     "/apps",
     middleware.BodyValidator[dto.CreateAppPayload](),
     this.authGuard.Act,
+    this.emailVerificationGuard.Act,
     this.permissionsGuard.Act,
     this.CreateApp,
 )
 ```
 
-| Guard              | Requires                | Provides in Locals              |
-| ------------------ | ----------------------- | -------------------------------- |
-| `AppGuard`         | X-Public-Key, X-Pool-Key, X-Secret-Key when private | `app` |
-| `AuthGuard`        | `AppGuard` first, Authorization header | `user`, `session_id`, `token_type` |
-| `OtpGuard`         | `AppGuard` first, `action` query | delegates to `AuthGuard` for actions that need it |
-| `PermissionsGuard` | `AppGuard` and `AuthGuard` first | —                       |
+| Guard                     | Requires                | Provides in Locals              |
+| ------------------------- | ----------------------- | -------------------------------- |
+| `AppGuard`                | X-Public-Key, X-Pool-Key, X-Secret-Key when private | `app` |
+| `AuthGuard`               | `AppGuard` first, Authorization header | `user`, `session_id`, `token_type` |
+| `OtpGuard`                | `AppGuard` first, `action` query | delegates to `AuthGuard` for actions that need it |
+| `EmailVerificationGuard`  | `AppGuard` and `AuthGuard` first | —                       |
+| `PermissionsGuard`        | `AppGuard` and `AuthGuard` first | —                       |
 
 The full behaviour of each guard, and how the permission documents the
 `PermissionsGuard` reads are matched, is in
 [guards-and-middlewares.md](guards-and-middlewares.md).
 
-`AuthGuard`, `OtpGuard` and `PermissionsGuard` all fail with a 500 if `app` is
-missing from `Locals`, and `PermissionsGuard` does the same when `user` is
-missing. Those 500s are the diagnostic for a route registered outside the
+`AuthGuard`, `OtpGuard`, `EmailVerificationGuard` and `PermissionsGuard` all fail
+with a 500 if `app` is missing from `Locals`, and the last two do the same when
+`user` is missing. Those 500s are the diagnostic for a route registered outside the
 guarded prefixes, or for a guard chained in the wrong order.
 
 ### Validation
@@ -164,7 +166,7 @@ everywhere:
 | `PublicRoute`       | none                                         |
 | `AppRoute`          | AppGuard                                     |
 | `AuthRoute`         | AppGuard + AuthGuard                         |
-| `PermissionedRoute` | AppGuard + AuthGuard + PermissionsGuard      |
+| `PermissionedRoute` | AppGuard + AuthGuard + EmailVerificationGuard + PermissionsGuard |
 
 Wrap with `docs.Validated(...)` when the route runs a body validator — it adds
 the 400 and 422 responses.

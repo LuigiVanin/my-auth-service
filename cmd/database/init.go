@@ -75,6 +75,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 		}
 		utils.PrintSuccess("Admin Profile created/retrieved")
 
+		// NOTE: Removendo Manager Profile do Global
 		managerProfile, err := upsertProfile(tx, entity.Profile{
 			Key:         constants.ProfileManager,
 			Name:        "Manager Profile",
@@ -95,16 +96,6 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			return fmt.Errorf("failed to insert or retrieve login profile: %w", err)
 		}
 		utils.PrintSuccess("Login Profile created/retrieved")
-
-		if _, err := upsertProfile(tx, entity.Profile{
-			Key:         constants.ProfileMember,
-			Name:        "Member Participant Profile",
-			Permissions: seeds.MemberPermissions,
-			Metadata:    emptyJson,
-		}); err != nil {
-			return fmt.Errorf("failed to insert or retrieve member profile: %w", err)
-		}
-		utils.PrintSuccess("Member Participant Profile created/retrieved")
 
 		// 2. Create Users Pool
 		// The id is generated upfront so its ciphered version (the public key)
@@ -198,6 +189,7 @@ func run(db *gorm.DB, cfg *config.Config) error {
 			Email:                 adminUserEmail,
 			UsersPoolId:           usersPool.ID,
 			CurrentOrganizationId: adminOrganization.ID,
+			VerifyEmail:           true,
 			PasswordHash:          adminHashedPassword,
 			Metadata:              emptyJson,
 			Tracking:              emptyJson,

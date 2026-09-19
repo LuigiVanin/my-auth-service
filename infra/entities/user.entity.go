@@ -13,10 +13,13 @@ type User struct {
 
 	CurrentOrganizationId string `gorm:"type:uuid;not null" json:"current_organization_id"`
 
-	Name             string          `gorm:"not null" json:"name"`
-	Email            string          `gorm:"not null;uniqueIndex:users_email_users_pool_unique,priority:1" json:"email"`
-	Phone            string          `gorm:"default:null" json:"phone"`
-	VerifyEmail      bool            `gorm:"not null;default:false" json:"verify_email"`
+	Name  string `gorm:"not null" json:"name"`
+	Email string `gorm:"not null;uniqueIndex:users_email_users_pool_unique,priority:1" json:"email"`
+	Phone string `gorm:"default:null" json:"phone"`
+
+	VerifyEmail       bool       `gorm:"not null;default:false" json:"verify_email"`
+	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date" json:"verified_email_date,omitempty"`
+
 	TwoFactorEnabled bool            `gorm:"not null;default:false" json:"two_factor_enabled"`
 	PasswordHash     string          `gorm:"not null" json:"-"`
 	Metadata         json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`

@@ -22,6 +22,13 @@ type resetPasswordResponse struct {
 	User    entity.User `json:"user"`
 }
 
+// verifyEmailResponse mirrors the body returned by VerifyEmail - it only exists
+// to describe the payload in the OpenAPI document.
+type verifyEmailResponse struct {
+	Message string      `json:"message"`
+	User    entity.User `json:"user"`
+}
+
 var _ interfaces.IController = &AuthorizeController{}
 
 type AuthorizeController struct {
@@ -184,12 +191,34 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 	)
 	group.Put(
 		"/forgot_password",
-		// Without this the `validate` tags on ResetPasswordPayload are dead:
-		// fiber's Bind().Body() only unmarshals, so an empty new_password was
-		// accepted and hashed, and an empty otp.id reached the repository as an
-		// unconstrained lookup.
 		middleware.BodyValidator[dto.ResetPasswordPayload](),
 		this.ForgotPassword,
+	)
+
+	this.swagger.Add(
+		docs.Validated(
+			docs.AuthRoute(this.swagger, "PUT", "/auth/verify_email", openapi.Options{
+				Summary:     "Verify an email",
+				Description: "Marks the email of the authenticated user as verified. Requires an OTP generated with the `VERIFY_EMAIL` action through /otp/generate_consumable, whose stored contact has to be the email sent in the body.",
+				Tags:        []string{docs.TagAuth},
+			}),
+		).
+			AddBody(dto.VerifyEmailBody{}, openapi.Options{
+				Required:    true,
+				Description: "Email being verified and the id/code pair of the OTP generated for it",
+			}).
+			AddResponse(fiber.StatusCreated, verifyEmailResponse{}, openapi.Options{
+				Description: "Email verified - `users.verify_email` is now true",
+			}).
+			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{
+				Description: "Request body could not be parsed, or the OTP code is wrong, already used or expired",
+			}).
+			AddResponse(fiber.StatusUnauthorized, e.ProblemDetail{}, openapi.Options{
+				Description: "Missing or invalid application credentials or access token, or an OTP whose stored email is not the one in the body",
+			}).
+			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
+				Description: "No application matches the given X-Public-Key, the OTP does not exist, or no user of the pool has this email",
+			}),
 	)
 
 	group.Put(

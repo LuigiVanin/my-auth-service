@@ -23,10 +23,11 @@ type createUserPoolResponse struct {
 }
 
 type UserPoolController struct {
-	authGuard         *guards.AuthGuard
-	organizationGuard *guards.OrganizationGuard
-	permissionsGuard  *guards.PermissionsGuard
-	userPoolService   ups.IUserPoolService
+	authGuard              *guards.AuthGuard
+	emailVerificationGuard *guards.EmailVerificationGuard
+	organizationGuard      *guards.OrganizationGuard
+	permissionsGuard       *guards.PermissionsGuard
+	userPoolService        ups.IUserPoolService
 
 	swagger *openapi.Builder
 }
@@ -35,6 +36,7 @@ var _ interfaces.IController = &UserPoolController{}
 
 func NewUserPoolController(
 	authGuard *guards.AuthGuard,
+	emailVerificationGuard *guards.EmailVerificationGuard,
 	organizationGuard *guards.OrganizationGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	userPoolService ups.IUserPoolService,
@@ -42,11 +44,12 @@ func NewUserPoolController(
 
 ) *UserPoolController {
 	return &UserPoolController{
-		authGuard:         authGuard,
-		organizationGuard: organizationGuard,
-		permissionsGuard:  permissionsGuard,
-		userPoolService:   userPoolService,
-		swagger:           builder,
+		authGuard:              authGuard,
+		emailVerificationGuard: emailVerificationGuard,
+		organizationGuard:      organizationGuard,
+		permissionsGuard:       permissionsGuard,
+		userPoolService:        userPoolService,
+		swagger:                builder,
 	}
 }
 
@@ -155,6 +158,7 @@ func (this *UserPoolController) Register(server *fiber.App) {
 	group.Post("",
 		middleware.BodyValidator[dto.CreateUserPool](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.CreateUserPool,
@@ -181,6 +185,7 @@ func (this *UserPoolController) Register(server *fiber.App) {
 	)
 	group.Get("",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.List,
@@ -205,6 +210,7 @@ func (this *UserPoolController) Register(server *fiber.App) {
 	)
 	group.Get("/:id",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetUserPool,
@@ -236,6 +242,7 @@ func (this *UserPoolController) Register(server *fiber.App) {
 	group.Put("/:id",
 		middleware.BodyValidator[dto.UpdateUserPool](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateUserPool,

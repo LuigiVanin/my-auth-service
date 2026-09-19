@@ -135,6 +135,16 @@ func ThrowPermissionDeniedError(detail string, extra ...utils.JSON) *AppError {
 	)
 }
 
+func ThrowUnverifiedEmail(detail string, extra ...utils.JSON) *AppError {
+	return NewAppError(
+		"Unverified User Email Not Permited",
+		detail,
+		UnverifiedUserEmail,
+		"https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Reference/Status/403",
+		extra...,
+	)
+}
+
 func ThrowNotAParticipant(detail string, extra ...utils.JSON) *AppError {
 	return NewAppError(
 		"Permission Denied",

@@ -86,7 +86,7 @@ func AuthRoute(
 		})
 }
 
-// AppGuard + AuthGuard + OrganizationGuard + PermissionsGuard.
+// AppGuard + AuthGuard + EmailVerificationGuard + OrganizationGuard + PermissionsGuard.
 func PermissionedRoute(
 	builder *openapi.Builder,
 	method string,
@@ -95,7 +95,7 @@ func PermissionedRoute(
 ) *openapi.RouteBuilder {
 	return AuthRoute(builder, method, path, options...).
 		AddResponse(fiber.StatusForbidden, e.ProblemDetail{}, openapi.Options{
-			Description: "`PERMISSION_DENIED` when the permissions of the user in its current organization do not grant access to this route, `NOT_A_PARTICIPANT` when the user does not participate in the organization it is scoped to",
+			Description: "`PERMISSION_DENIED` when the permissions of the user in its current organization do not grant access to this route, `NOT_A_PARTICIPANT` when the user does not participate in the organization it is scoped to, `UNVERIFIED_USER_EMAIL` when the application requires a verified email and this user has not verified one",
 		})
 }
 

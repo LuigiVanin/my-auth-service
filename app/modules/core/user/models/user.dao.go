@@ -1,6 +1,9 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // UserUpdateDao is the allow list of updatable columns of entity.User.
 // Every field is a pointer: nil means "do not touch", a filled pointer is
@@ -8,11 +11,12 @@ import "encoding/json"
 type UserUpdateDao struct {
 	CurrentOrganizationId *string
 
-	Name             *string
-	Email            *string
-	Phone            *string
-	VerifyEmail      *bool
-	TwoFactorEnabled *bool
-	PasswordHash     *string
-	Metadata         *json.RawMessage
+	Name              *string
+	Email             *string
+	Phone             *string
+	VerifyEmail       *bool
+	VerifiedEmailDate *time.Time
+	TwoFactorEnabled  *bool
+	PasswordHash      *string
+	Metadata          *json.RawMessage
 }

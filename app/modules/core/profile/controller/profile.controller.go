@@ -18,9 +18,10 @@ import (
 type ProfileController struct {
 	profileService services.IProfileService
 
-	authGuard         *guards.AuthGuard
-	organizationGuard *guards.OrganizationGuard
-	permissionsGuard  *guards.PermissionsGuard
+	authGuard              *guards.AuthGuard
+	emailVerificationGuard *guards.EmailVerificationGuard
+	organizationGuard      *guards.OrganizationGuard
+	permissionsGuard       *guards.PermissionsGuard
 
 	swagger *openapi.Builder
 }
@@ -30,16 +31,18 @@ var _ interfaces.IController = &ProfileController{}
 func NewProfileController(
 	profileService services.IProfileService,
 	authGuard *guards.AuthGuard,
+	emailVerificationGuard *guards.EmailVerificationGuard,
 	organizationGuard *guards.OrganizationGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	builder *openapi.Builder,
 ) *ProfileController {
 	return &ProfileController{
-		profileService:    profileService,
-		authGuard:         authGuard,
-		organizationGuard: organizationGuard,
-		permissionsGuard:  permissionsGuard,
-		swagger:           builder,
+		profileService:         profileService,
+		authGuard:              authGuard,
+		emailVerificationGuard: emailVerificationGuard,
+		organizationGuard:      organizationGuard,
+		permissionsGuard:       permissionsGuard,
+		swagger:                builder,
 	}
 }
 
@@ -150,6 +153,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 	group.Get(
 		"/grants",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetGrants,
@@ -180,6 +184,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 	group.Get(
 		"/profiles",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetProfiles,
@@ -205,6 +210,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 		"/profiles",
 		middleware.BodyValidator[dto.CreateProfile](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.CreateProfile,
@@ -230,6 +236,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 	group.Get(
 		"/profiles/:id",
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.GetProfile,
@@ -262,6 +269,7 @@ func (this *ProfileController) Register(server *fiber.App) {
 		"/profiles/:id",
 		middleware.BodyValidator[dto.UpdateProfile](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateProfile,

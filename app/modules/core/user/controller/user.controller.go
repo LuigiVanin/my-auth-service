@@ -19,9 +19,10 @@ import (
 )
 
 type UserController struct {
-	authGuard         *guards.AuthGuard
-	organizationGuard *guards.OrganizationGuard
-	permissionsGuard  *guards.PermissionsGuard
+	authGuard              *guards.AuthGuard
+	emailVerificationGuard *guards.EmailVerificationGuard
+	organizationGuard      *guards.OrganizationGuard
+	permissionsGuard       *guards.PermissionsGuard
 
 	userService us.IUserService
 
@@ -33,6 +34,7 @@ var _ interfaces.IController = &UserController{}
 
 func NewUserController(
 	authGuard *guards.AuthGuard,
+	emailVerificationGuard *guards.EmailVerificationGuard,
 	organizationGuard *guards.OrganizationGuard,
 	permissionsGuard *guards.PermissionsGuard,
 	logger *zap.Logger,
@@ -41,12 +43,13 @@ func NewUserController(
 ) *UserController {
 
 	return &UserController{
-		authGuard:         authGuard,
-		organizationGuard: organizationGuard,
-		permissionsGuard:  permissionsGuard,
-		userService:       userService,
-		logger:            logger,
-		swagger:           builder,
+		authGuard:              authGuard,
+		emailVerificationGuard: emailVerificationGuard,
+		organizationGuard:      organizationGuard,
+		permissionsGuard:       permissionsGuard,
+		userService:            userService,
+		logger:                 logger,
+		swagger:                builder,
 	}
 }
 
@@ -180,7 +183,7 @@ func (this *UserController) Register(server *fiber.App) {
 				Description: "No application or users pool matches the given filter",
 			}),
 	)
-	group.Get("", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.List)
+	group.Get("", this.authGuard.Act, this.emailVerificationGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.List)
 
 	this.swagger.Add(
 		docs.PermissionedRoute(this.swagger, "GET", "/core/users/me", openapi.Options{
@@ -196,7 +199,7 @@ func (this *UserController) Register(server *fiber.App) {
 	// has to come first or `me` is read as an id. Every /me route is registered
 	// here, ahead of every /:id one, so the rule does not have to be re-checked
 	// per method.
-	group.Get("/me", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetSelf)
+	group.Get("/me", this.authGuard.Act, this.emailVerificationGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetSelf)
 
 	this.swagger.Add(
 		docs.Validated(
@@ -221,6 +224,7 @@ func (this *UserController) Register(server *fiber.App) {
 		"/me",
 		middleware.BodyValidator[dto.UpdateUserSelf](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateSelf,
@@ -243,7 +247,7 @@ func (this *UserController) Register(server *fiber.App) {
 				Description: "No user matches the given id",
 			}),
 	)
-	group.Get("/:id", this.authGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetById)
+	group.Get("/:id", this.authGuard.Act, this.emailVerificationGuard.Act, this.organizationGuard.Act, this.permissionsGuard.Act, this.GetById)
 
 	this.swagger.Add(
 		docs.Validated(
@@ -278,6 +282,7 @@ func (this *UserController) Register(server *fiber.App) {
 		"/:id",
 		middleware.BodyValidator[dto.UpdateUser](),
 		this.authGuard.Act,
+		this.emailVerificationGuard.Act,
 		this.organizationGuard.Act,
 		this.permissionsGuard.Act,
 		this.UpdateById,

@@ -205,3 +205,15 @@ uma entrada para o `OrganizationGuard`, que é encadeado em quase toda rota de
 `/core` e escreve `organization` e `participant` em `Locals`. Quem ler o documento
 para descobrir o que cada guard exige e o que deixa no contexto não encontra o
 único que resolve o escopo da requisição.
+
+### 22. `sessions.invalidated` mistura "superada" com "encerrada"
+
+A coluna é escrita por um único lugar, o `InvalidateAllExcept` do `CreateNew`, e
+hoje ela só significa "nasceu uma sessão mais nova". Por isso o `/auth/refresh`
+passou a aceitá-la: recusar derrubava quem não fez nada errado, porque outro
+cliente logou.
+
+Quando o logout for implementado — o `Revoke` ainda é `NotImplemented` — ele vai
+precisar de uma coluna própria (`revoked_at`, ou um motivo na própria
+`invalidated`). Sem isso, um refresh token de uma sessão encerrada de propósito
+revive, que é exatamente o que o logout existe para impedir.

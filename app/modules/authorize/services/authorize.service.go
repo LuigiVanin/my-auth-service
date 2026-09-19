@@ -121,8 +121,11 @@ func (this *AuthorizeService) FindSessionByRefreshToken(token string, tokenType 
 		return nil, e.ThrowBadRequest("Authorization token malformatted")
 	}
 
-	session, err := this.sessionRepository.FindActive(
-		sessionId,
+	// Not FindActive: a refresh token has to work on a session that was superseded
+	// by a newer one, which is the whole point of holding it. Validity is decided
+	// below, by RefreshExpiresAt and by the token itself.
+	session, err := this.sessionRepository.FindOne(
+		entity.Session{ID: sessionId},
 		repo.Option{With: []string{"User", "User.CurrentOrganization", "User.CurrentOrganization.Profile"}},
 	)
 
@@ -168,9 +171,11 @@ func (this *AuthorizeService) Refresh(
 		return nil, e.ThrowTokenExpiredError("Refresh session is expired!")
 	}
 
-	if session.Invalidated {
-		return nil, e.ThrowUnauthorizedError("Session was invalidated, Create a new one!")
-	}
+	// An invalidated session is deliberately accepted here. Today the only thing
+	// that sets the flag is CreateNew superseding older sessions, so refusing it
+	// would log a caller out because someone else - another device, a test - signed
+	// in. A session closed on purpose needs its own column before it can be told
+	// apart. See docs/features/pendencias.md.
 
 	if session.IpAddress != ip {
 		return nil, e.ThrowUnauthorizedError("IP Address mismatch!")

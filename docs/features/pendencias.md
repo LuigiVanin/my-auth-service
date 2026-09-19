@@ -10,6 +10,10 @@ que têm dono conhecido citam o arquivo e a linha.
 > **Como usar**: ao pegar uma tarefa, varra os itens da área que você vai tocar —
 > muitos são baratos de resolver junto e caros de resolver isolados. Ao fechar um
 > item, apague-o daqui; o histórico fica no git.
+>
+> **Os números são identidade, não ordem.** Código e steering citam itens pelo
+> número, então um fechado deixa buraco e um novo nasce no fim da contagem, mesmo
+> entrando numa seção do meio.
 
 ---
 
@@ -53,6 +57,30 @@ guardado dentro do metadata do OTP.
 
 `app/modules/core/otp/services/otp.service.go:54`. O rate limit existente é por
 contato, então um ator distribuído passa por ele.
+
+### 23. O OTP de `CHANGE_EMAIL` não fica preso a quem o pediu
+
+`entity.Otp.UserId` existe e é gravado como `nil` em todo OTP, porque
+`IOtpService.GenerateConsumable` não recebe o usuário autenticado — só o app. O
+`PUT /auth/change_email` identifica o chamador pelo token, então ninguém troca o
+e-mail de outro; mas quem obtiver o par `otp_id` + código de outra pessoa consegue
+apontar aquele endereço para a **própria** conta.
+
+Exige código roubado, e o dano é o atacante ficar com um e-mail que não controla —
+baixo, mas real.
+
+**Correção**: passar o usuário autenticado para `GenerateConsumable`, gravar
+`otps.user_id` nas ações que têm um, e conferir em `ChangeEmail`. Custa a assinatura
+da interface, o controller do OTP e o mock.
+
+### 24. O `409` da geração de OTP conta se um e-mail existe na pool
+
+`POST /otp/generate_consumable?action=CHANGE_EMAIL` responde `409` quando o endereço
+já pertence a alguém, o que é o mesmo oráculo de enumeração do item 1 — aqui atrás
+de autenticação, e o `REGISTER` já vaza o mesmo sem autenticação nenhuma.
+
+Não dá para simplesmente calar: o chamador precisa saber por que a troca não vai
+acontecer. Fica registrado para entrar junto com a decisão do item 1.
 
 ---
 
@@ -136,11 +164,16 @@ vivo — mas é uma armadilha esperando a primeira rota que exponha sessão.
 **Correção**: tags snake_case nas duas entidades, junto com `json:"-"` no que for
 secreto, antes de qualquer rota que as exponha.
 
-### 14. Não existe fluxo verificado de troca de e-mail
+### 25. Colisão de e-mail que escape da checagem sobe como 500
 
-`constants.ActionChangeEmail` existe e não é usado em lugar nenhum. Consequência:
-`PUT /core/users/{id}` é a única forma de trocar e-mail, é rota de administração, e
-o próprio usuário não troca o seu.
+`AuthorizeService.ChangeEmail` confere a disponibilidade do endereço duas vezes — ao
+gerar o código e ao consumi-lo — mas a janela entre a segunda checagem e o `UPDATE`
+continua existindo. Se alguém tomar o endereço ali dentro, quem responde é o índice
+único `users_email_users_pool_unique`, e o serviço não pode importar gorm para
+traduzir o erro do driver em `409`.
+
+**Correção**: um mapeamento de erro de constraint dentro de `shared/repository`, que
+é a única camada que pode olhar para gorm, devolvendo algo tipado para o serviço.
 
 ### 15. `AppService.FindAllUserApps` responde 500
 
@@ -208,12 +241,22 @@ para descobrir o que cada guard exige e o que deixa no contexto não encontra o
 
 ### 22. `sessions.invalidated` mistura "superada" com "encerrada"
 
-A coluna é escrita por um único lugar, o `InvalidateAllExcept` do `CreateNew`, e
-hoje ela só significa "nasceu uma sessão mais nova". Por isso o `/auth/refresh`
-passou a aceitá-la: recusar derrubava quem não fez nada errado, porque outro
-cliente logou.
+A coluna continua sem distinguir as duas coisas. `InvalidateAllExcept` a escreve em
+toda sessão anterior do usuário a cada `CreateNew`, então ela só significa "nasceu
+uma sessão mais nova" — e é por isso que o `/auth/refresh` a aceita: recusar
+derrubava quem não fez nada errado, porque outro cliente logou.
 
-Quando o logout for implementado — o `Revoke` ainda é `NotImplemented` — ele vai
-precisar de uma coluna própria (`revoked_at`, ou um motivo na própria
-`invalidated`). Sem isso, um refresh token de uma sessão encerrada de propósito
-revive, que é exatamente o que o logout existe para impedir.
+**O logout foi implementado por volta disso, não resolvendo isso.**
+`SessionRepository.Revoke` e `RevokeAllForUser` fecham a janela de refresh junto com
+o flag, gravando `refresh_expires_at = RevokedRefreshWindow` (o epoch). Funciona —
+`TestRefreshRefusesARevokedSession` prova — e custou zero migração, mas é paliativo
+e tem dois preços conhecidos:
+
+- quem apresenta o refresh token de uma sessão encerrada recebe `TOKEN_EXPIRED`, e
+  não um erro que diga que a sessão foi fechada;
+- a linha passa a mentir sobre quando a janela terminava, e só o valor epoch a
+  distingue de um vencimento real.
+
+**Correção**: uma coluna própria, `revoked_at`, com o `Refresh` recusando
+`revoked_at != nil` e continuando a aceitar `invalidated`. Aí o epoch sai e os dois
+significados ficam separados de verdade.

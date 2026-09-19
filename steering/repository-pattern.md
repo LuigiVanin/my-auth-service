@@ -326,6 +326,34 @@ Both are named methods rather than dao fields on purpose: it is what keeps the
 column out of reach of any payload. The worked case is
 `docs/features/2026-09-09-tracking/spec.md`.
 
+### Two columns that only move together
+
+`SessionRepository.Revoke` and `RevokeAllForUser` write `invalidated` **and**
+`refresh_expires_at` in one statement, because either one alone is not a
+revocation:
+
+- `invalidated` kills the access token, since `FindActive` filters on it — but
+  `/auth/refresh` accepts an invalidated session **on purpose**. `CreateNew` sets
+  that flag on every older session of the user, so refusing it would log out
+  whoever simply signed in on a second device.
+- the closed refresh window is therefore the only thing that tells "closed on
+  purpose" apart from "superseded".
+
+The window is closed to `RevokedRefreshWindow`, the epoch, and not to `time.Now()`:
+no legitimate session ends in 1970, so the row keeps saying which of the two
+happened to it. It is exported so a test builds the row a revoke produces instead
+of keeping its own copy of the value.
+
+This is a **workaround with a known end**: a `revoked_at` column is what actually
+separates the two meanings, and it is item 22 of
+[pendencias.md](../docs/features/pendencias.md). Until then the pair above is the
+single writer of a revocation, and nothing else may flip `invalidated` to mean
+logout.
+
+`Revoke` matches on the id alone. Adding `invalidated = false` to the predicate
+would make a session already superseded by a login on another device impossible to
+revoke, which is the ordinary case and not the exception.
+
 ### Several mutations in one unit of work
 
 ```go
@@ -546,8 +574,8 @@ fields being skipped, `updated_at` being written, counting ignoring pagination,
 `defer tx.Rollback()` being a no op after commit.
 
 `dedicated_queries_test.go` covers the per module queries: the session
-`invalidated = false` predicate, the app search scopes, and the profile lookup
-staying unpaginated.
+`invalidated = false` predicate, the two columns a revocation writes together, the
+app search scopes, and the profile lookup staying unpaginated.
 
 `cmd/main_test.go` runs `fx.ValidateApp` over the whole container, so a
 constructor signature change that breaks the wiring fails in tests instead of

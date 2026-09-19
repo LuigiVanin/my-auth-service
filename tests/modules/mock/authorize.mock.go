@@ -46,7 +46,23 @@ func (this *MockAuthorizeService) ResetPassword(app *entity.App, payload dto.Res
 	return args.Get(0).(*entity.User), args.Error(1)
 }
 
-func (this *MockAuthorizeService) VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) error {
+func (this *MockAuthorizeService) VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) (*entity.User, error) {
 	args := this.Called(app, user, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
+}
+
+func (this *MockAuthorizeService) Revoke(sessionId string) error {
+	args := this.Called(sessionId)
 	return args.Error(0)
+}
+
+func (this *MockAuthorizeService) ChangeEmail(app *entity.App, user *entity.User, payload dto.ChangeEmail) (*entity.User, error) {
+	args := this.Called(app, user, payload)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.User), args.Error(1)
 }

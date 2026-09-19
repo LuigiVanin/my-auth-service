@@ -37,19 +37,26 @@ var (
 		"as::profiles::CREATE", "as::profiles::READ", "as::profiles::UPDATE",
 		"as::grants::READ",
 		"as::login::CREATE", "as::register::CREATE", "as::authorize::CREATE",
-		"as::refresh::CREATE", "as::forgot_password::UPDATE", "as::otp::CREATE"
+		"as::refresh::CREATE", "as::forgot_password::UPDATE", "as::otp::CREATE",
+		"as::verify_email::UPDATE", "as::change_email::UPDATE", "as::revoke::CREATE"
 	]}`)
 
-	// NOTE: nothing enforces /auth yet, so the login and register grants are
-	// expressive rather than effective. They are here because the profile a pool
-	// defaults to is where "may this pool sign users up" belongs.
+	// NOTE: nothing enforces /auth and /otp yet, so those grants are expressive
+	// rather than effective. They are here because the profile a pool defaults to
+	// is where "may this pool sign users up" belongs.
 	//
 	// users::me::UPDATE and not users::UPDATE: editing yourself must not come with
 	// editing every user of every pool the organization owns.
+	//
+	// The account self service set travels together: verifying and changing your
+	// own email, closing your own session, and the otp grant without which none of
+	// the three could be started.
 	LoginPermissions = json.RawMessage(`{"grants": [
 		"as::login::CREATE", "as::register::CREATE",
 		"as::users::me::UPDATE",
-		"as::organizations::READ", "as::organizations::switch::UPDATE"
+		"as::organizations::READ", "as::organizations::switch::UPDATE",
+		"as::otp::CREATE",
+		"as::verify_email::UPDATE", "as::change_email::UPDATE", "as::revoke::CREATE"
 	]}`)
 )
 

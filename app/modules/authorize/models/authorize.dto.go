@@ -39,3 +39,10 @@ type VerifyEmailBody struct {
 	Email string                `json:"email" validate:"required,email"`
 	Otp   otpDto.PayloadOtpData `json:"otp" validate:"required"`
 }
+
+// ChangeEmail carries the address the caller is moving to - the one the OTP was
+// sent to - and the pair that proves it was received there.
+type ChangeEmail struct {
+	Email string                `json:"email" validate:"required,email"`
+	Otp   otpDto.PayloadOtpData `json:"otp" validate:"required"`
+}

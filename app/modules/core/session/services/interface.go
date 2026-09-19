@@ -12,4 +12,9 @@ type ISessionService interface {
 	DecryptSessionToken(tokenString string, secretKey string) (string, string, error)
 
 	UseSession(session string) error
+
+	// Revoke closes one session on purpose - the logout. Revoking every session of
+	// a user happens inside the transaction of the email change and therefore goes
+	// through the repository, not through here.
+	Revoke(sessionId string) error
 }

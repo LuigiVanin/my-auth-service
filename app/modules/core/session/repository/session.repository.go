@@ -57,6 +57,51 @@ func (this *SessionRepository) InvalidateAllExcept(
 	return result.RowsAffected, result.Error
 }
 
+// RevokedRefreshWindow is what a revoked session carries in refresh_expires_at.
+//
+// The epoch and not time.Now(): no legitimate session ends in 1970, so the row
+// keeps saying it was closed on purpose rather than that it simply ran out.
+// `invalidated` cannot carry that meaning - CreateNew writes it on every older
+// session of the user, and /auth/refresh accepts it for exactly that reason. See
+// docs/features/pendencias.md item 22 for the column that ends this.
+//
+// Exported so a test can build the row a revoke produces instead of keeping its
+// own copy of this value.
+var RevokedRefreshWindow = time.Unix(0, 0).UTC()
+
+func revocation() dto.SessionUpdateDao {
+	invalidated := true
+	expired := RevokedRefreshWindow
+
+	return dto.SessionUpdateDao{Invalidated: &invalidated, RefreshExpiresAt: &expired}
+}
+
+// Revoke closes one session: the access token dies because FindActive filters on
+// `invalidated`, and the refresh token dies because Refresh checks the window
+// before anything else.
+//
+// NOTE: the predicate is the id alone. Adding `invalidated = false` would make a
+// session already superseded by a login on another device impossible to revoke,
+// which is the ordinary case rather than the exception.
+func (this *SessionRepository) Revoke(sessionId string, options ...repo.Option) (int64, error) {
+	result := this.Query(options...).
+		Where("id = ?", sessionId).
+		Updates(repo.BuildUpdateMap(revocation()))
+
+	return result.RowsAffected, result.Error
+}
+
+// RevokeAllForUser closes every session a user holds on one app. It is the logout
+// that comes with changing the email: the identity moved, so nothing minted under
+// the old one may survive.
+func (this *SessionRepository) RevokeAllForUser(userId uint, appId string, options ...repo.Option) (int64, error) {
+	result := this.Query(options...).
+		Where("user_id = ? AND app_id = ?", userId, appId).
+		Updates(repo.BuildUpdateMap(revocation()))
+
+	return result.RowsAffected, result.Error
+}
+
 // TouchLastUsedAt stamps the session, refusing to revive an invalidated one.
 func (this *SessionRepository) TouchLastUsedAt(sessionId string, options ...repo.Option) (int64, error) {
 	now := time.Now()

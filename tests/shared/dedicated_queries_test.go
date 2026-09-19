@@ -41,6 +41,40 @@ func TestSessionWritesNeverReviveAnInvalidatedRow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Revoking has to close both windows in one statement. `invalidated` alone is not
+// enough: /auth/refresh accepts an invalidated session on purpose, because
+// CreateNew writes that flag on every older session of the user.
+func TestRevokeClosesBothTokenWindows(t *testing.T) {
+	client, _ := newClient(t)
+	repository := srep.NewSessionRepository(client)
+
+	sql := captureUpdate(t, client, func() {
+		_, _ = repository.Revoke("session-1")
+	})
+
+	assert.Contains(t, sql, "invalidated")
+	assert.Contains(t, sql, "refresh_expires_at")
+	assert.Contains(t, sql, "updated_at")
+	assert.Contains(t, sql, "id = $")
+
+	// The id alone: a session already superseded by a login on another device is
+	// the ordinary thing to revoke, not the exception.
+	assert.NotContains(t, sql, "invalidated = $")
+}
+
+func TestRevokeAllForUserIsScopedToTheUserAndTheApp(t *testing.T) {
+	client, _ := newClient(t)
+	repository := srep.NewSessionRepository(client)
+
+	sql := captureUpdate(t, client, func() {
+		_, _ = repository.RevokeAllForUser(1, "app-1")
+	})
+
+	assert.Contains(t, sql, "refresh_expires_at")
+	assert.Contains(t, sql, "user_id = $")
+	assert.Contains(t, sql, "app_id = $")
+}
+
 func TestAppSearchScopes(t *testing.T) {
 	client, _ := newClient(t)
 	repository := arep.NewAppRepository(client)

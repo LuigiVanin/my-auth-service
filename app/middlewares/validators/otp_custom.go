@@ -22,7 +22,7 @@ func OtpValidator(ctx fiber.Ctx) error {
 		return middleware.BodyValidator[dto.OtpRegisterPayload]()(ctx)
 	case constants.ActionLogin:
 		return middleware.BodyValidator[dto.OtpLoginPayload]()(ctx)
-	case constants.ActionForgotPassword, constants.ActionVerifyEmail:
+	case constants.ActionForgotPassword, constants.ActionVerifyEmail, constants.ActionChangeEmail:
 		return middleware.BodyValidator[dto.OtpGenericPayload]()(ctx)
 	default:
 		return e.ThrowUnprocessableEntity("Invalid OTP action in validator")

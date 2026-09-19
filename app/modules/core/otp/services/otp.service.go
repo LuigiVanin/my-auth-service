@@ -134,6 +134,24 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 		if !exists {
 			return nil, e.ThrowNotFound("User not found in User Pool")
 		}
+	// The polarity is the opposite of the two cases above: the code goes to the
+	// address the caller is moving to, so that address must belong to nobody yet.
+	case constants.ActionChangeEmail:
+		if email, ok := payload.Payload["email"].(string); ok {
+			payload.Contact = email
+		} else {
+			return nil, e.ThrowBadRequest("Email is required for CHANGE_EMAIL action")
+		}
+
+		exists, err := this.userService.IsAlreadyCreated(payload.Contact, app)
+
+		if err != nil {
+			this.logger.Error("Failed to check if user exists", zap.Error(err))
+			return nil, e.ThrowInternalServerError("Failed to check user existence")
+		}
+		if exists {
+			return nil, e.ThrowUserAlreadyExists("Another user of this pool already uses this email")
+		}
 	default:
 		return nil, e.ThrowUnprocessableEntity("Invalid OTP action")
 	}

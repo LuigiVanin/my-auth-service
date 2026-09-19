@@ -115,7 +115,7 @@ func (this *OtpController) Register(server *fiber.App) {
 		).
 			AddQueryParam("action", openapi.String, openapi.Options{
 				Required:    true,
-				Description: "Action the OTP is generated for: `REGISTER`, `LOGIN`, `VERIFY_EMAIL`, `TWO_FA`, `FORGOT_PASSWORD`, `CHANGE_EMAIL` or `REGEN_APP_SECRET_KEY`",
+				Description: "Action the OTP is generated for: `REGISTER`, `LOGIN`, `VERIFY_EMAIL`, `FORGOT_PASSWORD` or `CHANGE_EMAIL`. `TWO_FA` and `REGEN_APP_SECRET_KEY` are declared in the enum and answer 422 - no flow consumes them yet",
 			}).
 			AddHeaderParam("Authorization", openapi.String, openapi.Options{
 				Description: "Access token - required for every action other than `REGISTER`, `LOGIN` and `FORGOT_PASSWORD`",
@@ -126,6 +126,9 @@ func (this *OtpController) Register(server *fiber.App) {
 			}).
 			AddResponse(fiber.StatusOK, dto.GenerateConsumableOtpResponse{}, openapi.Options{
 				Description: "OTP generated - the returned `otp_id` is what the consuming endpoint expects",
+			}).
+			AddResponse(fiber.StatusConflict, e.ProblemDetail{}, openapi.Options{
+				Description: "`CHANGE_EMAIL` only: another user of the pool already uses the requested email",
 			}),
 	)
 

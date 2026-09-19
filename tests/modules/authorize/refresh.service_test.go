@@ -6,6 +6,7 @@ import (
 
 	"auth_service/app/modules/authorize/services"
 	ps "auth_service/app/modules/core/participant/services"
+	srep "auth_service/app/modules/core/session/repository"
 	entity "auth_service/infra/entities"
 	mock "auth_service/tests/modules/mock"
 
@@ -79,7 +80,7 @@ func newRefreshService(stored *entity.Session) (services.IAuthorizeService, *ref
 		}, nil)
 
 	service := services.NewAuthorizeService(
-		nil, mocks.sessionRepo, mocks.sessionService, nil, nil, nil, mocks.participantService, zap.NewNop(),
+		nil, mocks.sessionRepo, mocks.sessionService, nil, nil, nil, nil, mocks.participantService, nil, zap.NewNop(),
 	)
 
 	return service, mocks
@@ -99,6 +100,20 @@ func TestRefreshAcceptsASupersededSession(t *testing.T) {
 func TestRefreshStillRefusesAnExpiredRefreshWindow(t *testing.T) {
 	stored := supersededSession()
 	stored.RefreshExpiresAt = time.Now().Add(-time.Hour)
+
+	service, _ := newRefreshService(stored)
+
+	_, err := service.Refresh(&entity.App{ID: "app", TokenType: "SESSION_UUID"}, "Bearer "+refreshToken, callerIp)
+
+	assert.Error(t, err)
+}
+
+// The point of the whole revoke feature: a session closed on purpose must not be
+// able to mint a new pair. `invalidated` cannot carry that meaning - the test
+// above proves it is accepted - so the closed refresh window is what does.
+func TestRefreshRefusesARevokedSession(t *testing.T) {
+	stored := supersededSession()
+	stored.RefreshExpiresAt = srep.RevokedRefreshWindow
 
 	service, _ := newRefreshService(stored)
 

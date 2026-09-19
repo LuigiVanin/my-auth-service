@@ -16,4 +16,9 @@ type ISessionRepository interface {
 	FindActive(sessionId string, options ...repo.Option) (*entity.Session, error)
 	InvalidateAllExcept(userId uint, appId string, currentSessionId string, options ...repo.Option) (int64, error)
 	TouchLastUsedAt(sessionId string, options ...repo.Option) (int64, error)
+
+	// The revocation pair, which writes two columns at once and therefore cannot
+	// be a generic Update from a caller that only knows one of them.
+	Revoke(sessionId string, options ...repo.Option) (int64, error)
+	RevokeAllForUser(userId uint, appId string, options ...repo.Option) (int64, error)
 }

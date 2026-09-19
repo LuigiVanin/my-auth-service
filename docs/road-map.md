@@ -14,7 +14,9 @@
 
   - [] Deixar apenas o profile de Login como global, o restante será criado pelo dono da organização
   - [x] Separar rota de users/me e users/uuid , alguns users podem buscar e editar a si mesmo e outros podem modificar a todos os outros que tem visibilidade.
-  - [] Rota de verificação de email
+  - [x] Rota de verificação de email
+  - [x] Troca de email verificada pelo próprio usuário (`PUT /auth/change_email`)
+  - [x] Logout / revogação de sessão (`POST /auth/revoke`)
   - [] Fluxo de 2fa (Não prioritário)
   - [] Visibilidade em cascata - possibilidade de ver todos os itens associados abaixo da organização em forma de cascata
 

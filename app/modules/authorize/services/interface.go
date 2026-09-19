@@ -30,5 +30,9 @@ type IAuthorizeService interface {
 
 	ResetPassword(app *entity.App, payload dto.ResetPasswordPayload) (*entity.User, error)
 
-	VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) error
+	VerifyEmail(app *entity.App, user *entity.User, payload dto.VerifyEmailBody) (*entity.User, error)
+
+	ChangeEmail(app *entity.App, user *entity.User, payload dto.ChangeEmail) (*entity.User, error)
+
+	Revoke(sessionId string) error
 }

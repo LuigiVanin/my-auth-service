@@ -118,6 +118,15 @@ var catalog = map[string]map[string]Rule{
 	"as::forgot_password::UPDATE": {
 		"/auth/forgot_password": {Methods: []string{"PUT"}},
 	},
+	"as::verify_email::UPDATE": {
+		"/auth/verify_email": {Methods: []string{"PUT"}},
+	},
+	"as::change_email::UPDATE": {
+		"/auth/change_email": {Methods: []string{"PUT"}},
+	},
+	"as::revoke::CREATE": {
+		"/auth/revoke": {Methods: []string{"POST"}},
+	},
 
 	"as::otp::CREATE": {
 		"/otp/generate_consumable": {Methods: []string{"POST"}},

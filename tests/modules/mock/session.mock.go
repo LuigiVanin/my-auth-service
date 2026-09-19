@@ -36,6 +36,11 @@ func (this *MockSessionService) DecryptSessionToken(tokenString string, secretKe
 	return args.String(0), args.String(1), args.Error(2)
 }
 
+func (this *MockSessionService) Revoke(sessionId string) error {
+	args := this.Called(sessionId)
+	return args.Error(0)
+}
+
 func (this *MockSessionService) UseSession(session string) error {
 	args := this.Called(session)
 	return args.Error(0)
@@ -79,6 +84,16 @@ func (this *MockSessionRepository) FindActive(sessionId string, options ...repo.
 
 func (this *MockSessionRepository) InvalidateAllExcept(userId uint, appId string, currentSessionId string, options ...repo.Option) (int64, error) {
 	args := this.Called(userId, appId, currentSessionId, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockSessionRepository) Revoke(sessionId string, options ...repo.Option) (int64, error) {
+	args := this.Called(sessionId, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (this *MockSessionRepository) RevokeAllForUser(userId uint, appId string, options ...repo.Option) (int64, error) {
+	args := this.Called(userId, appId, options)
 	return args.Get(0).(int64), args.Error(1)
 }
 

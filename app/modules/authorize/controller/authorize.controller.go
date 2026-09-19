@@ -29,6 +29,19 @@ type verifyEmailResponse struct {
 	User    entity.User `json:"user"`
 }
 
+// revokeResponse mirrors the body returned by Revoke - it only exists to
+// describe the payload in the OpenAPI document.
+type revokeResponse struct {
+	Message string `json:"message"`
+}
+
+// changeEmailResponse mirrors the body returned by ChangeEmail - it only exists
+// to describe the payload in the OpenAPI document.
+type changeEmailResponse struct {
+	Message string      `json:"message"`
+	User    entity.User `json:"user"`
+}
+
 var _ interfaces.IController = &AuthorizeController{}
 
 type AuthorizeController struct {
@@ -112,7 +125,15 @@ func (this *AuthorizeController) ForgotPassword(ctx fiber.Ctx) error {
 }
 
 func (this *AuthorizeController) Revoke(ctx fiber.Ctx) error {
-	return e.ThrowNotImplementedError("Logout not implemented")
+	sessionId := ctx.Locals("session_id").(string)
+
+	if err := this.authService.Revoke(sessionId); err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(utils.JSON{
+		"message": "session revoked",
+	})
 }
 
 func (this *AuthorizeController) VerifyEmail(ctx fiber.Ctx) error {
@@ -124,7 +145,7 @@ func (this *AuthorizeController) VerifyEmail(ctx fiber.Ctx) error {
 	app := ctx.Locals("app").(*entity.App)
 	user := ctx.Locals("user").(*entity.User)
 
-	err := this.authService.VerifyEmail(app, user, payload)
+	verified, err := this.authService.VerifyEmail(app, user, payload)
 
 	if err != nil {
 		return err
@@ -132,7 +153,28 @@ func (this *AuthorizeController) VerifyEmail(ctx fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusCreated).JSON(utils.JSON{
 		"message": "email verified with success",
-		"user":    user,
+		"user":    verified,
+	})
+}
+
+func (this *AuthorizeController) ChangeEmail(ctx fiber.Ctx) error {
+	var payload dto.ChangeEmail
+	if err := ctx.Bind().Body(&payload); err != nil {
+		return err
+	}
+
+	app := ctx.Locals("app").(*entity.App)
+	user := ctx.Locals("user").(*entity.User)
+
+	updated, err := this.authService.ChangeEmail(app, user, payload)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(utils.JSON{
+		"message": "email changed with success",
+		"user":    updated,
 	})
 }
 
@@ -171,6 +213,18 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 			}),
 	)
 	group.Post("/refresh", this.RefreshAuthorization)
+
+	this.swagger.Add(
+		docs.AuthRoute(this.swagger, "POST", "/auth/revoke", openapi.Options{
+			Summary:     "Revoke the current session",
+			Description: "Closes the session the access token belongs to. Both tokens die: the access token because the session stops being active, and the refresh token because its window is closed. Takes no body - the session is the one behind the Authorization header.",
+			Tags:        []string{docs.TagAuth},
+		}).
+			AddResponse(fiber.StatusOK, revokeResponse{}, openapi.Options{
+				Description: "Session revoked - revoking an already revoked session answers the same",
+			}),
+	)
+	group.Post("/revoke", this.authGuard.Act, this.Revoke)
 
 	this.swagger.Add(
 		docs.AppRoute(this.swagger, "PUT", "/auth/forgot_password", openapi.Options{
@@ -226,5 +280,44 @@ func (this *AuthorizeController) Register(server *fiber.App) {
 		middleware.BodyValidator[dto.VerifyEmailBody](),
 		this.authGuard.Act,
 		this.VerifyEmail,
+	)
+
+	// No EmailVerificationGuard, and no /auth route carries one: demanding a
+	// verified email in order to change it would lock out exactly the caller who
+	// signed up with the wrong address.
+	this.swagger.Add(
+		docs.Validated(
+			docs.AuthRoute(this.swagger, "PUT", "/auth/change_email", openapi.Options{
+				Summary:     "Change the email of the authenticated user",
+				Description: "Moves the account to a new email address. Requires an OTP generated with the `CHANGE_EMAIL` action through /otp/generate_consumable, sent to and verified against the **new** address. On success the address is marked verified and every session of the caller on this application is closed, so the client has to authenticate again with the new email.",
+				Tags:        []string{docs.TagAuth},
+			}),
+		).
+			AddBody(dto.ChangeEmail{}, openapi.Options{
+				Required:    true,
+				Description: "The new email and the id/code pair of the OTP generated for it",
+			}).
+			AddResponse(fiber.StatusOK, changeEmailResponse{}, openapi.Options{
+				Description: "Email changed - the caller is logged out and the returned user already carries the new address",
+			}).
+			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{
+				Description: "Request body could not be parsed, the OTP code is wrong, already used or expired, or the new email is the one already on the account",
+			}).
+			AddResponse(fiber.StatusUnauthorized, e.ProblemDetail{}, openapi.Options{
+				Description: "Missing or invalid application credentials or access token, or an OTP whose stored email is not the one in the body",
+			}).
+			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
+				Description: "No application matches the given X-Public-Key, or the OTP does not exist",
+			}).
+			AddResponse(fiber.StatusConflict, e.ProblemDetail{}, openapi.Options{
+				Description: "Another user of this pool already uses the requested email",
+			}),
+	)
+
+	group.Put(
+		"/change_email",
+		middleware.BodyValidator[dto.ChangeEmail](),
+		this.authGuard.Act,
+		this.ChangeEmail,
 	)
 }

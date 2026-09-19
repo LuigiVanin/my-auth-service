@@ -108,3 +108,13 @@ func (this *SessionService) UseSession(sessionId string) error {
 
 	return err
 }
+
+// Revoke ignores the rows affected on purpose: logging out twice is not an error,
+// and the id always comes from a token a guard has already validated.
+func (this *SessionService) Revoke(sessionId string) error {
+	if _, err := this.repository.Revoke(sessionId); err != nil {
+		return e.ThrowInternalServerError("Failed to revoke the session")
+	}
+
+	return nil
+}

@@ -172,6 +172,14 @@ The map also covers `/auth` and `/otp`, which no guard enforces today. Those ent
 are expressive rather than effective, and they exist because the profile a users pool
 defaults to is where "may this pool sign users up" belongs.
 
+The account self service set — `as::verify_email::UPDATE`, `as::change_email::UPDATE`,
+`as::revoke::CREATE` — was added with the verified email change, and it travels with
+`as::otp::CREATE` rather than without it: all three flows start by generating a code,
+so a profile holding the first three and not the fourth would declare something it
+could not begin. `as::verify_email::UPDATE` also closes a gap — `/auth/verify_email`
+had been registered with no catalog key at all, which left it reachable by no profile
+but the platform admin.
+
 ## Reading: `permissions.Resolve`
 
 `shared/permissions.Resolve(documents ...json.RawMessage) (*Resolved, error)`
@@ -432,7 +440,7 @@ contract.
 | --- | --- | --- |
 | `ADMIN` | both | `{"api": {"*": …}, "grants": ["as::*::*"]}` - the platform administrator's organization only, and **scoped** to it: the last step of the seed sets its `organization_id` to `admin_organization`. The two keys are deliberate: see the Wildcards section |
 | `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants and profiles, read and write - an organization that builds the platform out. **Scoped** to `admin_organization` in the same step as `ADMIN`. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
-| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), plus login and signup; **the only global profile**, and the default of every pool - the seeded one included - so a new pool is born closed |
+| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), the account self service set (`otp`, `verify_email`, `change_email`, `revoke`), plus login and signup; **the only global profile**, and the default of every pool - the seeded one included - so a new pool is born closed |
 
 Only `LOGIN_PROFILE` stays global, and it has to: `resolveDefaultProfile` looks it up
 **by key** from any organization, and it is the ceiling every organization registering

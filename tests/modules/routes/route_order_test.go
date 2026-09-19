@@ -13,6 +13,7 @@ import (
 	"slices"
 	"testing"
 
+	authcontroller "auth_service/app/modules/authorize/controller"
 	appcontroller "auth_service/app/modules/core/app/controller"
 	orgcontroller "auth_service/app/modules/core/organization/controller"
 	profilecontroller "auth_service/app/modules/core/profile/controller"
@@ -116,6 +117,33 @@ func TestTheUpdateRoutesAreMountedWhereTheCatalogNamesThem(t *testing.T) {
 	} {
 		assert.Contains(t, pathsOf(server, "PUT"), path)
 	}
+}
+
+// Same property, on the /auth surface. It carries no parameter route, so nothing
+// can be swallowed here - what this guards is the other half: a path spelled one
+// way in shared/permissions and another way in the controller is a route no
+// profile reaches, and nothing checks the two against each other.
+func TestTheAuthRoutesAreMountedWhereTheCatalogNamesThem(t *testing.T) {
+	server := fiber.New()
+	builder := openapi.NewBuilder("test", "test", "test")
+
+	authcontroller.NewAuthorizeController(nil, nil, nil, builder).Register(server)
+
+	for method, path := range map[string]string{
+		"POST": "/auth/revoke",
+		"PUT":  "/auth/change_email",
+	} {
+		assert.Contains(t, pathsOf(server, method), path)
+	}
+
+	assert.Contains(t, pathsOf(server, "PUT"), "/auth/verify_email")
+
+	document := builder.Build()
+	encoded, err := json.Marshal(document)
+
+	assert.NoError(t, err)
+	assert.Contains(t, string(encoded), "/auth/revoke")
+	assert.Contains(t, string(encoded), "/auth/change_email")
 }
 
 // The OpenAPI document is built once at boot, by an fx.Invoke that cmd/main_test

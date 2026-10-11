@@ -4,5 +4,12 @@
   "workbench.iconTheme": "flow-dim",
   "makefile.configureOnOpen": true,
   "go.lintTool": "golangci-lint",
-  "go.lintFlags": ["--fast"]
+  "go.lintFlags": ["--fast"],
+
+  // O validador de CSS embutido não conhece a sintaxe do Tailwind v4
+  // (`@import "tailwindcss" source("../")`, `@theme`, `@variant`, `@source`) e
+  // marca frontend/src/styles/index.css como erro de sintaxe. O build compila
+  // sem erro; quem valida Tailwind aqui é a extensão Tailwind CSS IntelliSense.
+  "css.validate": false,
+  "css.lint.unknownAtRules": "ignore"
 }

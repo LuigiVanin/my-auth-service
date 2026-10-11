@@ -25,6 +25,17 @@
  - [] Legar opções de tokens diferentes do JWT
  - [] Legar opção de loing `WITH_LOGIN
 
+ - [] `GET /core/users_pool`: parâmetro de ordenação (`updated_at desc`, `name asc`, `users_count desc`, `created_at asc`) exposto em `UserPoolListQuery` e no bloco OpenAPI — o `repo.Option.Sort` já existe. E um `ORDER BY` padrão estável: hoje a listagem não tem nenhum e a paginação pode repetir ou pular linhas. A tela usa no menu "Sort by" de `/console/pools`
+ - [] `GET /core/users_pool`: filtro por teto (`closed` = `LOGIN_PROFILE`, `broad` = profile com metade `api` ou grant com curinga, `scoped` = o resto), com a classificação de `pool-ceiling.ts` do frontend definida no servidor. A tela usa nas pílulas "Permission ceiling"
+ - [] `GET /core/users_pool`: filtro por escopo do profile padrão (`system` = `default_profile.organization_id IS NULL`, `organization` = da organização atual). A tela usa nas pílulas "Profile scope"
+ - [] `GET /core/users_pool`: contagem por categoria de teto (facetas), na mesma resposta ou num endpoint próprio, respeitando o filtro de nome. A tela usa no número de cada pílula de teto
+
+ - [] `GET /core/apps`: o mesmo parâmetro de ordenação e o mesmo `ORDER BY` padrão estável da entrada de `users_pool` acima, com `updated_at desc`, `name asc` e `created_at asc`, exposto em `GetAppsQuery` e no bloco OpenAPI. A tela usa no menu "Sort by" de `/console/apps`
+ - [] `GET /core/apps`: filtro `login_type` (`WITH_PASSWORD`, `WITH_OTP`, `WITH_LOGIN`), casando o app que **contém** o método em `login_types`. A tela usa nas pílulas "Login method"
+ - [] `GET /core/apps`: filtro `token_type` (`JWT`, `FAST_JWT`, `SESSION_UUID`). A tela usa nas pílulas "Token type"
+ - [] `GET /core/apps`: filtro `private` (`true`/`false`). A tela usa nas pílulas "Visibility"
+ - [] `GET /core/apps`: contagem por categoria (facetas) de `login_type`, `token_type` e `private`, respeitando `name` e `pool_id`. Só se as pílulas forem mostrar número
+
 ## Frontend
  - [] Adicionar regra no Claude.md para escrever texto em inglês
 

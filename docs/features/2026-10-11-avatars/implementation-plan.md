@@ -21,7 +21,7 @@ o avatar do usuário autenticado, da organização atual e das aplicações dela
 coluna `avatar_key` nas três tabelas, escrita só por método dedicado; `avatar_url`
 em toda resposta que carrega uma das três entidades; e a abstração de
 armazenamento atrás da qual o SDK da AWS fica escondido. A infraestrutura é a de
-[infra.md](infra.md) e é pré-requisito do teste de ponta a ponta, não do código.
+[aws-console-setup.md](aws-console-setup.md) e é pré-requisito do teste de ponta a ponta, não do código.
 
 ## Decisões tomadas
 
@@ -53,10 +53,12 @@ armazenamento atrás da qual o SDK da AWS fica escondido. A infraestrutura é a 
   confirmação copia para `avatar/`, o único prefixo que a política do bucket libera
   à distribuição. Um upload abandonado nunca fica público (fonte: RNF-4, RNF-5).
 
-- **Infraestrutura pelo console, JSONs versionados em `infra.md`.** CDK ficou
+- **Infraestrutura pelo console, JSONs versionados em `aws-console-setup.md`.** CDK ficou
   fora; os documentos de política estão no repositório para a configuração ser
-  reproduzível e revisável (fonte: resposta "ok" à pergunta sobre console versus
-  código, interpretada como console — confirmar).
+  reproduzível e revisável. O roteiro é um passo a passo executável, com caixas
+  de marcar, valores a anotar e um teste manual de ponta a ponta antes de
+  qualquer código (fonte: resposta à decisão 2 — "a resposta é por console mesmo",
+  com o pedido de deixar o passo a passo registrado nesta pasta).
 
 ### Onde cada coisa vive
 
@@ -141,22 +143,41 @@ armazenamento atrás da qual o SDK da AWS fica escondido. A infraestrutura é a 
   validado com `oneof` (fonte: formato do presigned POST do S3; `steering/models-layer.md`,
   enumerações com `oneof`).
 
-- **`avatar_url` sai da entidade, `avatar_key` não.** As três entidades ganham
-  `AvatarKey string gorm:"column:avatar_key;default:null" json:"-"` e
-  `AvatarUrl *string gorm:"-" json:"avatar_url"`, preenchido num hook `AfterFind`
-  a partir de um resolvedor de URL registrado em `shared/global` no bootstrap. É a
-  única forma de o campo aparecer em **toda** resposta que embute a entidade —
-  login, register, refresh, listagens, detalhes, `current_organization` — sem
-  tocar cada uma delas. `null` quando não há chave, e não omitido: o frontend lê
-  `avatarUrl ?? undefined` sem adivinhar (fonte: RC-8; a alternativa de sombrear em
-  cada DTO de resposta, como `GetUserResponse` faz com `tracking`, custaria um
-  sombreamento por resposta e esqueceria uma — **decisão a confirmar**, ver abaixo).
+- **`avatar_url` é montada resposta por resposta, nos DTOs, e a entidade não a
+  conhece.** As três entidades ganham só `AvatarKey *string
+  gorm:"column:avatar_key;default:null" json:"-"`. Cada resposta que hoje devolve
+  uma das três passa a devolver uma *view* em `{module}/models/{module}.dto.go`
+  que embute a entidade e acrescenta `AvatarUrl *string json:"avatar_url"` — o
+  mesmo desenho de `GetUserResponse` com `tracking`. `null` quando não há chave, e
+  não omitido: o frontend lê `avatarUrl ?? undefined` sem adivinhar. A URL vem de
+  `storage.IUrlResolver` (um método, `PublicUrl(key *string) *string`), injetado
+  nos controllers que respondem essas entidades e passado ao construtor da view,
+  como `dto.NewUserView(user, urls)` (fonte: resposta à decisão 1 — "passar um por
+  um seja ideal, mesmo que dê mais trabalho e corra o risco de esquecimento";
+  a alternativa recusada era um hook `AfterFind` com resolvedor global).
+
+- **As entidades aninhadas também são sombreadas.** `entity.User` serializa
+  `current_organization`, `entity.App` serializa `organization` e `owner_user`,
+  `entity.Organization` serializa `owner_user`. Cada view sombreia o campo
+  aninhado com a view correspondente, ou o caminho aninhado sai sem `avatar_url`.
+  O inventário de respostas a tocar é o primeiro passo da implementação e entra
+  aqui quando feito (fonte: leitura das três entidades).
+
+- **O risco de esquecimento é coberto por teste, não por disciplina.** Um teste
+  em `tests/modules/routes/` percorre o documento OpenAPI construído e falha se
+  algum schema de resposta — inclusive aninhado — tiver os campos de uma das três
+  entidades sem `avatar_url`. Uma resposta nova que devolva `entity.User` cru
+  quebra a suíte em vez de chegar ao frontend sem avatar (fonte: decorrência da
+  decisão 1, que aceitou o risco; o documento OpenAPI já é construído nos testes
+  de rota).
 
 - **Os grants são os que já existem.** `as::users::me::UPDATE`,
   `as::organizations::UPDATE` e `as::apps::UPDATE` ganham as rotas novas no
   catálogo. Nenhum grant novo, logo nenhum perfil semeado muda e `profiles.md` só
   registra a extensão. Quem edita, muda o avatar; separar depois é tirar as rotas
-  para uma chave própria (fonte: resposta "isso" à pergunta de escopo).
+  para uma chave própria (fonte: resposta "isso" à pergunta de escopo, confirmada
+  na decisão 3 — "se o user tem a capacidade de realizar UPDATE nas features ele
+  pode atualizar o avatar da mesma").
 
 - **Erros reutilizados, nenhum código novo.** `400` para chave fora do prefixo do
   sujeito ou `content_type` fora da lista; `404` para chave que não existe em
@@ -171,7 +192,7 @@ armazenamento atrás da qual o SDK da AWS fica escondido. A infraestrutura é a 
 - **Bloco `storage` e bloco `avatar` em `config.Config`**, com os três
   carregadores (YAML, `.env`, ambiente) preenchendo os dois. As credenciais
   recebem o mesmo tratamento de `resend_api_key`. `public_base_url` sem barra
-  final; o resolvedor junta (fonte: `infra/config/env.go`, [infra.md](infra.md)).
+  final; o resolvedor junta (fonte: `infra/config/env.go`, [aws-console-setup.md](aws-console-setup.md)).
 
 - **Sem `storage` configurado, o serviço sobe e as rotas de avatar respondem
   `501 NOT_IMPLEMENTED`.** O adaptador é opcional no grafo FX; um ambiente de
@@ -186,10 +207,13 @@ armazenamento atrás da qual o SDK da AWS fica escondido. A infraestrutura é a 
   a versão mínima no momento de adicionar.
 - Migração: `make migrate up` cria `avatar_key` nas três tabelas (nullable,
   `AutoMigrate`). Sem seed afetado.
+- Os controllers que respondem usuário, organização ou aplicação — inclusive
+  `login`, `register` e `authorize` — ganham `storage.IUrlResolver` no
+  construtor.
 - Constructores novos no grafo: `go test ./cmd/` obrigatório. Mocks novos em
   `tests/modules/mock/`: `MockStorage`, e os três serviços ganham `SetAvatarKey`
   nos mocks existentes.
-- Infraestrutura de [infra.md](infra.md) para o teste de ponta a ponta; a suíte
+- Infraestrutura de [aws-console-setup.md](aws-console-setup.md) para o teste de ponta a ponta; a suíte
   não depende dela.
 
 ## Pendências deixadas (a abrir em `pendencias.md` na implementação)
@@ -200,17 +224,6 @@ armazenamento atrás da qual o SDK da AWS fica escondido. A infraestrutura é a 
 - Órfão em `avatar/` é público até ser apagado — G-4.
 - Invalidação de CDN quando a expiração de 24 h não for aceitável — RC-12.
 - Apagar o avatar junto com a entidade, quando existir rota de remoção.
-
-## Decisões a confirmar antes do código
-
-1. **`avatar_url` via hook `AfterFind` + resolvedor em `shared/global`**, ou
-   sombreamento por DTO de resposta. O hook cobre tudo com um ponto de escrita; o
-   sombreamento é o padrão que `tracking` já usa, mas exige tocar cada resposta e
-   não cobre `current_organization` embutido.
-2. **Infra pelo console** foi a interpretação da resposta "ok"; se a intenção era
-   CDK, o escopo muda.
-3. **`as::*::UPDATE` existentes** cobrindo as rotas de avatar, em vez de uma chave
-   `as::avatars::…` própria.
 
 ## O que divergiu do plano
 

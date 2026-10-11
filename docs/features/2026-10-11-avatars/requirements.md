@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 slug: avatars
 extracted_at: 2026-10-11
 gate: new-capability
@@ -142,7 +142,9 @@ já existe e está vazio. Nada da conta da empresa é tocado.
 - **RC-8** — **`avatar_url` é derivada, nunca armazenada.** Ela é
   `public_base_url + "/" + avatar_key`, e `null` quando a chave é vazia. Sai nas
   mesmas respostas em que a entidade sai hoje — login, register, refresh,
-  listagens, detalhes — sem exceção.
+  listagens, detalhes, e onde ela aparece aninhada em outra — sem exceção. A
+  entidade não carrega o campo: cada resposta o monta explicitamente, e um teste
+  sobre o documento OpenAPI é o que impede uma resposta de esquecê-lo.
 - **RC-9** — **Remover é idempotente.** `DELETE` sem avatar responde `200` com o
   mesmo corpo de sempre.
 - **RC-10** — **Confirmar o mesmo upload duas vezes não é erro na primeira e é
@@ -162,7 +164,7 @@ já existe e está vazio. Nada da conta da empresa é tocado.
 ### Dentro
 
 A infraestrutura na AWS (políticas, CORS, ciclo de vida, distribuição, usuário IAM
-do backend), descrita passo a passo em [infra.md](infra.md); a abstração de
+do backend), descrita passo a passo em [aws-console-setup.md](aws-console-setup.md); a abstração de
 armazenamento com o adaptador S3; a coluna `avatar_key` nas três tabelas e o
 método dedicado que a escreve; o módulo `avatar` com as nove rotas (três sujeitos
 × autorizar, confirmar, remover); `avatar_url` em toda resposta que carrega uma das
@@ -177,7 +179,7 @@ três entidades; as entradas de catálogo; o handoff para o frontend.
   200 KB; o limite de 2 MiB é a rede de baixo. Variantes por tamanho são
   compatíveis com o layout de chaves do RC-1 e entram quando houver demanda.
 - **Infraestrutura como código (CDK, Terraform).** Criada pelo console seguindo
-  [infra.md](infra.md), com os JSONs de política versionados ali para serem
+  [aws-console-setup.md](aws-console-setup.md), com os JSONs de política versionados ali para serem
   reproduzíveis. Decisão da sessão.
 - **Domínio próprio na CDN.** Fica o `*.cloudfront.net`; `public_base_url` é
   configuração, então trocar depois é uma linha. Decisão da sessão.

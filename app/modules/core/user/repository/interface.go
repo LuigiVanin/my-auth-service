@@ -38,4 +38,6 @@ type IUserRepository interface {
 	// are the only way it is read for writing and written.
 	FindOneForUpdate(id uint, options ...repo.Option) (*entity.User, error)
 	WriteTracking(id uint, document json.RawMessage, options ...repo.Option) (int64, error)
+
+	WriteAvatarKey(id uint, key *string, options ...repo.Option) (int64, error)
 }

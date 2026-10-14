@@ -30,16 +30,14 @@ func NewOrganizationGuard(participantService ps.IParticipantService, logger *zap
 }
 
 func (this *OrganizationGuard) Act(ctx fiber.Ctx) error {
-	app, ok := ctx.Locals("app").(*entity.App)
-
-	if !ok || app == nil {
-		return e.ThrowInternalServerError("App context missing in OrganizationGuard - should be run after AppGuard")
+	if _, err := readLocal[entity.App](ctx, "app", "OrganizationGuard", "AppGuard"); err != nil {
+		return err
 	}
 
-	user, ok := ctx.Locals("user").(*entity.User)
+	user, err := readLocal[entity.User](ctx, "user", "OrganizationGuard", "AuthGuard")
 
-	if !ok || user == nil {
-		return e.ThrowInternalServerError("User context missing in OrganizationGuard - should be run after AuthGuard")
+	if err != nil {
+		return err
 	}
 
 	// AuthorizeService preloads it, and current_organization_id is NOT NULL, so a

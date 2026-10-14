@@ -30,4 +30,8 @@ type IAppService interface {
 	// Update writes only the fields the payload filled, and merges Metadata into
 	// what is stored rather than replacing it.
 	Update(id string, currentOrganization *entity.Organization, payload *dto.UpdateApp) (*entity.App, error)
+
+	// SetAvatarKey points the app at a promoted object, or clears it with nil. No
+	// scope check: the avatar module resolves the target through FindById first.
+	SetAvatarKey(id string, key *string) error
 }

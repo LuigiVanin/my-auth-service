@@ -9,6 +9,7 @@ import (
 	pdto "auth_service/app/modules/core/participant/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/permissions"
+	"auth_service/shared/storage"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -52,6 +53,7 @@ func (this *UpdateParticipantTestSuite) SetupTest() {
 		new(mock.MockUserService),
 		nil,
 		zap.NewNop(),
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 
 	owner := ownerUserId

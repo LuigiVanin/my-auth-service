@@ -11,8 +11,10 @@ import (
 	"auth_service/app/modules/utils/cipher"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	smodels "auth_service/shared/models"
 	"auth_service/shared/permissions"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/tracking"
 	"auth_service/shared/utils"
 
@@ -25,6 +27,7 @@ type UserPoolService struct {
 	cipherService      cipher.ICipherService
 	txManager          repo.ITransactionManager
 	logger             *zap.Logger
+	urls               storage.IUrlResolver
 }
 
 var _ IUserPoolService = &UserPoolService{}
@@ -35,6 +38,7 @@ func NewUserPoolService(
 	cipherService cipher.ICipherService,
 	txManager repo.ITransactionManager,
 	logger *zap.Logger,
+	urls storage.IUrlResolver,
 ) *UserPoolService {
 	return &UserPoolService{
 		userPoolRepository: userPoolRepository,
@@ -42,6 +46,7 @@ func NewUserPoolService(
 		cipherService:      cipherService,
 		txManager:          txManager,
 		logger:             logger,
+		urls:               urls,
 	}
 }
 
@@ -161,7 +166,7 @@ func (this *UserPoolService) List(
 		Amount: len(pools),
 		Skip:   option.Skip,
 		Limit:  option.Size(),
-		Data:   pools,
+		Data:   smodels.NewUsersPoolViews(pools, this.urls),
 	}, nil
 }
 

@@ -198,6 +198,22 @@ Notes:
   next to the controller whose only purpose is the schema — see
   `getAppResponse` and `healthCheckResponse`.
 
+### Responses that carry a user, an organization or an app
+
+Answer the view, never the entity: `ctx.JSON(smodels.NewAppView(app, this.urls))`,
+and document the same type in `AddResponse`. The controller gets
+`storage.IUrlResolver` injected for it. Why, and the test that catches a missed one,
+in [models-layer.md](models-layer.md) under "Views".
+
+### Several subjects, one flow
+
+`AvatarController` registers the same three routes for `users/me`,
+`organizations/:id` and `apps/:id` from one table of subjects, and documents them
+through one function. The routes are still registered one by one on the server and
+named one by one in the grant catalog; the loop only keeps the three descriptions
+from drifting. A subject that differs in more than its path, its scope and its
+response type should not be forced into it.
+
 ## Rules
 
 - No business logic. No authorization decisions beyond what the guards do — row

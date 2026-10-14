@@ -5,8 +5,10 @@ import (
 	dto "auth_service/app/modules/core/participant/models"
 	pr "auth_service/app/modules/core/participant/repository"
 	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	"auth_service/shared/permissions"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 
 	"go.uber.org/zap"
 )
@@ -14,14 +16,16 @@ import (
 type ParticipantService struct {
 	participantRepository pr.IParticipantRepository
 	logger                *zap.Logger
+	urls                  storage.IUrlResolver
 }
 
 var _ IParticipantService = &ParticipantService{}
 
-func NewParticipantService(participantRepository pr.IParticipantRepository, logger *zap.Logger) *ParticipantService {
+func NewParticipantService(participantRepository pr.IParticipantRepository, logger *zap.Logger, urls storage.IUrlResolver) *ParticipantService {
 	return &ParticipantService{
 		participantRepository: participantRepository,
 		logger:                logger,
+		urls:                  urls,
 	}
 }
 
@@ -123,7 +127,7 @@ func (this *ParticipantService) FindAllInOrganization(
 		Amount: len(participants),
 		Skip:   option.Skip,
 		Limit:  option.Size(),
-		Data:   participants,
+		Data:   smodels.NewParticipantViews(participants, this.urls),
 	}, nil
 }
 

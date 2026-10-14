@@ -85,6 +85,11 @@ func (this *MockUserRepository) WriteTracking(id uint, document json.RawMessage,
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (this *MockUserRepository) WriteAvatarKey(id uint, key *string, options ...repo.Option) (int64, error) {
+	args := this.Called(id, key, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // MockUserService represents a mock implementation of IUserService
 type MockUserService struct {
 	mock.Mock
@@ -148,5 +153,10 @@ func (this *MockUserService) FindById(currentUser *entity.User, currentOrganizat
 
 func (this *MockUserService) Track(tag tracking.Tag, payload us.TrackLogin) error {
 	args := this.Called(tag, payload)
+	return args.Error(0)
+}
+
+func (this *MockUserService) SetAvatarKey(id uint, key *string) error {
+	args := this.Called(id, key)
 	return args.Error(0)
 }

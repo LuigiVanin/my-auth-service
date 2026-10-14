@@ -39,7 +39,9 @@ var catalog = map[string]map[string]Rule{
 		"/core/apps/:id": {Methods: []string{"GET"}},
 	},
 	"as::apps::UPDATE": {
-		"/core/apps/:id": {Methods: []string{"PUT"}},
+		"/core/apps/:id":               {Methods: []string{"PUT"}},
+		"/core/apps/:id/avatar/upload": {Methods: []string{"POST"}},
+		"/core/apps/:id/avatar":        {Methods: []string{"PUT", "DELETE"}},
 	},
 
 	"as::users::READ": {
@@ -55,7 +57,9 @@ var catalog = map[string]map[string]Rule{
 		"/core/users/me": {Methods: []string{"GET"}},
 	},
 	"as::users::me::UPDATE": {
-		"/core/users/me": {Methods: []string{"PUT"}},
+		"/core/users/me":               {Methods: []string{"PUT"}},
+		"/core/users/me/avatar/upload": {Methods: []string{"POST"}},
+		"/core/users/me/avatar":        {Methods: []string{"PUT", "DELETE"}},
 	},
 
 	"as::users_pool::CREATE": {
@@ -76,7 +80,9 @@ var catalog = map[string]map[string]Rule{
 		"/core/organizations": {Methods: []string{"GET"}},
 	},
 	"as::organizations::UPDATE": {
-		"/core/organizations/:id": {Methods: []string{"PUT"}},
+		"/core/organizations/:id":               {Methods: []string{"PUT"}},
+		"/core/organizations/:id/avatar/upload": {Methods: []string{"POST"}},
+		"/core/organizations/:id/avatar":        {Methods: []string{"PUT", "DELETE"}},
 	},
 	"as::organizations::switch::UPDATE": {
 		"/core/organizations/switch": {Methods: []string{"PUT"}},

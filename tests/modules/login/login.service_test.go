@@ -11,6 +11,7 @@ import (
 	entity "auth_service/infra/entities"
 	sharedDto "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -53,6 +54,7 @@ func (this *LoginWithPasswordServiceTestSuite) SetupTest() {
 		this.mockParticipantService,
 		this.mockUserService,
 		logger,
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 }
 

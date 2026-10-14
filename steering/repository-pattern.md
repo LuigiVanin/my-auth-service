@@ -326,6 +326,12 @@ Both are named methods rather than dao fields on purpose: it is what keeps the
 column out of reach of any payload. The worked case is
 `docs/features/2026-09-09-tracking/spec.md`.
 
+A plain column the service owns follows the same rule without the lock:
+`WriteAvatarKey(id, key *string)` on the user, organization and app repositories is
+one `Update("avatar_key", key)`. `Update` and not `UpdateColumn`, so changing the
+avatar moves `updated_at`; and a nil key reaches the statement as `NULL`, which the
+update dao cannot express. Pinned by `TestAvatarKeyWritesOnlyItsColumn`.
+
 ### Two columns that only move together
 
 `SessionRepository.Revoke` and `RevokeAllForUser` write `invalidated` **and**

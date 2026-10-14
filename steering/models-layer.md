@@ -162,6 +162,51 @@ Where the write is a counter or a document changed in place, the concurrency rul
 are in [repository-pattern.md](repository-pattern.md) and the worked case is
 `docs/features/2026-09-09-tracking/spec.md`.
 
+`avatar_key` on `users`, `organizations` and `apps` is the second case of the rule,
+for a plain value: absent from the three daos, `json:"-"`, written only by
+`WriteAvatarKey`. A nil pointer there means `NULL`, which a dao field cannot say —
+in a dao nil is "do not touch" — and removing an avatar needs exactly that.
+
+### Views: a value derived at the response
+
+Some values are not stored but derived when the entity leaves the service.
+`avatar_url` is the one today: `public_base_url + "/" + avatar_key`, so moving the
+CDN never touches a row. An entity cannot build it — it has no access to the
+configuration — so `shared/models/views.dto.go` declares a **view** per entity that
+embeds the entity and adds the derived field:
+
+```go
+type UserView struct {
+    entity.User
+    AvatarUrl           *string           `json:"avatar_url"`
+    CurrentOrganization *OrganizationView `json:"current_organization,omitempty"`
+}
+```
+
+Rules that come with it:
+
+- **Every response that carries a `User`, an `Organization` or an `App` answers its
+  view**, built with `smodels.NewUserView(entity, urls)` — `NewXxxViews` for a slice.
+  This includes the login, register, refresh and authorize bodies, every listing, and
+  the `/auth` routes that return the user. `avatar_url` is `null` when there is no
+  avatar, never omitted.
+- **Relations are shadowed by their view too.** `UserView.CurrentOrganization`,
+  `AppView.OwnerUser`, `UsersPoolView.Organization` and the rest exist because an
+  embedded `entity.User` would serialize its own `current_organization` without
+  `avatar_url`. `ParticipantView` and `UsersPoolView` exist only to carry those
+  relations.
+- **The views live in `shared/models`, not in each module's `models/`.** They
+  reference each other, and `user/models` importing `organization/models` and back is
+  an import cycle.
+- **Whoever builds the response holds `storage.IUrlResolver`**: the controller when it
+  answers an entity, the service when it assembles a response DTO (`GetUsersResponse`,
+  `LoginResponse`).
+- **Nothing enforces this but a test.** `tests/modules/routes/avatar_test.go` walks the
+  built OpenAPI document and fails on any schema — nested ones included — that carries
+  every field of one of the three entities and no `avatar_url`. A route documented as a
+  bare entity fails there. The test reads the documentation, so the `AddResponse` has to
+  name the type the handler actually writes.
+
 ### Query structs
 
 Bound with `ctx.Bind().Query(&query)`, tagged with `query`:

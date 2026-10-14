@@ -80,3 +80,14 @@ func (this *UserRepository) WriteTracking(id uint, document json.RawMessage, opt
 
 	return result.RowsAffected, result.Error
 }
+
+// WriteAvatarKey is the only writer of avatar_key: the column is absent from the
+// update dao. nil clears it. Update and not UpdateColumn, so the change moves
+// `updated_at`.
+func (this *UserRepository) WriteAvatarKey(id uint, key *string, options ...repo.Option) (int64, error) {
+	result := this.Query(options...).
+		Where("id = ?", id).
+		Update("avatar_key", key)
+
+	return result.RowsAffected, result.Error
+}

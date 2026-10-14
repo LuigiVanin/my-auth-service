@@ -9,6 +9,7 @@ import (
 	"auth_service/app/middlewares/guards"
 	dto "auth_service/app/modules/authorize/models"
 	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/gofiber/fiber/v3"
@@ -67,7 +68,7 @@ func authorized() *mock.MockAuthorizeService {
 	service.
 		On("Authorize", testifymock.Anything, testifymock.Anything, testifymock.Anything).
 		Return(&dto.AuthorizeResponse{
-			User:       entity.User{},
+			User:       smodels.UserView{},
 			SessionId:  "session",
 			TokenType:  "access",
 			Authorized: true,

@@ -33,10 +33,10 @@ func NewPermissionsGuard(logger *zap.Logger) *PermissionsGuard {
 }
 
 func (this *PermissionsGuard) Act(ctx fiber.Ctx) error {
-	organization, ok := ctx.Locals("organization").(*entity.Organization)
+	organization, err := readLocal[entity.Organization](ctx, "organization", "PermissionsGuard", "OrganizationGuard")
 
-	if !ok || organization == nil {
-		return e.ThrowInternalServerError("Organization context missing in PermissionsGuard - should be run after OrganizationGuard")
+	if err != nil {
+		return err
 	}
 
 	participant, ok := ctx.Locals("participant").(*entity.Participant)

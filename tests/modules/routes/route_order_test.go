@@ -19,6 +19,7 @@ import (
 	profilecontroller "auth_service/app/modules/core/profile/controller"
 	usercontroller "auth_service/app/modules/core/user/controller"
 	poolcontroller "auth_service/app/modules/core/user_pool/controller"
+	"auth_service/shared/storage"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v3"
@@ -36,10 +37,10 @@ func registerCoreRoutes(t *testing.T) *fiber.App {
 	builder := openapi.NewBuilder("test", "test", "test")
 	logger := zap.NewNop()
 
-	appcontroller.NewAppController(nil, nil, nil, nil, nil, logger, builder).Register(server)
-	poolcontroller.NewUserPoolController(nil, nil, nil, nil, nil, builder).Register(server)
-	usercontroller.NewUserController(nil, nil, nil, nil, logger, builder, nil).Register(server)
-	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, nil, logger, builder).Register(server)
+	appcontroller.NewAppController(nil, nil, nil, nil, nil, logger, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
+	poolcontroller.NewUserPoolController(nil, nil, nil, nil, nil, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
+	usercontroller.NewUserController(nil, nil, nil, nil, logger, builder, nil, storage.NewUrlResolver("https://cdn.test")).Register(server)
+	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, nil, logger, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
 	profilecontroller.NewProfileController(nil, nil, nil, nil, nil, builder).Register(server)
 
 	return server
@@ -127,7 +128,7 @@ func TestTheAuthRoutesAreMountedWhereTheCatalogNamesThem(t *testing.T) {
 	server := fiber.New()
 	builder := openapi.NewBuilder("test", "test", "test")
 
-	authcontroller.NewAuthorizeController(nil, nil, nil, builder).Register(server)
+	authcontroller.NewAuthorizeController(nil, nil, nil, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
 
 	for method, path := range map[string]string{
 		"POST": "/auth/revoke",
@@ -155,10 +156,10 @@ func TestTheOpenApiDocumentBuildsWithTheUpdatePayloads(t *testing.T) {
 	builder := openapi.NewBuilder("test", "test", "test")
 	logger := zap.NewNop()
 
-	appcontroller.NewAppController(nil, nil, nil, nil, nil, logger, builder).Register(server)
-	poolcontroller.NewUserPoolController(nil, nil, nil, nil, nil, builder).Register(server)
-	usercontroller.NewUserController(nil, nil, nil, nil, logger, builder, nil).Register(server)
-	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, nil, logger, builder).Register(server)
+	appcontroller.NewAppController(nil, nil, nil, nil, nil, logger, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
+	poolcontroller.NewUserPoolController(nil, nil, nil, nil, nil, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
+	usercontroller.NewUserController(nil, nil, nil, nil, logger, builder, nil, storage.NewUrlResolver("https://cdn.test")).Register(server)
+	orgcontroller.NewOrganizationController(nil, nil, nil, nil, nil, nil, logger, builder, storage.NewUrlResolver("https://cdn.test")).Register(server)
 	profilecontroller.NewProfileController(nil, nil, nil, nil, nil, builder).Register(server)
 
 	document := builder.Build()

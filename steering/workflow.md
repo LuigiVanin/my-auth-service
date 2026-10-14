@@ -110,15 +110,31 @@ organization answers `NOT_A_PARTICIPANT`, because the fix is to switch.
 - [ ] `go test ./cmd/` after **any** constructor or FX binding change
 - [ ] `go test ./...`
 - [ ] `go test ./... -race` when the change involves a goroutine
-- [ ] Entity changed → `make migrate up`; seed affected → `make fresh`
+- [ ] Lint, on what changed:
+      `golangci-lint run --no-config --default=none --enable errcheck,govet,ineffassign,staticcheck,unused --new-from-rev=HEAD ./...`.
+      `--no-config` because `.golangci.yml` is in the v1 format and the installed
+      binary is v2 (item 34 of `pendencias.md`); `ST1006` is the `this` receiver
+      convention and is expected
+- [ ] Entity changed → run the migration against the database the server uses
+      (`make migrate` reads `.env`; see item 35 of `pendencias.md` about `up`); seed
+      affected → `make fresh`
 - [ ] Mocks updated in `tests/modules/mock/` — the `var _ IXxx = &MockXxx{}`
       assertion turns an interface change into a compile error, which is the design
+- [ ] **Boot the server and call it, authenticated.** The suite does not run the
+      real guard chain over real data, and `fx.NopLogger` turns a broken
+      constructor into a bare `exit status 1` (item 33). Boot it (`make dev`, or
+      `go run ./cmd/main.go` with the port free), check the log for `ERROR`, then
+      log in and call at least one route of every guard chain the change touches.
+      A throwaway client in `cmd/sandbox/`, which is ignored by git, is the way to
+      do it without `psql`
 
 ---
 
 ## Final checklist before calling it done
 
-- [ ] Build, vet and the whole suite pass
+- [ ] Build, vet, lint and the whole suite pass
+- [ ] The server boots with the real `.env` and answers an authenticated request on
+      the routes the change touches — a green suite is not a running service
 - [ ] The hard rule table in [CLAUDE.md](../CLAUDE.md) was run mentally, and every
       document it points at was updated **in the same change**
 - [ ] A feature of real size has its `docs/features/<date-name>/` folder, with
@@ -191,6 +207,15 @@ Each of these was a real defect here, not a hypothetical.
 > `users` accepted `verify_email` and answered `verifyEmail`. Sending back the
 > name you just read was **ignored in silence**: it arrived as "not sent", with no
 > 400 and no warning.
+
+### ❌ Changing a type that someone reads out of `ctx.Locals`
+
+> `AuthorizeResponse.User` became a view so the authorize response could carry
+> `avatar_url`. The `AuthGuard` stores `&res.User` in `Locals("user")`, so it
+> started storing the view, and every reader asserting `*entity.User` failed:
+> every authenticated route answered 500. `Locals` is `any`, so nothing failed to
+> compile and no service test noticed. Before changing a type, grep who puts it in
+> `Locals`. Pinned by `tests/middlewares/auth_guard_test.go`.
 
 ### ❌ Documentation written at the end as a report
 

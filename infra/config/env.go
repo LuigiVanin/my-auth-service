@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/goccy/go-yaml"
 	"github.com/joho/godotenv"
@@ -33,6 +34,26 @@ type EmailConfig struct {
 	ResendApiKey string `yaml:"resend_api_key"`
 }
 
+type StorageAwsConfig struct {
+	S3BucketName    string `yaml:"s3_bucket_name"`
+	Region          string `yaml:"region"`
+	AccessKeyId     string `yaml:"access_key_id"`
+	SecretAccessKey string `yaml:"secret_access_key"`
+}
+
+// An empty Provider means no storage: the service boots and the avatar routes
+// answer 501.
+type StorageConfig struct {
+	Provider      string           `yaml:"provider"`
+	PublicBaseUrl string           `yaml:"public_base_url"`
+	Aws           StorageAwsConfig `yaml:"aws"`
+}
+
+type AvatarConfig struct {
+	MaxBytes        int64 `yaml:"max_bytes"`
+	GrantTtlSeconds int64 `yaml:"grant_ttl_seconds"`
+}
+
 type Config struct {
 	Env string
 
@@ -40,6 +61,8 @@ type Config struct {
 	Database DatabaseConfig
 	Server   ServerConfig
 	Email    EmailConfig
+	Storage  StorageConfig
+	Avatar   AvatarConfig
 }
 
 func LoadEnv(envFileName string) error {
@@ -161,7 +184,35 @@ func NewConfigFromSysEnv(envMode string) (*Config, error) {
 		Email: EmailConfig{
 			ResendApiKey: os.Getenv("RESEND_API_KEY"),
 		},
+
+		Storage: StorageConfig{
+			Provider:      os.Getenv("STORAGE_PROVIDER"),
+			PublicBaseUrl: os.Getenv("STORAGE_PUBLIC_BASE_URL"),
+			Aws: StorageAwsConfig{
+				S3BucketName:    os.Getenv("STORAGE_AWS_S3_BUCKET_NAME"),
+				Region:          os.Getenv("STORAGE_AWS_REGION"),
+				AccessKeyId:     os.Getenv("STORAGE_AWS_ACCESS_KEY_ID"),
+				SecretAccessKey: os.Getenv("STORAGE_AWS_SECRET_ACCESS_KEY"),
+			},
+		},
+
+		Avatar: AvatarConfig{
+			MaxBytes:        readInt64(os.Getenv("AVATAR_MAX_BYTES")),
+			GrantTtlSeconds: readInt64(os.Getenv("AVATAR_GRANT_TTL_SECONDS")),
+		},
 	}, nil
+}
+
+// readInt64 reads an optional number; anything unparsable is 0, which the
+// consumer replaces with its default.
+func readInt64(value string) int64 {
+	parsed, err := strconv.ParseInt(value, 10, 64)
+
+	if err != nil {
+		return 0
+	}
+
+	return parsed
 }
 
 func NewConfigFromEnvFile(envMode string) (*Config, error) {

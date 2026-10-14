@@ -8,6 +8,9 @@ import (
 // UserUpdateDao is the allow list of updatable columns of entity.User.
 // Every field is a pointer: nil means "do not touch", a filled pointer is
 // written as is, including false / 0 / "".
+//
+// AvatarKey is absent: only WriteAvatarKey writes it, after the avatar module
+// has checked the object it points at.
 type UserUpdateDao struct {
 	CurrentOrganizationId *string
 

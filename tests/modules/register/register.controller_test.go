@@ -94,11 +94,11 @@ func (this *RegisterControllerTestSuite) TestRegisterWithPassword_Success() {
 		ExpiresAt:        time.Now().Add(1 * time.Hour),
 		RefreshExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 		User: udto.UserResponse{
-			User: entity.User{
+			UserView: sharedDto.UserView{User: entity.User{
 				ID:    1,
 				Email: "newuser@example.com",
 				Name:  "New User",
-			},
+			}},
 		},
 	}
 
@@ -229,11 +229,11 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_Success() {
 		SessionId:   "session-id-otp",
 		AccessToken: "access-token-otp",
 		User: udto.UserResponse{
-			User: entity.User{
+			UserView: sharedDto.UserView{User: entity.User{
 				Email:       "newuser@example.com",
 				Name:        "New User",
 				VerifyEmail: true,
-			},
+			}},
 		},
 	}
 
@@ -276,7 +276,7 @@ func (this *RegisterControllerTestSuite) TestRegisterWithOtp_DefaultMethod_Succe
 	expectedResponse := &dto.RegisterResponse{
 		SessionId:   "session-id",
 		AccessToken: "access-token",
-		User:        udto.UserResponse{User: entity.User{Email: "newuser@example.com"}},
+		User:        udto.UserResponse{UserView: sharedDto.UserView{User: entity.User{Email: "newuser@example.com"}}},
 	}
 
 	this.mockRegisterService.On("RegisterWithOtp", this.appEntity, payload, testifymock.Anything).Return(expectedResponse, nil)
@@ -405,10 +405,10 @@ func (this *RegisterControllerTestSuite) TestRegister_WithPhoneNumber_Success() 
 		SessionId:   "session-id",
 		AccessToken: "access-token",
 		User: udto.UserResponse{
-			User: entity.User{
+			UserView: sharedDto.UserView{User: entity.User{
 				Email: "newuser@example.com",
 				Phone: "+1234567890",
-			},
+			}},
 		},
 	}
 

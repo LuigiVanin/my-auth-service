@@ -36,6 +36,11 @@
  - [] `GET /core/apps`: filtro `private` (`true`/`false`). A tela usa nas pílulas "Visibility"
  - [] `GET /core/apps`: contagem por categoria (facetas) de `login_type`, `token_type` e `private`, respeitando `name` e `pool_id`. Só se as pílulas forem mostrar número
 
+ - [] `GET /core/organizations`: filtro `name`, exposto em `OrganizationListQuery` e no bloco OpenAPI. A paleta de comandos (ctrl+k) usa para buscar dentro de Organizations com Tab, como já faz com App Clients, User Pools e Profiles
+ - [] `GET /core/organizations/{id}/participants`: filtro por nome (e e-mail) do usuário participante. A paleta usa como segundo nível de uma organização, no molde de User Pool → usuários
+ - [] `GET /core/users`: um parâmetro de busca única (`q`) que case nome **ou** e-mail, em vez de `name` e `email` separados. A paleta hoje busca usuários só por nome
+ - [] Busca global num endpoint só (ex. `GET /core/search?q=`), devolvendo App Clients, User Pools, Profiles e Organizations da organização atual numa resposta, já filtrados pelas grants do caller. Hoje a busca de reserva da paleta dispara uma request por recurso
+
 ## Frontend
  - [] Adicionar regra no Claude.md para escrever texto em inglês
 
@@ -45,4 +50,6 @@
  - [] Acertar design de variante principal do botão
   - [] Melhorar aspecto da sombra inset para botão 
  - [] Redesign e refactor no componente de Select e de DataPicker
+
+ - [] Página dedicada de usuário (`/console/users/:id` ou dentro da pool). Substitui o `?selected-user=` que a paleta de comandos usa hoje para abrir o modal do usuário na tela da pool
 

@@ -17,6 +17,7 @@ import (
 	sharedDto "auth_service/shared/models"
 	"auth_service/shared/permissions"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/tracking"
 	mock "auth_service/tests/modules/mock"
 
@@ -96,6 +97,7 @@ func (this *RegisterWithPasswordServiceTestSuite) SetupTest() {
 		this.mockSessionService,
 		this.mockAuthService,
 		this.mockTxManager,
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 }
 

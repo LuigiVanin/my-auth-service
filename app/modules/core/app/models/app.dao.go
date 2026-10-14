@@ -13,6 +13,9 @@ import (
 // UsersPoolId and ParentAppId are absent: the users of an app live in its pool,
 // so moving it would leave every one of them behind - the same invariant
 // OrganizationUpdateDao protects.
+//
+// AvatarKey is absent: only WriteAvatarKey writes it, after the avatar module
+// has checked the object it points at.
 type AppUpdateDao struct {
 	OwnerUserId *uint
 

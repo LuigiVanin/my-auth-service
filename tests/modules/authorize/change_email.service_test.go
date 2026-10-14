@@ -11,6 +11,7 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,7 @@ func newChangeEmailService(taken bool) (services.IAuthorizeService, *changeEmail
 	service := services.NewAuthorizeService(
 		nil, mocks.sessionRepo, nil, mocks.userRepo, mocks.userService,
 		mocks.otpService, nil, nil, mocks.txManager, zap.NewNop(),
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 
 	return service, mocks

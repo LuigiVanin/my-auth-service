@@ -32,4 +32,6 @@ type IAppRepository interface {
 	// typed `where` cannot express.
 	FindSearch(search AppSearch, options ...repo.Option) ([]entity.App, error)
 	FindSearchCount(search AppSearch, options ...repo.Option) (int64, error)
+
+	WriteAvatarKey(id string, key *string, options ...repo.Option) (int64, error)
 }

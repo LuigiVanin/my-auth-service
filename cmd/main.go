@@ -8,6 +8,7 @@ import (
 	"auth_service/shared/interfaces"
 
 	"auth_service/app/modules/authorize"
+	"auth_service/app/modules/avatar"
 	"auth_service/app/modules/core/app"
 	"auth_service/app/modules/core/organization"
 	"auth_service/app/modules/core/otp"
@@ -51,6 +52,8 @@ func AppBootstrap() fx.Option {
 		fx.Provide(bootstrap.NewDatabase),
 		fx.Provide(bootstrap.NewHttpServer),
 		fx.Provide(bootstrap.NewEmailManager),
+		fx.Provide(bootstrap.NewStorage),
+		fx.Provide(bootstrap.NewUrlResolver),
 
 		fx.Provide(
 			fx.Annotate(
@@ -85,6 +88,7 @@ func AppBootstrap() fx.Option {
 		register.Module,
 		login.Module,
 		authorize.Module,
+		avatar.Module,
 		healthcheck.Module,
 
 		fx.Invoke(

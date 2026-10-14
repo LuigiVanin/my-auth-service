@@ -9,6 +9,8 @@ import (
 	"auth_service/app/modules/authorize/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
+	smodels "auth_service/shared/models"
+	"auth_service/shared/storage"
 	"auth_service/shared/utils"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
@@ -18,15 +20,15 @@ import (
 // resetPasswordResponse mirrors the body returned by ForgotPassword - it only
 // exists to describe the payload in the OpenAPI document.
 type resetPasswordResponse struct {
-	Message string      `json:"message"`
-	User    entity.User `json:"user"`
+	Message string           `json:"message"`
+	User    smodels.UserView `json:"user"`
 }
 
 // verifyEmailResponse mirrors the body returned by VerifyEmail - it only exists
 // to describe the payload in the OpenAPI document.
 type verifyEmailResponse struct {
-	Message string      `json:"message"`
-	User    entity.User `json:"user"`
+	Message string           `json:"message"`
+	User    smodels.UserView `json:"user"`
 }
 
 // revokeResponse mirrors the body returned by Revoke - it only exists to
@@ -38,8 +40,8 @@ type revokeResponse struct {
 // changeEmailResponse mirrors the body returned by ChangeEmail - it only exists
 // to describe the payload in the OpenAPI document.
 type changeEmailResponse struct {
-	Message string      `json:"message"`
-	User    entity.User `json:"user"`
+	Message string           `json:"message"`
+	User    smodels.UserView `json:"user"`
 }
 
 var _ interfaces.IController = &AuthorizeController{}
@@ -49,6 +51,7 @@ type AuthorizeController struct {
 	appGuard    *guards.AppGuard
 	authGuard   *guards.AuthGuard
 	swagger     *openapi.Builder
+	urls        storage.IUrlResolver
 }
 
 func NewAuthorizeController(
@@ -56,12 +59,14 @@ func NewAuthorizeController(
 	appGuard *guards.AppGuard,
 	authGuard *guards.AuthGuard,
 	builder *openapi.Builder,
+	urls storage.IUrlResolver,
 ) *AuthorizeController {
 	return &AuthorizeController{
 		authService: authorizeService,
 		appGuard:    appGuard,
 		authGuard:   authGuard,
 		swagger:     builder,
+		urls:        urls,
 	}
 }
 
@@ -120,7 +125,7 @@ func (this *AuthorizeController) ForgotPassword(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(
 		utils.JSON{
 			"message": "Password reset successfully",
-			"user":    user,
+			"user":    smodels.NewUserView(user, this.urls),
 		})
 }
 
@@ -153,7 +158,7 @@ func (this *AuthorizeController) VerifyEmail(ctx fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusCreated).JSON(utils.JSON{
 		"message": "email verified with success",
-		"user":    verified,
+		"user":    smodels.NewUserView(verified, this.urls),
 	})
 }
 
@@ -174,7 +179,7 @@ func (this *AuthorizeController) ChangeEmail(ctx fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).JSON(utils.JSON{
 		"message": "email changed with success",
-		"user":    updated,
+		"user":    smodels.NewUserView(updated, this.urls),
 	})
 }
 

@@ -20,6 +20,7 @@ import (
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/tracking"
 	"auth_service/shared/utils"
 
@@ -37,6 +38,7 @@ type LoginService struct {
 	participantService ps.IParticipantService
 	userService        us.IUserService
 	logger             *zap.Logger
+	urls               storage.IUrlResolver
 }
 
 func NewLoginService(
@@ -48,6 +50,7 @@ func NewLoginService(
 	participantService ps.IParticipantService,
 	userService us.IUserService,
 	logger *zap.Logger,
+	urls storage.IUrlResolver,
 ) *LoginService {
 
 	return &LoginService{
@@ -59,6 +62,7 @@ func NewLoginService(
 		participantService: participantService,
 		userService:        userService,
 		logger:             logger,
+		urls:               urls,
 	}
 }
 
@@ -135,7 +139,7 @@ func (this *LoginService) LoginWithPassword(app *entity.App, userData dto.LoginP
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
 		User: udto.UserResponse{
-			User: *user,
+			UserView: *sharedDto.NewUserView(user, this.urls),
 			Profile: &udto.ProfileResponse{
 				Profile:     *participation.Participant.Profile,
 				Permissions: participation.Permissions,
@@ -219,7 +223,7 @@ func (this *LoginService) LoginWithOtp(app *entity.App, userData dto.LoginPayloa
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
 		User: udto.UserResponse{
-			User: *user,
+			UserView: *sharedDto.NewUserView(user, this.urls),
 			Profile: &udto.ProfileResponse{
 				Profile:     *participation.Participant.Profile,
 				Permissions: participation.Permissions,

@@ -50,6 +50,7 @@ The task is **not done** without the corresponding update.
 | Change how a write reaches the database | [steering/repository-pattern.md](steering/repository-pattern.md) + a DryRun test in `tests/shared/dedicated_queries_test.go` |
 | Add a DTO, a dao or an entity field | [steering/models-layer.md](steering/models-layer.md) if it introduces a rule; the entity's `json` tag is a **contract decision**, not a default |
 | Add a column the service owns | Keep it out of the update dao, give it a named repository method, and say so in the dao's comment |
+| Answer a `User`, `Organization` or `App` in a response | Answer its view from `shared/models/views.dto.go`, in the handler and in `AddResponse` — the OpenAPI test in `tests/modules/routes/avatar_test.go` fails otherwise. See "Views" in [steering/models-layer.md](steering/models-layer.md) |
 | Change a constructor or an FX binding | Run `go test ./cmd/`, and update the mocks in `tests/modules/mock/` |
 | Add a guard or a middleware | [steering/guards-and-middlewares.md](steering/guards-and-middlewares.md) |
 | Add an error code | [steering/error-handling.md](steering/error-handling.md) + an `AddResponse` on every route that can answer it |
@@ -143,8 +144,11 @@ that action alone: a yes to commit is not a yes to push, and a yes to push is no
 yes to open a PR.
 
 Do the work up to the line and stop there — stage the files, write the commit
-message, draft the PR body, run `go build`, `go vet` and the tests — then report
-what is ready and wait. Preparing costs nothing and makes the approval a single yes.
+message, draft the PR body, run `go build`, `go vet`, the lint and the tests, **boot
+the server and call it authenticated** (step 5 of
+[steering/workflow.md](steering/workflow.md)) — then report what is ready and wait.
+A change is not ready to offer for commit until the server has answered a real
+request. Preparing costs nothing and makes the approval a single yes.
 
 A commit rewrites shared history, and a push and a PR are visible to other people
 the moment they land. None of the three is cheap to take back, and deciding the work
@@ -162,7 +166,7 @@ app/
 │   ├── guards/              # AppGuard, AuthGuard, OtpGuard, OrganizationGuard, PermissionsGuard
 │   └── validators/          # Body validators that switch on a query parameter
 └── modules/
-    ├── {api}/               # authorize, login, register, healthcheck
+    ├── {api}/               # authorize, avatar, login, register, healthcheck
     ├── core/                # app, organization, otp, participant, profile,
     │                        # session, user, user_pool
     └── utils/               # cipher, hash, jwt
@@ -187,9 +191,11 @@ shared/
 ├── email/                   # Email manager and adapters
 ├── global/                  # Process wide handles
 ├── interfaces/              # IController, IGuard only
-├── models/                  # DTOs shared across modules (RequestInfo)
+├── models/                  # DTOs shared across modules (RequestInfo), and the entity
+│                            # views that add avatar_url → steering/models-layer.md
 ├── permissions/             # Permission documents, the grant catalog and Resolve  → steering/modules/profiles.md
 ├── repository/              # Option, BaseRepository, Tx  → steering/repository-pattern.md
+├── storage/                 # IStorage, IUrlResolver, file Policy, the S3 adapter  → docs/features/2026-10-11-avatars/
 ├── tracking/                # The `tracking` column shape and its arithmetic  → docs/features/2026-09-09-tracking/spec.md
 └── utils/                   # Cipher, JSON merge patch, Detach, Pair, random, print
 

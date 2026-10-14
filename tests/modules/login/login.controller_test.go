@@ -91,11 +91,11 @@ func (this *LoginControllerTestSuite) TestLoginWithPassword_Success() {
 		ExpiresAt:        time.Now().Add(1 * time.Hour),
 		RefreshExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 		User: udto.UserResponse{
-			User: entity.User{
+			UserView: sharedDto.UserView{User: entity.User{
 				ID:    1,
 				Email: "test@example.com",
 				Name:  "Test User",
-			},
+			}},
 		},
 	}
 
@@ -139,9 +139,9 @@ func (this *LoginControllerTestSuite) TestLoginWithPassword_DefaultMethod_Succes
 		SessionId:   "session-id",
 		AccessToken: "access-token",
 		User: udto.UserResponse{
-			User: entity.User{
+			UserView: sharedDto.UserView{User: entity.User{
 				Email: "test@example.com",
-			},
+			}},
 		},
 	}
 
@@ -248,9 +248,9 @@ func (this *LoginControllerTestSuite) TestLoginWithOtp_Success() {
 		SessionId:   "session-id-otp",
 		AccessToken: "access-token-otp",
 		User: udto.UserResponse{
-			User: entity.User{
+			UserView: sharedDto.UserView{User: entity.User{
 				Email: "test@example.com",
-			},
+			}},
 		},
 	}
 

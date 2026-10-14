@@ -11,6 +11,7 @@ import (
 	entity "auth_service/infra/entities"
 	"auth_service/shared/permissions"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/tracking"
 	mock "auth_service/tests/modules/mock"
 
@@ -46,6 +47,7 @@ func (this *UserPoolUpdateTestSuite) SetupTest() {
 		this.cipherService,
 		this.txManager,
 		zap.NewNop(),
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 }
 

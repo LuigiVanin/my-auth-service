@@ -194,7 +194,100 @@ compilação quando a regra em volta muda.
 
 ---
 
+## Avatares e armazenamento
+
+Abertos pela feature `docs/features/2026-10-11-avatars/`. Os códigos `G-*`, `RC-*`
+citam o `requirements.md` de lá.
+
+### 26. Nada limita quantas autorizações de upload um sujeito pede
+
+`POST …/avatar/upload` assina um formulário novo a cada chamada, e cada um aceita
+até 2 MiB em `pending/`. Um cliente autenticado pode encher o bucket em série. O
+estrago é limitado a um dia de armazenamento pela regra de ciclo de vida (G-1).
+
+**Correção**: limite de taxa por sujeito, que hoje não existe em rota nenhuma.
+
+### 27. A troca de avatar não é atômica entre S3 e banco
+
+`AvatarService.confirm` copia, grava a chave e apaga. Se o `UPDATE` falha depois da
+cópia, a cópia é apagada na hora, mas uma falha nessa remoção, ou na do avatar
+antigo, deixa um objeto sem dono em `avatar/` — só em log (G-3, RC-10).
+
+**Correção**: uma varredura que compare `avatar/` com as chaves gravadas nas três
+tabelas e apague o que nenhuma linha cita.
+
+### 28. Um órfão em `avatar/` continua público
+
+A política do bucket libera o prefixo inteiro à CDN. A chave aleatória impede
+adivinhar a URL, mas quem já a tinha continua lendo até o objeto sumir (G-4).
+Depende do item 27.
+
+### 29. Um avatar removido segue na borda da CDN por até 24 h
+
+O objeto sai do S3 na hora; a borda só reconfere quando o TTL máximo da cache
+policy vence (RC-12). Aceito para avatar.
+
+**Correção**, se um dia não for aceitável: invalidação do caminho no CloudFront na
+remoção, o que exige `cloudfront:CreateInvalidation` na chave do backend.
+
+### 30. Apagar usuário, organização ou app não apaga o avatar
+
+Não existe rota de remoção para nenhuma das três hoje. Quando existir, ela tem que
+apagar o objeto em `avatar/` junto, ou ele vira órfão do item 28.
+
+### 31. A chave AWS do backend não expira
+
+É uma chave estática de usuário IAM (RNF-11). Vazada, vale até ser desativada à
+mão. A política limita o estrago aos prefixos de avatar, mas rotação e onde o
+segredo fica guardado no servidor não estão decididos (G-6).
+
+### 32. O CORS do bucket aceita qualquer origem
+
+`AllowedOrigins: ["*"]` foi decidido para a fase de desenvolvimento. O S3 ainda
+recusa todo envio sem policy assinada, mas o CORS deixa de ser uma segunda
+barreira.
+
+**Correção**: trocar pela lista de origens do frontend quando houver endereço de
+produção — passo 1.5 de `docs/features/2026-10-11-avatars/aws-console-setup.md`.
+
+---
+
 ## Infraestrutura e testes
+
+### 33. Um erro de boot do FX sai como `exit status 1`, sem mensagem
+
+`cmd/main.go` monta o app com `fx.NopLogger` e chama `Run()`. Quando um
+construtor do grafo devolve erro, o FX loga pelo logger nulo e encerra: o
+terminal mostra só `exit status 1`. Foi assim que a primeira versão do storage
+derrubou o `make dev` sem dizer por quê.
+
+**Correção**: trocar o `Run()` por `app := fx.New(...)`, checar `app.Err()` e
+imprimir o erro antes de sair — ou usar um `fx.WithLogger` que só registre
+falhas.
+
+### 34. O `.golangci.yml` não carrega no golangci-lint instalado
+
+O arquivo está no formato da v1 (sem `version:`) e o binário é a v2.5:
+`golangci-lint run` para com `unsupported version of the configuration`. Hoje o
+lint só roda com `--no-config` e a lista de linters na linha de comando (passo 5
+de `steering/workflow.md`). O repositório inteiro acusa 22 avisos anteriores.
+
+**Correção**: `golangci-lint migrate` no arquivo, e decidir se `ST1006` (o
+receptor `this`) é desligado de vez.
+
+### 35. `make migrate up` lê `up` como nome de ambiente
+
+O alvo repassa os argumentos ao programa, e o programa lê o primeiro argumento
+como ambiente: procura `.env.up.yaml` e `.env.up`, não acha, e entra em pânico
+pedindo `DATABASE_NAME`. O `CLAUDE.md` documenta `make migrate up`. Hoje a
+migração roda com `make migrate` (lê `.env`) ou `make migrate <ambiente>`.
+
+### 36. A migração imprime a senha do banco
+
+`cmd/database/migration/main.go` imprime o DSN inteiro, senha incluída, no
+terminal e em qualquer log de CI que capture a saída.
+
+**Correção**: imprimir só host e nome do banco.
 
 ### 17. Não há teste de integração com banco
 

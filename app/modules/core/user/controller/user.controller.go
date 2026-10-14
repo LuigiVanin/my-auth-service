@@ -10,6 +10,8 @@ import (
 	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
+	smodels "auth_service/shared/models"
+	"auth_service/shared/storage"
 
 	us "auth_service/app/modules/core/user/services"
 
@@ -25,6 +27,7 @@ type UserController struct {
 	permissionsGuard       *guards.PermissionsGuard
 
 	userService us.IUserService
+	urls        storage.IUrlResolver
 
 	logger  *zap.Logger
 	swagger *openapi.Builder
@@ -40,6 +43,7 @@ func NewUserController(
 	logger *zap.Logger,
 	builder *openapi.Builder,
 	userService us.IUserService,
+	urls storage.IUrlResolver,
 ) *UserController {
 
 	return &UserController{
@@ -48,6 +52,7 @@ func NewUserController(
 		organizationGuard:      organizationGuard,
 		permissionsGuard:       permissionsGuard,
 		userService:            userService,
+		urls:                   urls,
 		logger:                 logger,
 		swagger:                builder,
 	}
@@ -64,7 +69,7 @@ func (this *UserController) GetSelf(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.UserWithTracking(user))
+	return ctx.Status(fiber.StatusOK).JSON(dto.UserWithTracking(user, this.urls))
 }
 
 func (this *UserController) GetById(ctx fiber.Ctx) error {
@@ -83,7 +88,7 @@ func (this *UserController) GetById(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.UserWithTracking(user))
+	return ctx.Status(fiber.StatusOK).JSON(dto.UserWithTracking(user, this.urls))
 }
 
 // UpdateSelf is /core/users/{id} on the id of the authenticated user, over a
@@ -103,7 +108,7 @@ func (this *UserController) UpdateSelf(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(user)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewUserView(user, this.urls))
 }
 
 func (this *UserController) UpdateById(ctx fiber.Ctx) error {
@@ -127,7 +132,7 @@ func (this *UserController) UpdateById(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(user)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewUserView(user, this.urls))
 }
 
 func (this *UserController) List(ctx fiber.Ctx) error {
@@ -191,7 +196,7 @@ func (this *UserController) Register(server *fiber.App) {
 			Description: "Shortcut for `/core/users/{id}` on the id of the authenticated user.",
 			Tags:        []string{docs.TagUsers},
 		}).
-			AddResponse(fiber.StatusOK, entity.User{}, openapi.Options{
+			AddResponse(fiber.StatusOK, dto.GetUserResponse{}, openapi.Options{
 				Description: "The authenticated user",
 			}),
 	)
@@ -213,7 +218,7 @@ func (this *UserController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Fields to change - every one of them is optional",
 			}).
-			AddResponse(fiber.StatusOK, entity.User{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.UserView{}, openapi.Options{
 				Description: "The updated user",
 			}).
 			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{
@@ -240,7 +245,7 @@ func (this *UserController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Id of the user",
 			}).
-			AddResponse(fiber.StatusOK, entity.User{}, openapi.Options{
+			AddResponse(fiber.StatusOK, dto.GetUserResponse{}, openapi.Options{
 				Description: "The requested user",
 			}).
 			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
@@ -265,7 +270,7 @@ func (this *UserController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Fields to change - every one of them is optional",
 			}).
-			AddResponse(fiber.StatusOK, entity.User{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.UserView{}, openapi.Options{
 				Description: "The updated user",
 			}).
 			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{

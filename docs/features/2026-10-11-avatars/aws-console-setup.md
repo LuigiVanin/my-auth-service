@@ -46,8 +46,8 @@ Preencha conforme avança. Eles vão para a configuração do serviço no fim.
 
 ### 1.1 Acesso público bloqueado
 
-- [ ] Aba **Permissions** → seção **Block public access (bucket settings)**.
-- [ ] Tem que estar **On**, com as quatro opções marcadas. Se não estiver:
+- [x] Aba **Permissions** → seção **Block public access (bucket settings)**.
+- [x] Tem que estar **On**, com as quatro opções marcadas. Se não estiver:
       *Edit* → marque **Block all public access** → *Save changes* → digite
       `confirm`.
 
@@ -56,11 +56,11 @@ CloudFront, por uma permissão própria (passo 4).
 
 ### 1.2 ACLs desligadas
 
-- [ ] Ainda em **Permissions** → seção **Object Ownership**.
-- [ ] Tem que mostrar **Bucket owner enforced** ("ACLs disabled"). Se não:
+- [x] Ainda em **Permissions** → seção **Object Ownership**.
+- [x] Tem que mostrar **Bucket owner enforced** ("ACLs disabled"). Se não:
       *Edit* → **ACLs disabled (recommended)** → *Save changes*.
 
-### 1.3 Criptografia padrão
+### 1.3 Criptografia padrão (desnecessário por hora)
 
 - [ ] Aba **Properties** → seção **Default encryption**.
 - [ ] Tem que mostrar **Server-side encryption with Amazon S3 managed keys
@@ -71,7 +71,7 @@ CloudFront, por uma permissão própria (passo 4).
 
 ### 1.4 Versionamento desligado
 
-- [ ] Ainda em **Properties** → seção **Bucket Versioning**: tem que estar
+- [x] Ainda em **Properties** → seção **Bucket Versioning**: tem que estar
       **Disabled**. Deixe assim.
 
 *Objetivo:* a versão de cada avatar já vai no nome do arquivo. Versionamento do
@@ -82,14 +82,14 @@ S3 só guardaria cópias apagadas, com custo.
 O navegador envia o arquivo direto ao S3, então o S3 precisa aceitar requisições
 vindas do endereço do frontend.
 
-- [ ] Aba **Permissions** → seção **Cross-origin resource sharing (CORS)** →
+- [x] Aba **Permissions** → seção **Cross-origin resource sharing (CORS)** →
       *Edit*.
-- [ ] Cole o JSON abaixo → *Save changes*.
+- [x] Cole o JSON abaixo → *Save changes*.
 
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:3000"],
+    "AllowedOrigins": ["*"],
     "AllowedMethods": ["POST"],
     "AllowedHeaders": ["*"],
     "ExposeHeaders": ["ETag"],
@@ -98,28 +98,31 @@ vindas do endereço do frontend.
 ]
 ```
 
-A porta `3000` é a de `frontend/vite.config.ts`. Quando o frontend tiver um
-endereço de produção, volte aqui e acrescente-o à lista `AllowedOrigins`, por
-exemplo `"https://app.seudominio.com"`. `POST` é o único método: o navegador
-nunca lê nem apaga direto no bucket.
+`"*"` vale **só na fase de desenvolvimento**. O risco é baixo porque o S3 recusa
+qualquer envio sem uma policy assinada pelo backend, mas o CORS deixa de ser uma
+segunda barreira. Quando o frontend tiver um endereço de produção, troque `"*"`
+pela lista explícita de origens, por exemplo
+`["http://localhost:3000", "https://app.seudominio.com"]` (a porta `3000` é a de
+`frontend/vite.config.ts`). `POST` é o único método: o navegador nunca lê nem
+apaga direto no bucket.
 
 ### 1.6 Regra de ciclo de vida para `pending/`
 
-- [ ] Aba **Management** → seção **Lifecycle rules** → *Create lifecycle rule*.
-- [ ] **Lifecycle rule name:** `expire-pending-uploads`.
-- [ ] **Choose a rule scope:** *Limit the scope of this rule using one or more
+- [x] Aba **Management** → seção **Lifecycle rules** → *Create lifecycle rule*.
+- [x] **Lifecycle rule name:** `expire-pending-uploads`.
+- [x] **Choose a rule scope:** *Limit the scope of this rule using one or more
       filters*.
-- [ ] **Prefix:** `pending/` (com a barra no fim).
-- [ ] Em **Lifecycle rule actions**, marque:
-  - [ ] **Expire current versions of objects**
-  - [ ] **Delete expired object delete markers or incomplete multipart uploads**
-- [ ] Em **Expire current versions of objects** → **Days after object creation:**
+- [x] **Prefix:** `pending/` (com a barra no fim).
+- [x] Em **Lifecycle rule actions**, marque:
+  - [x] **Expire current versions of objects**
+  - [x] **Delete expired object delete markers or incomplete multipart uploads**
+- [x] Em **Expire current versions of objects** → **Days after object creation:**
       `1`.
-- [ ] Na seção de delete markers e multipart uploads, marque só **Delete
+- [x] Na seção de delete markers e multipart uploads, marque só **Delete
       incomplete multipart uploads** → **Number of days:** `1`. (A opção de
       *expired object delete markers* fica bloqueada quando a expiração está
       marcada, e não importa aqui porque o versionamento está desligado.)
-- [ ] *Create rule*.
+- [x] *Create rule*.
 
 *Objetivo:* um upload que o navegador fez mas nunca confirmou some sozinho em
 um dia, sem nenhum processo no backend. A AWS executa essas regras uma vez por
@@ -274,10 +277,29 @@ policy** → *Edit*.
 
 ## Passo 5 — Criar o usuário IAM do backend
 
-O `aws login` da sua máquina não serve para um servidor: a sessão dura no máximo
-12 horas e exige navegador. O Raspberry Pi usa um usuário IAM próprio, sem acesso
-ao console, com uma chave de acesso limitada a este bucket e a estes dois
-prefixos.
+O serviço não roda na AWS (o deploy é no Raspberry Pi), então não existe *IAM
+role* nem *instance profile* para entregar credenciais temporárias ao processo. E
+o `aws login` / SSO não serve para um servidor: a sessão expira em no máximo 12
+horas e a renovação exige navegador. A decisão é uma **chave de acesso estática**
+de um usuário IAM dedicado ao backend, sem acesso ao console, cuja política só
+alcança este bucket e os dois prefixos de avatar.
+
+O que o backend faz no S3 e a ação IAM que cobre cada coisa:
+
+| O backend precisa | Ação IAM |
+| --- | --- |
+| Assinar o formulário de upload (presign) | nenhuma própria (ver abaixo) |
+| Criar objeto: o envio do navegador e o destino da cópia | `s3:PutObject` |
+| "Atualizar" objeto | `s3:PutObject`: o S3 não edita, só sobrescreve |
+| Conferir (`HeadObject`) e ler a origem da cópia (`CopyObject`) | `s3:GetObject` |
+| Apagar | `s3:DeleteObject` |
+
+**Assinar não é uma chamada à AWS.** O presign é um cálculo HMAC feito localmente
+com o *secret access key*; nenhuma requisição sai do backend. Quem confere é o S3,
+no momento do envio: ele valida a assinatura e checa se **a chave que assinou**
+tem `s3:PutObject` naquela chave de objeto. Por isso uma chave revogada ou sem
+permissão gera formulários que parecem válidos e só falham quando o navegador
+envia.
 
 ### 5.1 Criar a política
 
@@ -399,22 +421,39 @@ está em um dos passos acima e é mais barato achar agora.
 ## Passo 7 — O que vai para a configuração do serviço
 
 Os valores anotados entram no arquivo de configuração do ambiente
-(`.env.development.yaml`, fora do git). O formato exato das chaves é decisão do
-[plano de implementação](implementation-plan.md); o esboço é:
+(`.env.development.yaml`, fora do git). O formato é o de
+[`env/.env.example.yaml`](../../../env/.env.example.yaml) e
+[`env/.env.example`](../../../env/.env.example):
 
 ```yaml
 storage:
-  provider: s3
-  bucket: vanin-auth-service-storage
-  region: us-east-1
-  access_key_id: <Access key ID do passo 5.3>
-  secret_access_key: <Secret access key do passo 5.3>
+  provider: AWS-S3
   public_base_url: https://<dominio-da-distribuicao>
 
+  aws:
+    s3_bucket_name: vanin-auth-service-storage
+    region: us-east-1
+    access_key_id: <Access key ID do passo 5.3>
+    secret_access_key: <Secret access key do passo 5.3>
+```
+
+`public_base_url` fica fora do bloco `aws` porque é o endereço da CDN, não do
+provedor: trocar um não obriga a trocar o outro (RNF-6).
+
+Sem `provider`, ou com `provider` e algum dos outros campos vazio, o serviço sobe
+e as rotas de avatar respondem `501`. No segundo caso o log de boot traz um
+`ERROR` com a lista das variáveis que faltam.
+
+O limite e a validade da autorização têm padrão no código (2 MiB, 300 s). Para
+mudar, acrescente o bloco opcional:
+
+```yaml
 avatar:
   max_bytes: 2097152
   grant_ttl_seconds: 300
 ```
+
+ou as variáveis `AVATAR_MAX_BYTES` e `AVATAR_GRANT_TTL_SECONDS`.
 
 ---
 

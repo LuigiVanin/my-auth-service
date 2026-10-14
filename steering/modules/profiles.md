@@ -168,6 +168,13 @@ in that pool. `LOGIN_PROFILE` therefore holds `as::users::me::UPDATE` only, and 
 self route carries no scope check because its target is the caller, resolved by the
 `AuthGuard` and never read from the request.
 
+The avatar routes added no key. `POST …/avatar/upload`, `PUT …/avatar` and
+`DELETE …/avatar` sit under the update key of their subject —
+`as::users::me::UPDATE`, `as::organizations::UPDATE`, `as::apps::UPDATE` — because
+whoever may edit a subject may change its picture. No seeded profile changed. Splitting
+them later is moving three paths to a key of their own; until then, `as::apps::*` and
+`as::organizations::*` reach them too.
+
 The map also covers `/auth` and `/otp`, which no guard enforces today. Those entries
 are expressive rather than effective, and they exist because the profile a users pool
 defaults to is where "may this pool sign users up" belongs.

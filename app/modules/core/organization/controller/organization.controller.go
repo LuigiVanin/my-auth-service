@@ -11,6 +11,8 @@ import (
 	ps "auth_service/app/modules/core/participant/services"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
+	smodels "auth_service/shared/models"
+	"auth_service/shared/storage"
 
 	"github.com/LuigiVanin/openapi-builder/openapi"
 	"github.com/gofiber/fiber/v3"
@@ -28,6 +30,7 @@ type OrganizationController struct {
 
 	logger  *zap.Logger
 	swagger *openapi.Builder
+	urls    storage.IUrlResolver
 }
 
 var _ interfaces.IController = &OrganizationController{}
@@ -41,6 +44,7 @@ func NewOrganizationController(
 	permissionsGuard *guards.PermissionsGuard,
 	logger *zap.Logger,
 	builder *openapi.Builder,
+	urls storage.IUrlResolver,
 ) *OrganizationController {
 	return &OrganizationController{
 		organizationService:    organizationService,
@@ -51,6 +55,7 @@ func NewOrganizationController(
 		permissionsGuard:       permissionsGuard,
 		logger:                 logger,
 		swagger:                builder,
+		urls:                   urls,
 	}
 }
 
@@ -88,7 +93,7 @@ func (this *OrganizationController) CreateOrganization(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(organization)
+	return ctx.Status(fiber.StatusCreated).JSON(smodels.NewOrganizationView(organization, this.urls))
 }
 
 func (this *OrganizationController) SwitchOrganization(ctx fiber.Ctx) error {
@@ -106,7 +111,7 @@ func (this *OrganizationController) SwitchOrganization(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(organization)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewOrganizationView(organization, this.urls))
 }
 
 func (this *OrganizationController) UpdateOrganization(ctx fiber.Ctx) error {
@@ -124,7 +129,7 @@ func (this *OrganizationController) UpdateOrganization(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(organization)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewOrganizationView(organization, this.urls))
 }
 
 func (this *OrganizationController) GetParticipants(ctx fiber.Ctx) error {
@@ -173,7 +178,7 @@ func (this *OrganizationController) UpdateParticipant(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(participant)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewParticipantView(participant, this.urls))
 }
 
 func (this *OrganizationController) Register(server *fiber.App) {
@@ -217,7 +222,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Name, description and optional permission ceiling of the organization",
 			}).
-			AddResponse(fiber.StatusCreated, entity.Organization{}, openapi.Options{
+			AddResponse(fiber.StatusCreated, smodels.OrganizationView{}, openapi.Options{
 				Description: "The created organization",
 			}),
 	)
@@ -243,7 +248,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Id of the organization to switch to",
 			}).
-			AddResponse(fiber.StatusOK, entity.Organization{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.OrganizationView{}, openapi.Options{
 				Description: "The organization the user is now scoped to",
 			}),
 	)
@@ -273,7 +278,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Fields to change - every one of them is optional",
 			}).
-			AddResponse(fiber.StatusOK, entity.Organization{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.OrganizationView{}, openapi.Options{
 				Description: "The updated organization",
 			}),
 	)
@@ -340,7 +345,7 @@ func (this *OrganizationController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Id of the profile the participant is moved onto",
 			}).
-			AddResponse(fiber.StatusOK, entity.Participant{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.ParticipantView{}, openapi.Options{
 				Description: "The updated participation, with its user and its new profile",
 			}).
 			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{

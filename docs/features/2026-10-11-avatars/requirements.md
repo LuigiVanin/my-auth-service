@@ -6,6 +6,7 @@ gate: new-capability
 modules: [avatar (novo, api), storage (novo, shared), user, organization, app]
 sources:
   - session:2026-10-11 (pedido original com três requisitos, quatro perguntas respondidas)
+  - session:2026-10-13 (chave de acesso estática para o backend, RNF-11)
   - code:infra/entities/{user,organization,app}.entity.go
   - code:app/modules/core/user/services/user.service.go (UpdateSelf, FindById)
   - code:app/modules/core/organization/services/organization.service.go (UpdateForCaller)
@@ -100,6 +101,10 @@ já existe e está vazio. Nada da conta da empresa é tocado.
 - **RNF-9** — Acrescentar um novo **tipo de arquivo** no futuro (um anexo, um
   documento) custa uma política nova (prefixo, limite, tipos aceitos, tempo de
   vida) — a assinatura, a conferência e a promoção são as mesmas.
+- **RNF-11** — O backend se autentica na AWS com a **chave de acesso estática** de
+  um usuário IAM dedicado, sem console, com permissão só para criar, ler e apagar
+  objetos nos prefixos de avatar. O deploy não é na AWS (sem role) e um login
+  interativo (`aws login`, SSO) é inviável num servidor.
 - **RNF-10** — Toda rota nova tem entrada no catálogo de grants. Nenhuma fica
   alcançável só pelo administrador da plataforma por esquecimento.
 
@@ -117,10 +122,16 @@ já existe e está vazio. Nada da conta da empresa é tocado.
   fixado pelo backend, e expira em **5 minutos**. É um *presigned POST* com
   *policy conditions*, não um *presigned PUT*: só o POST consegue travar tamanho.
 - **RC-3** — **Confirmar não confia no cliente.** Ao receber a chave, o backend
-  exige que ela esteja dentro do prefixo `pending/avatar/{sujeito}/{id}/` do
-  sujeito que a rota resolveu, consulta o objeto no S3 e recusa se ele não
+  exige que ela **case por inteiro** com o formato que ele mesmo gera para o
+  sujeito que a rota resolveu — `pending/avatar/{sujeito}/{id}/{versão}.{ext}`,
+  com a versão no formato gerado e `ext` de um tipo aceito — e não apenas que
+  comece com o prefixo: um teste de prefixo sem a barra final deixa o usuário
+  `4` confirmar chaves do `42`. Depois consulta o objeto no S3 e recusa se ele não
   existe, excede o limite ou tem tipo fora da lista. Só então copia para
-  `avatar/`, grava a chave e apaga o de `pending/`.
+  `avatar/`, grava a chave e apaga o de `pending/`. Sem essa checagem, uma chave
+  de outro sujeito é roubada (o upload pendente dele vira o avatar do chamador),
+  e uma chave já em `avatar/` faz a próxima troca do chamador **apagar o avatar
+  em uso de outro sujeito** (RC-5).
 - **RC-4** — **A chave nunca se repete.** Cada autorização gera uma versão nova,
   então um avatar trocado é uma URL nova. Isso é o que permite
   `Cache-Control: public, max-age=31536000, immutable` no objeto e dispensa
@@ -215,6 +226,10 @@ três entidades; as entradas de catálogo; o handoff para o frontend.
   o `id` numérico é público e sequencial, então a chave de um usuário revela a
   ordem de criação. A versão aleatória impede enumerar avatares; o id em si já é
   público em toda resposta.
+- **G-6** — **A chave do RNF-11 não expira.** Vazada, ela vale até alguém
+  desativá-la no IAM. O estrago é limitado pela política (só os prefixos de
+  avatar), mas rotação e onde o segredo fica guardado no servidor não estão
+  decididos.
 
 ## Evidências da sessão
 

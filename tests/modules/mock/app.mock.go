@@ -52,6 +52,11 @@ func (this *MockAppRepository) FindSearchCount(search ar.AppSearch, options ...r
 }
 
 // MockAppService represents a mock implementation of IAppService
+func (this *MockAppRepository) WriteAvatarKey(id string, key *string, options ...repo.Option) (int64, error) {
+	args := this.Called(id, key, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 type MockAppService struct {
 	mock.Mock
 }
@@ -96,4 +101,9 @@ func (this *MockAppService) Update(id string, currentOrganization *entity.Organi
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.App), args.Error(1)
+}
+
+func (this *MockAppService) SetAvatarKey(id string, key *string) error {
+	args := this.Called(id, key)
+	return args.Error(0)
 }

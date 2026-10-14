@@ -8,6 +8,7 @@ import (
 	ps "auth_service/app/modules/core/participant/services"
 	srep "auth_service/app/modules/core/session/repository"
 	entity "auth_service/infra/entities"
+	"auth_service/shared/storage"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -81,6 +82,7 @@ func newRefreshService(stored *entity.Session) (services.IAuthorizeService, *ref
 
 	service := services.NewAuthorizeService(
 		nil, mocks.sessionRepo, mocks.sessionService, nil, nil, nil, nil, mocks.participantService, nil, zap.NewNop(),
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 
 	return service, mocks

@@ -46,4 +46,8 @@ type IOrganizationService interface {
 		caller *entity.Participant,
 		payload *pdto.UpdateParticipant,
 	) (*entity.Participant, error)
+
+	// SetAvatarKey points the organization at a promoted object, or clears it with
+	// nil. No scope check: the avatar module resolves the target first.
+	SetAvatarKey(id string, key *string) error
 }

@@ -30,9 +30,10 @@ func NewAuthGuard(authService services.IAuthorizeService, logger *zap.Logger) *A
 func (this *AuthGuard) Authenticate(ctx fiber.Ctx) error {
 	this.logger.Info("Auth Guard Triggered")
 
-	app, ok := ctx.Locals("app").(*entity.App)
-	if !ok || app == nil {
-		return e.ThrowInternalServerError("App context missing in AuthGuard - should be run after AppGuard")
+	app, err := readLocal[entity.App](ctx, "app", "AuthGuard", "AppGuard")
+
+	if err != nil {
+		return err
 	}
 
 	authorization := ctx.Get("Authorization")
@@ -59,8 +60,9 @@ func (this *AuthGuard) Authenticate(ctx fiber.Ctx) error {
 		zap.String("session_id", res.SessionId),
 	)
 
-	// Store user and session info in context for downstream handlers
-	ctx.Locals("user", &res.User)
+	// Store user and session info in context for downstream handlers. The
+	// response carries a view for the client; every consumer asserts the entity.
+	ctx.Locals("user", &res.User.User)
 	ctx.Locals("session_id", res.SessionId)
 	ctx.Locals("token_type", res.TokenType)
 

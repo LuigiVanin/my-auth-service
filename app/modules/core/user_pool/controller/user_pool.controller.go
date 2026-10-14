@@ -8,6 +8,8 @@ import (
 	dto "auth_service/app/modules/core/user_pool/models"
 	ups "auth_service/app/modules/core/user_pool/services"
 	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
+	"auth_service/shared/storage"
 
 	"auth_service/shared/interfaces"
 
@@ -30,6 +32,7 @@ type UserPoolController struct {
 	userPoolService        ups.IUserPoolService
 
 	swagger *openapi.Builder
+	urls    storage.IUrlResolver
 }
 
 var _ interfaces.IController = &UserPoolController{}
@@ -41,7 +44,7 @@ func NewUserPoolController(
 	permissionsGuard *guards.PermissionsGuard,
 	userPoolService ups.IUserPoolService,
 	builder *openapi.Builder,
-
+	urls storage.IUrlResolver,
 ) *UserPoolController {
 	return &UserPoolController{
 		authGuard:              authGuard,
@@ -50,6 +53,7 @@ func NewUserPoolController(
 		permissionsGuard:       permissionsGuard,
 		userPoolService:        userPoolService,
 		swagger:                builder,
+		urls:                   urls,
 	}
 }
 
@@ -113,7 +117,7 @@ func (this *UserPoolController) GetUserPool(ctx fiber.Ctx) error {
 		return e.ThrowNotFound("Users pool not found in the current organization")
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(pool)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewUsersPoolView(pool, this.urls))
 }
 
 func (this *UserPoolController) UpdateUserPool(ctx fiber.Ctx) error {
@@ -132,7 +136,7 @@ func (this *UserPoolController) UpdateUserPool(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(pool)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewUsersPoolView(pool, this.urls))
 }
 
 func (this *UserPoolController) Register(server *fiber.App) {
@@ -201,7 +205,7 @@ func (this *UserPoolController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Id of the users pool",
 			}).
-			AddResponse(fiber.StatusOK, entity.UsersPool{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.UsersPoolView{}, openapi.Options{
 				Description: "The requested users pool",
 			}).
 			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
@@ -232,7 +236,7 @@ func (this *UserPoolController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Fields to change - every one of them is optional",
 			}).
-			AddResponse(fiber.StatusOK, entity.UsersPool{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.UsersPoolView{}, openapi.Options{
 				Description: "The updated users pool",
 			}).
 			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{

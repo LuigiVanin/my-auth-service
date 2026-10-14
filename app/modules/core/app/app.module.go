@@ -18,7 +18,6 @@ var Module = fx.Module(
 	)),
 
 	fx.Provide(
-		fx.Private,
 		fx.Annotate(
 			services.NewAppService,
 			fx.As(new(services.IAppService)),

@@ -53,6 +53,11 @@ func (this *MockOrganizationRepository) FindByParticipantUserIdCount(userId uint
 }
 
 // MockOrganizationService represents a mock implementation of IOrganizationService
+func (this *MockOrganizationRepository) WriteAvatarKey(id string, key *string, options ...repo.Option) (int64, error) {
+	args := this.Called(id, key, options)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 type MockOrganizationService struct {
 	mock.Mock
 }
@@ -132,4 +137,9 @@ func (this *MockOrganizationService) UpdateParticipant(
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entity.Participant), args.Error(1)
+}
+
+func (this *MockOrganizationService) SetAvatarKey(id string, key *string) error {
+	args := this.Called(id, key)
+	return args.Error(0)
 }

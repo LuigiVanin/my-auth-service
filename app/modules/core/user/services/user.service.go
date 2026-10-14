@@ -12,7 +12,9 @@ import (
 	ar "auth_service/app/modules/core/app/repository"
 	ur "auth_service/app/modules/core/user/repository"
 	ups "auth_service/app/modules/core/user_pool/services"
+	smodels "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/tracking"
 	"auth_service/shared/utils"
 
@@ -24,6 +26,7 @@ type UserService struct {
 	appRepository   ar.IAppRepository
 	userPoolService ups.IUserPoolService
 	txManager       repo.ITransactionManager
+	urls            storage.IUrlResolver
 	logger          *zap.Logger
 }
 
@@ -34,6 +37,7 @@ func NewUserService(
 	appRepository ar.IAppRepository,
 	userPoolService ups.IUserPoolService,
 	txManager repo.ITransactionManager,
+	urls storage.IUrlResolver,
 	logger *zap.Logger,
 ) *UserService {
 	return &UserService{
@@ -41,6 +45,7 @@ func NewUserService(
 		appRepository:   appRepository,
 		userPoolService: userPoolService,
 		txManager:       txManager,
+		urls:            urls,
 		logger:          logger,
 	}
 }
@@ -401,7 +406,7 @@ func (this *UserService) List(
 		Amount: len(users),
 		Skip:   option.Skip,
 		Limit:  option.Size(),
-		Data:   users,
+		Data:   smodels.NewUserViews(users, this.urls),
 	}, nil
 }
 
@@ -437,4 +442,19 @@ func (this *UserService) FindById(
 	}
 
 	return user, nil
+}
+
+func (this *UserService) SetAvatarKey(id uint, key *string) error {
+	affected, err := this.userRepository.WriteAvatarKey(id, key)
+
+	if err != nil {
+		this.logger.Error("Failed to write the avatar key", zap.Any("user_id", id), zap.Error(err))
+		return e.ThrowInternalServerError("Failed to write the avatar of the user")
+	}
+
+	if affected == 0 {
+		return e.ThrowNotFound("User not found")
+	}
+
+	return nil
 }

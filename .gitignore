@@ -19,3 +19,4 @@ auth_service
 cmd/sandbox/
 .claude/
 ./docs/
+.vibe-wise/

@@ -53,3 +53,14 @@ func (this *AppRepository) FindSearchCount(search AppSearch, options ...repo.Opt
 
 	return count, err
 }
+
+// WriteAvatarKey is the only writer of avatar_key: the column is absent from the
+// update dao. nil clears it. Update and not UpdateColumn, so the change moves
+// `updated_at`.
+func (this *AppRepository) WriteAvatarKey(id string, key *string, options ...repo.Option) (int64, error) {
+	result := this.Query(options...).
+		Where("id = ?", id).
+		Update("avatar_key", key)
+
+	return result.RowsAffected, result.Error
+}

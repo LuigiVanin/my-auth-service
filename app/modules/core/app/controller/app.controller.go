@@ -8,6 +8,8 @@ import (
 	dto "auth_service/app/modules/core/app/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/interfaces"
+	smodels "auth_service/shared/models"
+	"auth_service/shared/storage"
 
 	services "auth_service/app/modules/core/app/services"
 
@@ -25,6 +27,7 @@ type AppController struct {
 	logger                 *zap.Logger
 
 	swagger *openapi.Builder
+	urls    storage.IUrlResolver
 }
 
 var _ interfaces.IController = &AppController{}
@@ -37,6 +40,7 @@ func NewAppController(
 	appService services.IAppService,
 	logger *zap.Logger,
 	builder *openapi.Builder,
+	urls storage.IUrlResolver,
 ) *AppController {
 	return &AppController{
 		authGuard:              authGuard,
@@ -46,6 +50,7 @@ func NewAppController(
 		permissionsGuard:       permissionsGuard,
 		logger:                 logger,
 		swagger:                builder,
+		urls:                   urls,
 	}
 }
 
@@ -67,7 +72,7 @@ func (this *AppController) CreateApp(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(app)
+	return ctx.Status(fiber.StatusCreated).JSON(smodels.NewAppView(app, this.urls))
 }
 
 func (this *AppController) GetApps(ctx fiber.Ctx) error {
@@ -98,7 +103,7 @@ func (this *AppController) GetApp(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(app)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewAppView(app, this.urls))
 }
 
 func (this *AppController) UpdateApp(ctx fiber.Ctx) error {
@@ -116,7 +121,7 @@ func (this *AppController) UpdateApp(ctx fiber.Ctx) error {
 		return err
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(app)
+	return ctx.Status(fiber.StatusOK).JSON(smodels.NewAppView(app, this.urls))
 }
 
 func (this *AppController) Register(server *fiber.App) {
@@ -135,7 +140,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Settings of the application - login methods, token type and expiration times",
 			}).
-			AddResponse(fiber.StatusCreated, entity.App{}, openapi.Options{
+			AddResponse(fiber.StatusCreated, smodels.AppView{}, openapi.Options{
 				Description: "The created application - `public_key` is the ciphered id to send as X-Public-Key",
 			}),
 	)
@@ -183,7 +188,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Id of the application",
 			}).
-			AddResponse(fiber.StatusOK, entity.App{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.AppView{}, openapi.Options{
 				Description: "The requested application",
 			}).
 			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{
@@ -208,7 +213,7 @@ func (this *AppController) Register(server *fiber.App) {
 				Required:    true,
 				Description: "Fields to change - every one of them is optional",
 			}).
-			AddResponse(fiber.StatusOK, entity.App{}, openapi.Options{
+			AddResponse(fiber.StatusOK, smodels.AppView{}, openapi.Options{
 				Description: "The updated application",
 			}).
 			AddResponse(fiber.StatusNotFound, e.ProblemDetail{}, openapi.Options{

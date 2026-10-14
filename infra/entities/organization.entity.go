@@ -17,6 +17,10 @@ type Organization struct {
 	Name        string `gorm:"not null" json:"name"`
 	Description string `gorm:"not null;default:''" json:"description"`
 
+	// Written only by WriteAvatarKey. The response carries avatar_url, built from
+	// this key - see docs/features/2026-10-11-avatars/.
+	AvatarKey *string `gorm:"column:avatar_key;default:null" json:"-"`
+
 	OwnerUser    *User         `gorm:"foreignKey:OwnerUserId" json:"owner_user,omitempty"`
 	UsersPool    *UsersPool    `gorm:"foreignKey:UsersPoolId" json:"-"`
 	Profile      *Profile      `gorm:"foreignKey:ProfileId" json:"-"`

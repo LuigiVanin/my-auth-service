@@ -9,6 +9,7 @@ import (
 	"auth_service/app/modules/core/app/services"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func (this *AppUpdateTestSuite) SetupTest() {
 	this.repository = new(mock.MockAppRepository)
 	this.userPoolService = new(mock.MockUserPoolService)
 	this.cipherService = new(mock.MockCipherService)
-	this.service = services.NewAppService(this.repository, this.userPoolService, this.cipherService)
+	this.service = services.NewAppService(this.repository, this.userPoolService, this.cipherService, storage.NewUrlResolver("https://cdn.test"))
 	this.organization = &entity.Organization{ID: organizationId}
 }
 

@@ -10,6 +10,7 @@ import (
 	odto "auth_service/app/modules/core/otp/models"
 	entity "auth_service/infra/entities"
 	"auth_service/shared/constants"
+	"auth_service/shared/storage"
 	mock "auth_service/tests/modules/mock"
 
 	"github.com/stretchr/testify/assert"
@@ -56,6 +57,7 @@ func newVerifyEmailService(stored *entity.User) (services.IAuthorizeService, *ve
 
 	service := services.NewAuthorizeService(
 		nil, nil, nil, nil, mocks.userService, mocks.otpService, nil, nil, nil, zap.NewNop(),
+		storage.NewUrlResolver("https://cdn.test"),
 	)
 
 	return service, mocks

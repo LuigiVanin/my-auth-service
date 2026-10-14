@@ -30,9 +30,8 @@ func NewOtpGuard(authGuard *AuthGuard, logger *zap.Logger) *OtpGuard {
 func (this *OtpGuard) Authenticate(ctx fiber.Ctx) error {
 	this.logger.Info("Otp Guard Triggered")
 
-	app, ok := ctx.Locals("app").(*entity.App)
-	if !ok || app == nil {
-		return e.ThrowInternalServerError("App context missing in OtpGuard - should be run after AppGuard")
+	if _, err := readLocal[entity.App](ctx, "app", "OtpGuard", "AppGuard"); err != nil {
+		return err
 	}
 
 	// Extract action from query params

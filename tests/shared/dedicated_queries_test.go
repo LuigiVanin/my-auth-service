@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	arep "auth_service/app/modules/core/app/repository"
+	orep "auth_service/app/modules/core/organization/repository"
 	prep "auth_service/app/modules/core/profile/repository"
 	srep "auth_service/app/modules/core/session/repository"
 	urep "auth_service/app/modules/core/user/repository"
@@ -259,4 +260,25 @@ func TestProfileByIdIsScoped(t *testing.T) {
 
 	assert.Contains(t, sql, "profiles.organization_id IS NULL")
 	assert.Contains(t, sql, "profiles.id = $")
+}
+
+// avatar_key is absent from the three update daos, so this is its only writer.
+// Update and not UpdateColumn: changing the avatar moves `updated_at`. A nil key
+// has to reach the statement, or removing an avatar would write nothing.
+func TestAvatarKeyWritesOnlyItsColumn(t *testing.T) {
+	client, _ := newClient(t)
+	key := "avatar/users/7/9f1c3a7e2b4d6081.webp"
+
+	for name, write := range map[string]func(){
+		"users":         func() { _, _ = urep.NewUserRepository(client).WriteAvatarKey(7, &key) },
+		"organizations": func() { _, _ = orep.NewOrganizationRepository(client).WriteAvatarKey("org-1", &key) },
+		"apps":          func() { _, _ = arep.NewAppRepository(client).WriteAvatarKey("app-1", nil) },
+	} {
+		sql := captureUpdate(t, client, write)
+
+		assert.Contains(t, sql, `UPDATE "`+name+`" SET "avatar_key"=$1`, name)
+		assert.Contains(t, sql, `"updated_at"=$2`, name)
+		assert.Contains(t, sql, "WHERE id = $3", name)
+		assert.NotContains(t, sql, "metadata", name)
+	}
 }

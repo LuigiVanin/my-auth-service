@@ -13,4 +13,6 @@ type IOrganizationRepository interface {
 
 	FindByParticipantUserId(userId uint, options ...repo.Option) ([]entity.Organization, error)
 	FindByParticipantUserIdCount(userId uint, options ...repo.Option) (int64, error)
+
+	WriteAvatarKey(id string, key *string, options ...repo.Option) (int64, error)
 }

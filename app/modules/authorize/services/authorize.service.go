@@ -23,6 +23,7 @@ import (
 	"auth_service/shared/constants"
 	sharedDto "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/utils"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -43,6 +44,7 @@ type AuthorizeService struct {
 	participantService ps.IParticipantService
 	txManager          repo.ITransactionManager
 	logger             *zap.Logger
+	urls               storage.IUrlResolver
 }
 
 // The user repository sits next to the user service on purpose: ChangeEmail
@@ -60,6 +62,7 @@ func NewAuthorizeService(
 	participantService ps.IParticipantService,
 	txManager repo.ITransactionManager,
 	logger *zap.Logger,
+	urls storage.IUrlResolver,
 ) IAuthorizeService {
 	return &AuthorizeService{
 		jwtService:         jwtService,
@@ -72,6 +75,7 @@ func NewAuthorizeService(
 		participantService: participantService,
 		txManager:          txManager,
 		logger:             logger,
+		urls:               urls,
 	}
 }
 
@@ -222,7 +226,7 @@ func (this *AuthorizeService) Refresh(
 		ExpiresAt:        newSession.ExpiresAt,
 		RefreshExpiresAt: newSession.RefreshExpiresAt,
 		User: udto.UserResponse{
-			User: session.User,
+			UserView: *sharedDto.NewUserView(&session.User, this.urls),
 			Profile: &udto.ProfileResponse{
 				Profile:     *participation.Participant.Profile,
 				Permissions: participation.Permissions,
@@ -324,7 +328,7 @@ func (this *AuthorizeService) Authorize(
 	})
 
 	return &dto.AuthorizeResponse{
-		User:      session.User,
+		User:      *sharedDto.NewUserView(&session.User, this.urls),
 		SessionId: session.ID,
 		Appid:     app.ID,
 		ExpiresAt: session.ExpiresAt,

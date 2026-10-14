@@ -3,12 +3,12 @@ package models
 import (
 	otpDto "auth_service/app/modules/core/otp/models"
 	udto "auth_service/app/modules/core/user/models"
-	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	"time"
 )
 
 type AuthorizeResponse struct {
-	User entity.User `json:"user"`
+	User smodels.UserView `json:"user"`
 
 	SessionId string `json:"user_id"`
 	Appid     string `json:"app_id"`

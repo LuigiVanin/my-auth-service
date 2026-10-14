@@ -1,7 +1,7 @@
 package models
 
 import (
-	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 )
 
 // Only the profile: moving a participation to another organization or another user
@@ -16,9 +16,9 @@ type GetParticipantsQuery struct {
 }
 
 type GetParticipantsResponse struct {
-	Total  int64                `json:"total"`
-	Amount int                  `json:"amount"`
-	Skip   int                  `json:"skip"`
-	Limit  int                  `json:"limit"`
-	Data   []entity.Participant `json:"data"`
+	Total  int64                     `json:"total"`
+	Amount int                       `json:"amount"`
+	Skip   int                       `json:"skip"`
+	Limit  int                       `json:"limit"`
+	Data   []smodels.ParticipantView `json:"data"`
 }

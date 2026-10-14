@@ -25,6 +25,7 @@ import (
 	dto "auth_service/app/modules/register/models"
 	hs "auth_service/app/modules/utils/hash/services"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 
 	e "auth_service/app/errors"
 	entity "auth_service/infra/entities"
@@ -59,6 +60,7 @@ type RegisterService struct {
 	sessionService         ss.ISessionService
 	authorizeService       as.IAuthorizeService
 	txManager              repo.ITransactionManager
+	urls                   storage.IUrlResolver
 }
 
 func NewRegisterService(
@@ -76,6 +78,7 @@ func NewRegisterService(
 	sessionService ss.ISessionService,
 	authorizeService as.IAuthorizeService,
 	txManager repo.ITransactionManager,
+	urls storage.IUrlResolver,
 ) *RegisterService {
 
 	return &RegisterService{
@@ -93,6 +96,7 @@ func NewRegisterService(
 		sessionService:         sessionService,
 		authorizeService:       authorizeService,
 		txManager:              txManager,
+		urls:                   urls,
 	}
 }
 
@@ -318,7 +322,7 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
 		User: udto.UserResponse{
-			User: *provisioned.User,
+			UserView: *sharedDto.NewUserView(provisioned.User, this.urls),
 			Profile: &udto.ProfileResponse{
 				Profile:     *provisioned.Participant.Profile,
 				Permissions: provisioned.Permissions,
@@ -433,7 +437,7 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		ExpiresAt:        session.ExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
 		User: udto.UserResponse{
-			User: *provisioned.User,
+			UserView: *sharedDto.NewUserView(provisioned.User, this.urls),
 			Profile: &udto.ProfileResponse{
 				Profile:     *provisioned.Participant.Profile,
 				Permissions: provisioned.Permissions,

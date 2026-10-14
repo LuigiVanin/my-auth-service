@@ -6,7 +6,9 @@ import (
 	ar "auth_service/app/modules/core/app/repository"
 	ups "auth_service/app/modules/core/user_pool/services"
 	"auth_service/app/modules/utils/cipher"
+	smodels "auth_service/shared/models"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/utils"
 
 	entity "auth_service/infra/entities"
@@ -19,15 +21,17 @@ type AppService struct {
 	appRepository   ar.IAppRepository
 	userPoolService ups.IUserPoolService
 	cipherService   cipher.ICipherService
+	urls            storage.IUrlResolver
 }
 
 var _ IAppService = &AppService{}
 
-func NewAppService(appRepository ar.IAppRepository, userPoolService ups.IUserPoolService, cipherService cipher.ICipherService) *AppService {
+func NewAppService(appRepository ar.IAppRepository, userPoolService ups.IUserPoolService, cipherService cipher.ICipherService, urls storage.IUrlResolver) *AppService {
 	return &AppService{
 		appRepository:   appRepository,
 		userPoolService: userPoolService,
 		cipherService:   cipherService,
+		urls:            urls,
 	}
 }
 
@@ -183,7 +187,7 @@ func (this *AppService) FindAll(
 		Amount: len(apps),
 		Skip:   option.Skip,
 		Limit:  option.Size(),
-		Data:   apps,
+		Data:   smodels.NewAppViews(apps, this.urls),
 	}, nil
 }
 
@@ -273,4 +277,18 @@ func (this *AppService) Update(
 	}
 
 	return this.FindById(id, currentOrganization)
+}
+
+func (this *AppService) SetAvatarKey(id string, key *string) error {
+	affected, err := this.appRepository.WriteAvatarKey(id, key)
+
+	if err != nil {
+		return e.ThrowInternalServerError("Failed to write the avatar of the app")
+	}
+
+	if affected == 0 {
+		return e.ThrowNotFound("App not found")
+	}
+
+	return nil
 }

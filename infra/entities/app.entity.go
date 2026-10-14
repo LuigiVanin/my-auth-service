@@ -39,6 +39,10 @@ type App struct {
 
 	Enabled2FA bool `gorm:"default:true;not null" json:"enabled_2fa"`
 
+	// Written only by WriteAvatarKey. The response carries avatar_url, built from
+	// this key - see docs/features/2026-10-11-avatars/.
+	AvatarKey *string `gorm:"column:avatar_key;default:null" json:"-"`
+
 	Metadata json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`
 
 	UsersPool    UsersPool     `gorm:"foreignKey:UsersPoolId" json:"users_pool,omitempty"`

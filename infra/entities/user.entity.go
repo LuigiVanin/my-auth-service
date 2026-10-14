@@ -20,6 +20,10 @@ type User struct {
 	VerifyEmail       bool       `gorm:"not null;default:false" json:"verify_email"`
 	VerifiedEmailDate *time.Time `gorm:"column:verified_email_date" json:"verified_email_date,omitempty"`
 
+	// Written only by WriteAvatarKey. The response carries avatar_url, built from
+	// this key - see docs/features/2026-10-11-avatars/.
+	AvatarKey *string `gorm:"column:avatar_key;default:null" json:"-"`
+
 	TwoFactorEnabled bool            `gorm:"not null;default:false" json:"two_factor_enabled"`
 	PasswordHash     string          `gorm:"not null" json:"-"`
 	Metadata         json.RawMessage `gorm:"type:jsonb;default:'{}';not null" json:"metadata"`

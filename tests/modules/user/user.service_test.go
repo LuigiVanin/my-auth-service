@@ -10,6 +10,7 @@ import (
 	"auth_service/app/modules/core/user/services"
 	entity "auth_service/infra/entities"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/tracking"
 	mock "auth_service/tests/modules/mock"
 
@@ -47,6 +48,7 @@ func (this *UserUpdateTestSuite) SetupTest() {
 		this.appRepository,
 		this.userPoolService,
 		this.txManager,
+		storage.NewUrlResolver("https://cdn.test"),
 		zap.NewNop(),
 	)
 	this.organization = &entity.Organization{ID: organizationId}
@@ -321,7 +323,7 @@ func (this *UserUpdateTestSuite) TestTheEntityNeverSerializesTracking() {
 	assert.NotContains(this.T(), string(encoded), "tracking")
 	assert.NotContains(this.T(), string(encoded), "203.0.113.7")
 
-	exposed, err := json.Marshal(dto.UserWithTracking(user))
+	exposed, err := json.Marshal(dto.UserWithTracking(user, storage.NewUrlResolver("https://cdn.test")))
 
 	assert.NoError(this.T(), err)
 	assert.Contains(this.T(), string(exposed), `"tracking"`)

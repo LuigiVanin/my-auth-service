@@ -2,7 +2,9 @@ package models
 
 import (
 	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	"auth_service/shared/permissions"
+	"auth_service/shared/storage"
 	"encoding/json"
 )
 
@@ -50,20 +52,20 @@ type UpdateUserSelf struct {
 // cannot leak the ip history of a user. The outer Tracking shadows the embedded
 // one, the same way ProfileResponse shadows Permissions.
 type GetUserResponse struct {
-	entity.User
+	smodels.UserView
 	Tracking json.RawMessage `json:"tracking"`
 }
 
-func UserWithTracking(user *entity.User) *GetUserResponse {
-	return &GetUserResponse{User: *user, Tracking: user.Tracking}
+func UserWithTracking(user *entity.User, urls storage.IUrlResolver) *GetUserResponse {
+	return &GetUserResponse{UserView: *smodels.NewUserView(user, urls), Tracking: user.Tracking}
 }
 
 type GetUsersResponse struct {
-	Total  int64         `json:"total"`
-	Amount int           `json:"amount"`
-	Skip   int           `json:"skip"`
-	Limit  int           `json:"limit"`
-	Data   []entity.User `json:"data"`
+	Total  int64              `json:"total"`
+	Amount int                `json:"amount"`
+	Skip   int                `json:"skip"`
+	Limit  int                `json:"limit"`
+	Data   []smodels.UserView `json:"data"`
 }
 
 // UserResponse is the authenticated user as login, register and refresh answer it.
@@ -73,7 +75,7 @@ type GetUsersResponse struct {
 // the participations of a user are a list, and picking the one that matches the
 // current organization is a transport concern.
 type UserResponse struct {
-	entity.User
+	smodels.UserView
 	Profile *ProfileResponse `json:"profile,omitempty"`
 }
 

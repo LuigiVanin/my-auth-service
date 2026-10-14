@@ -16,8 +16,10 @@ import (
 	us "auth_service/app/modules/core/user/services"
 	ups "auth_service/app/modules/core/user_pool/services"
 	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	"auth_service/shared/permissions"
 	repo "auth_service/shared/repository"
+	"auth_service/shared/storage"
 	"auth_service/shared/utils"
 
 	"go.uber.org/zap"
@@ -40,6 +42,7 @@ type OrganizationService struct {
 	userService       us.IUserService
 	txManager         repo.ITransactionManager
 	logger            *zap.Logger
+	urls              storage.IUrlResolver
 }
 
 var _ IOrganizationService = &OrganizationService{}
@@ -54,6 +57,7 @@ func NewOrganizationService(
 	userService us.IUserService,
 	txManager repo.ITransactionManager,
 	logger *zap.Logger,
+	urls storage.IUrlResolver,
 ) *OrganizationService {
 	return &OrganizationService{
 		organizationRepository: organizationRepository,
@@ -65,6 +69,7 @@ func NewOrganizationService(
 		userService:            userService,
 		txManager:              txManager,
 		logger:                 logger,
+		urls:                   urls,
 	}
 }
 
@@ -154,7 +159,7 @@ func (this *OrganizationService) FindAllForUser(
 		Amount: len(organizations),
 		Skip:   option.Skip,
 		Limit:  option.Size(),
-		Data:   organizations,
+		Data:   smodels.NewOrganizationViews(organizations, this.urls),
 	}, nil
 }
 
@@ -488,4 +493,19 @@ func (this *OrganizationService) resolveCeiling(
 	}
 
 	return requested, nil
+}
+
+func (this *OrganizationService) SetAvatarKey(id string, key *string) error {
+	affected, err := this.organizationRepository.WriteAvatarKey(id, key)
+
+	if err != nil {
+		this.logger.Error("Failed to write the avatar key", zap.Any("organization_id", id), zap.Error(err))
+		return e.ThrowInternalServerError("Failed to write the avatar of the organization")
+	}
+
+	if affected == 0 {
+		return e.ThrowNotFound("Organization not found")
+	}
+
+	return nil
 }

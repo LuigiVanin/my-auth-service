@@ -25,15 +25,16 @@ func NewEmailVerificationGuard(logger *zap.Logger) *EmailVerificationGuard {
 
 func (this *EmailVerificationGuard) Act(ctx fiber.Ctx) error {
 
-	app, ok := ctx.Locals("app").(*entity.App)
+	app, err := readLocal[entity.App](ctx, "app", "EmailVerificationGuard", "AppGuard")
 
-	if !ok || app == nil {
-		return e.ThrowInternalServerError("App context missing in EmailVerificationGuard - should be run after AppGuard")
+	if err != nil {
+		return err
 	}
 
-	user, ok := ctx.Locals("user").(*entity.User)
-	if !ok || user == nil {
-		return e.ThrowInternalServerError("User context missing in EmailVerificationGuard - should be run after AuthGuard")
+	user, err := readLocal[entity.User](ctx, "user", "EmailVerificationGuard", "AuthGuard")
+
+	if err != nil {
+		return err
 	}
 
 	if app.VerifyEmail && !user.VerifyEmail {

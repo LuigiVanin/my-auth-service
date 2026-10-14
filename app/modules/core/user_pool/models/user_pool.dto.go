@@ -1,7 +1,7 @@
 package models
 
 import (
-	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	"encoding/json"
 )
 
@@ -35,9 +35,9 @@ type UserPoolListQuery struct {
 }
 
 type GetUserPoolsResponse struct {
-	Total  int64              `json:"total"`
-	Amount int                `json:"amount"`
-	Skip   int                `json:"skip"`
-	Limit  int                `json:"limit"`
-	Data   []entity.UsersPool `json:"data"`
+	Total  int64                   `json:"total"`
+	Amount int                     `json:"amount"`
+	Skip   int                     `json:"skip"`
+	Limit  int                     `json:"limit"`
+	Data   []smodels.UsersPoolView `json:"data"`
 }

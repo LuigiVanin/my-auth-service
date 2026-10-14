@@ -1,7 +1,7 @@
 package models
 
 import (
-	entity "auth_service/infra/entities"
+	smodels "auth_service/shared/models"
 	"encoding/json"
 )
 
@@ -52,9 +52,9 @@ type GetOrganizationsQuery struct {
 }
 
 type GetOrganizationsResponse struct {
-	Total  int64                 `json:"total"`
-	Amount int                   `json:"amount"`
-	Skip   int                   `json:"skip"`
-	Limit  int                   `json:"limit"`
-	Data   []entity.Organization `json:"data"`
+	Total  int64                      `json:"total"`
+	Amount int                        `json:"amount"`
+	Skip   int                        `json:"skip"`
+	Limit  int                        `json:"limit"`
+	Data   []smodels.OrganizationView `json:"data"`
 }

@@ -65,4 +65,8 @@ type IUserService interface {
 	// a detached goroutine, so it reports its error rather than shaping a response,
 	// and the only tag it accepts is tracking.TagLogin.
 	Track(tag tracking.Tag, payload TrackLogin) error
+
+	// SetAvatarKey points the user at a promoted object, or clears it with nil. The
+	// avatar module owns the flow; this is the only way the column is written.
+	SetAvatarKey(id uint, key *string) error
 }

@@ -16,27 +16,48 @@ navegador ──(3) PUT /…/avatar { key } ──▶ backend ── Head, Copy,
 qualquer um ─(4) GET ───────────────────▶ CloudFront ──(OAC)──▶ S3 avatar/*
 ```
 
-## Valores a anotar durante o roteiro
+## Estado da execução
 
-Preencha conforme avança. Eles vão para a configuração do serviço no fim.
+> [!NOTE]
+> **Executado em 2026-11-14 e 2026-11-15, e conferido por leitura na conta**
+> (`aws ... --profile personal-PowerUser`, só comandos de leitura, e `curl` nas
+> URLs públicas). Os passos 1 a 6.3 estão completos e se comportam como o
+> esperado. Fica pendente só a limpeza dos arquivos de teste (6.4).
+>
+> Onde a execução divergiu do roteiro, um callout no próprio passo diz o quê.
 
-| O quê | Onde aparece | Valor |
-| --- | --- | --- |
-| ID da distribuição | Passo 3.6 | `E…` |
-| Domínio da distribuição | Passo 3.6 | `d….cloudfront.net` |
-| Access key ID do backend | Passo 5.3 | `AKIA…` |
-| Secret access key do backend | Passo 5.3 | (só aparece uma vez) |
+## Recursos criados
+
+| Recurso | Identificador |
+| --- | --- |
+| Conta AWS | `961868442569` |
+| Bucket | `vanin-auth-service-storage` (`us-east-1`) — ARN `arn:aws:s3:::vanin-auth-service-storage` |
+| Regra de ciclo de vida | `Expire Pending Uploads` |
+| Cache policy | `avatars-24h` — id `9d4bc7ec-d605-4d30-b985-e8cee541cffd` |
+| Distribuição CloudFront | `EAB1577MJ1814` — ARN `arn:aws:cloudfront::961868442569:distribution/EAB1577MJ1814` |
+| Domínio da distribuição | `d1xtj308k1n7yp.cloudfront.net` |
+| Origin Access Control | `E894TCW7KFKM8` (`oac-vanin-auth-service-storage.s3.us-east-1.amazonaw-mwh7rpgvdfc`) |
+| Response headers policy | `Managed-SecurityHeadersPolicy` — id `67f7725c-6f97-4210-82d7-5512b31e9d03` (gerenciada pela AWS) |
+| Política IAM do backend | `auth-service-storage-avatars` — ARN `arn:aws:iam::961868442569:policy/auth-service-storage-avatars` |
+| Usuário IAM do backend | `auth-service-backend` — ARN `arn:aws:iam::961868442569:user/auth-service-backend` |
+| Chave de acesso do backend | Ativa, criada em 2026-11-15, termina em `…3MI7`, tag `raspberry-pi`. O id completo e o segredo ficam só no `.env.development.yaml` |
 
 ---
 
 ## Passo 0 — Conferir onde você está
 
-- [ ] Entre no console como **`htnek-AdminAccess`**. Criar usuário e política é
+- [x] Entre no console como **`htnek-AdminAccess`**. Criar usuário e política é
       IAM, e o PowerUser não tem permissão para isso.
-- [ ] Confira o canto superior direito: a conta tem que ser **9618-6844-2569**.
+- [x] Confira o canto superior direito: a conta tem que ser **9618-6844-2569**.
       Se aparecer `0540-8352-4026`, é a conta da empresa: saia e não continue.
-- [ ] Região **US East (N. Virginia) `us-east-1`** no seletor do topo. O
+- [x] Região **US East (N. Virginia) `us-east-1`** no seletor do topo. O
       CloudFront e o IAM são globais e mostram "Global"; isso é normal.
+
+> [!NOTE]
+> Todos os recursos foram criados na conta pessoal `961868442569`. A conferência
+> feita pelo CLI usou o perfil `personal-PowerUser`, que estava autenticado como
+> **root**, e não como `htnek-PowerUser`. Isso não muda nenhum recurso, mas o
+> perfil precisa ser refeito com o usuário IAM.
 
 ---
 
@@ -60,14 +81,18 @@ CloudFront, por uma permissão própria (passo 4).
 - [x] Tem que mostrar **Bucket owner enforced** ("ACLs disabled"). Se não:
       *Edit* → **ACLs disabled (recommended)** → *Save changes*.
 
-### 1.3 Criptografia padrão (desnecessário por hora)
+### 1.3 Criptografia padrão
 
-- [ ] Aba **Properties** → seção **Default encryption**.
-- [ ] Tem que mostrar **Server-side encryption with Amazon S3 managed keys
+- [x] Aba **Properties** → seção **Default encryption**.
+- [x] Tem que mostrar **Server-side encryption with Amazon S3 managed keys
       (SSE-S3)**. É o padrão de buckets novos; se for outra coisa, *Edit* →
       **SSE-S3** → *Save changes*.
 
 *Objetivo:* SSE-KMS exigiria permissão extra para o CloudFront ler. SSE-S3 não.
+
+> [!NOTE]
+> Nada precisou ser feito: o bucket já estava com `AES256` (SSE-S3), o padrão de
+> buckets novos, com SSE-C bloqueado.
 
 ### 1.4 Versionamento desligado
 
@@ -106,6 +131,10 @@ pela lista explícita de origens, por exemplo
 `frontend/vite.config.ts`). `POST` é o único método: o navegador nunca lê nem
 apaga direto no bucket.
 
+> [!WARNING]
+> Aplicado com `"AllowedOrigins": ["*"]`. Trocar pela lista explícita antes de ir
+> para produção.
+
 ### 1.6 Regra de ciclo de vida para `pending/`
 
 - [x] Aba **Management** → seção **Lifecycle rules** → *Create lifecycle rule*.
@@ -128,6 +157,12 @@ apaga direto no bucket.
 um dia, sem nenhum processo no backend. A AWS executa essas regras uma vez por
 dia, então "1 dia" na prática é entre 24 e 48 horas.
 
+> [!NOTE]
+> A regra foi criada com o nome **`Expire Pending Uploads`**, e não
+> `expire-pending-uploads`. O comportamento é o do roteiro: prefixo `pending/`,
+> expiração em 1 dia, uploads multipart incompletos cancelados em 1 dia, status
+> `Enabled`.
+
 ---
 
 ## Passo 2 — Criar a cache policy `avatars-24h`
@@ -136,22 +171,26 @@ Criada antes da distribuição, para já poder escolhê-la no passo 3.
 
 *CloudFront* → menu lateral **Policies** → aba **Cache** → *Create cache policy*.
 
-- [ ] **Name:** `avatars-24h`.
-- [ ] **Description:** `Avatares: borda reconfere em 24h, navegador respeita o Cache-Control do objeto`.
-- [ ] **TTL settings:**
+- [x] **Name:** `avatars-24h`.
+- [x] **Description:** `Avatares: borda reconfere em 24h, navegador respeita o Cache-Control do objeto`.
+- [x] **TTL settings:**
   - **Minimum TTL:** `0`
   - **Maximum TTL:** `86400`
   - **Default TTL:** `86400`
-- [ ] **Cache key settings:** **Headers** = *None*, **Query strings** = *None*,
+- [x] **Cache key settings:** **Headers** = *None*, **Query strings** = *None*,
       **Cookies** = *None*.
-- [ ] **Compression support:** marque **Gzip** e **Brotli**.
-- [ ] *Create*.
+- [x] **Compression support:** marque **Gzip** e **Brotli**.
+- [x] *Create*.
 
 *Objetivo:* cada avatar é enviado com `Cache-Control: public, max-age=31536000,
 immutable`. O **navegador** guarda por um ano, o que é seguro porque a URL muda a
 cada troca de avatar. A **borda do CloudFront** fica limitada a 24 h pelo
 *Maximum TTL*, então um avatar apagado deixa de ser servido em no máximo um dia,
 sem precisar de invalidação.
+
+> [!NOTE]
+> Cache policy **`avatars-24h`**, id **`9d4bc7ec-d605-4d30-b985-e8cee541cffd`**.
+> Todos os campos conferem com o roteiro.
 
 ---
 
@@ -164,75 +203,111 @@ sem precisar de invalidação.
 O console pode abrir com uma etapa de escolha de plano: planos de valor fixo
 (incluindo um gratuito) ou *Pay as you go*.
 
-- [ ] Escolha o plano **gratuito**, se houver, ou **Pay as you go**. Os dois
+- [x] Escolha o plano **gratuito**, se houver, ou **Pay as you go**. Os dois
       funcionam para este volume. Antes de escolher, leia os limites do plano
       gratuito na própria tela: se ele não permitir cache policy personalizada
       ou alguma opção dos passos abaixo, fique com *Pay as you go*.
 
+> [!NOTE]
+> O assistente não mostrou a etapa de plano: abriu direto em *Get started*. A
+> tela de revisão mostrou **Billing: Pay-as-you-go ($0/month)**.
+
 ### 3.2 Nome e tipo
 
-- [ ] **Distribution name** (se pedir): `auth-service-avatars`.
-- [ ] **Distribution type** (se pedir): *Single website or app*.
-- [ ] **Domain** / **Custom domain**: deixe em branco. Vamos usar o domínio
+- [x] **Distribution name** (se pedir): `auth-service-avatars`.
+- [x] **Distribution type** (se pedir): *Single website or app*.
+- [x] **Domain** / **Custom domain**: deixe em branco. Vamos usar o domínio
       `*.cloudfront.net` que a AWS gera.
+
+> [!NOTE]
+> No console de 2026-11 a opção se chama *Single website configuration*. O nome
+> virou a tag `Name = auth-service-avatars` da distribuição.
 
 ### 3.3 Origem
 
-- [ ] **Origin type:** *Amazon S3*.
-- [ ] **S3 origin** / **Origin domain:** clique em *Browse S3* (ou abra a lista)
+- [x] **Origin type:** *Amazon S3*.
+- [x] **S3 origin** / **Origin domain:** clique em *Browse S3* (ou abra a lista)
       e escolha `vanin-auth-service-storage`. O valor tem que ficar
       `vanin-auth-service-storage.s3.us-east-1.amazonaws.com`. **Não** use um
       endereço com `s3-website` no nome: esse é o endpoint de site estático e
       não funciona com acesso privado.
-- [ ] **Origin path:** deixe em branco.
-- [ ] **Origin access:** escolha **Origin access control settings
+- [x] **Origin path:** deixe em branco.
+- [x] **Origin access:** escolha **Origin access control settings
       (recommended)**. Se o console mostrar uma caixa como **Allow private S3
       bucket access to CloudFront**, marque-a.
   - Se pedir para escolher um OAC: *Create new OAC* → nome
     `auth-service-avatars-oac` → **Signing behavior:** *Sign requests
     (recommended)* → *Create*.
-- [ ] Se o console oferecer **Use recommended origin settings**, pode aceitar.
+- [x] Se o console oferecer **Use recommended origin settings**, pode aceitar.
+
+> [!NOTE]
+> O console não ofereceu escolher o OAC: a caixa **Allow private S3 bucket access
+> to CloudFront** criou um sozinho, com nome gerado.
+> OAC **`E894TCW7KFKM8`** (`oac-vanin-auth-service-storage.s3.us-east-1.amazonaw-mwh7rpgvdfc`),
+> assinatura `always`, protocolo `sigv4`. A mesma caixa gravou no bucket uma
+> política liberando o bucket inteiro, substituída no passo 4.
 
 ### 3.4 Comportamento padrão (Default cache behavior)
 
 Se o assistente tiver uma opção de "configurações recomendadas" e não mostrar
 estes campos, aceite o padrão e ajuste no passo 3.7, depois de criar.
 
-- [ ] **Viewer protocol policy:** *Redirect HTTP to HTTPS*.
-- [ ] **Allowed HTTP methods:** *GET, HEAD*.
-- [ ] **Cache policy:** `avatars-24h` (a do passo 2, na seção *Custom*).
-- [ ] **Origin request policy:** nenhuma.
-- [ ] **Response headers policy:** **SecurityHeadersPolicy** (na seção
+- [x] **Viewer protocol policy:** *Redirect HTTP to HTTPS*.
+- [x] **Allowed HTTP methods:** *GET, HEAD*.
+- [x] **Cache policy:** `avatars-24h` (a do passo 2, na seção *Custom*).
+- [x] **Origin request policy:** nenhuma.
+- [x] **Response headers policy:** **SecurityHeadersPolicy** (na seção
       *Managed*).
 
 *Objetivo da response headers policy:* ela acrescenta, entre outros,
 `X-Content-Type-Options: nosniff`. Com isso, um arquivo disfarçado de imagem
 nunca é executado pelo navegador como script ou página.
 
+> [!NOTE]
+> O assistente não mostrou estes campos: a revisão dizia que aplicaria o padrão
+> para S3 e que dava para personalizar depois. Os cinco valores foram ajustados
+> pelo passo 3.7, depois de criar.
+
 ### 3.5 Segurança e demais opções
 
-- [ ] **Web Application Firewall (WAF):** *Do not enable security protections*.
+- [x] **Web Application Firewall (WAF):** *Do not enable security protections*.
       É custo sem retorno para imagens públicas. (Se o plano gratuito incluir
       WAF sem custo e obrigatório, aceite.)
-- [ ] **Price class:** *Use all edge locations (best performance)*. As classes
+- [x] **Price class:** *Use all edge locations (best performance)*. As classes
       mais baratas excluem a América do Sul, e os usuários estão no Brasil.
-- [ ] **Default root object:** em branco.
-- [ ] **Standard logging:** desligado.
-- [ ] *Create distribution*.
+- [x] **Default root object:** em branco.
+- [x] **Standard logging:** desligado.
+- [x] *Create distribution*.
+
+> [!NOTE]
+> Conferido na distribuição: sem WAF, `PriceClass_All`, sem default root object,
+> logging desligado, HTTP/2 e IPv6 ligados (padrão).
 
 ### 3.6 Anotar os valores
 
-- [ ] Na página da distribuição criada, anote na tabela do topo deste documento:
+- [x] Na página da distribuição criada, anote na tabela do topo deste documento:
   - **ID** (formato `E1ABC2DEF3GHI4`)
   - **Distribution domain name** (formato `d1234abcd.cloudfront.net`)
-- [ ] O **Status** fica como *Deploying* por alguns minutos. Pode seguir para o
+- [x] O **Status** fica como *Deploying* por alguns minutos. Pode seguir para o
       passo 4 enquanto isso.
+
+> [!NOTE]
+> Distribuição **`EAB1577MJ1814`**, domínio **`d1xtj308k1n7yp.cloudfront.net`**,
+> ARN `arn:aws:cloudfront::961868442569:distribution/EAB1577MJ1814`. Status
+> `Deployed`.
 
 ### 3.7 Conferir o comportamento (se o assistente pulou campos)
 
-- [ ] Aba **Behaviors** → selecione o comportamento `Default (*)` → *Edit*.
-- [ ] Confira os quatro valores do passo 3.4 e corrija o que estiver diferente
+- [x] Aba **Behaviors** → selecione o comportamento `Default (*)` → *Edit*.
+- [x] Confira os quatro valores do passo 3.4 e corrija o que estiver diferente
       → *Save changes*.
+
+> [!NOTE]
+> Conferido no comportamento `Default (*)`: `redirect-to-https`, `GET` e `HEAD`,
+> cache policy `9d4bc7ec-d605-4d30-b985-e8cee541cffd` (`avatars-24h`), sem origin
+> request policy, response headers policy `67f7725c-6f97-4210-82d7-5512b31e9d03`
+> (`Managed-SecurityHeadersPolicy`). A response headers policy faltou na primeira
+> conferência e foi corrigida em seguida.
 
 ---
 
@@ -245,9 +320,9 @@ política no bucket. Ela libera **o bucket inteiro** para a distribuição, incl
 *S3* → `vanin-auth-service-storage` → aba **Permissions** → seção **Bucket
 policy** → *Edit*.
 
-- [ ] Apague o que estiver lá e cole o JSON abaixo.
-- [ ] Troque `<ID_DA_DISTRIBUICAO>` pelo ID anotado no passo 3.6.
-- [ ] *Save changes*.
+- [x] Apague o que estiver lá e cole o JSON abaixo.
+- [x] Troque `<ID_DA_DISTRIBUICAO>` pelo ID anotado no passo 3.6.
+- [x] *Save changes*.
 
 ```json
 {
@@ -272,6 +347,13 @@ policy** → *Edit*.
 *Objetivo:* o CloudFront só lê dentro de `avatar/`, e só esta distribuição
 (a condição `AWS:SourceArn`) tem esse acesso. Uploads ainda não confirmados, em
 `pending/`, nunca saem pela CDN.
+
+> [!NOTE]
+> Aplicada com `<ID_DA_DISTRIBUICAO>` = `EAB1577MJ1814`; a política gravada no
+> bucket é idêntica ao JSON acima, com a condição
+> `arn:aws:cloudfront::961868442569:distribution/EAB1577MJ1814`. A política
+> automática do passo 3.3 (`PolicyForCloudFrontPrivateContent`, liberando
+> `vanin-auth-service-storage/*`) foi removida.
 
 ---
 
@@ -305,11 +387,11 @@ envia.
 
 *IAM* → **Policies** → *Create policy*.
 
-- [ ] **Policy editor:** clique em **JSON**, apague o conteúdo e cole o JSON
+- [x] **Policy editor:** clique em **JSON**, apague o conteúdo e cole o JSON
       abaixo → *Next*.
-- [ ] **Policy name:** `auth-service-storage-avatars`.
-- [ ] **Description:** `Backend do auth-service: assinar uploads, conferir, copiar e apagar avatares`.
-- [ ] *Create policy*.
+- [x] **Policy name:** `auth-service-storage-avatars`.
+- [x] **Description:** `Backend do auth-service: assinar uploads, conferir, copiar e apagar avatares`.
+- [x] *Create policy*.
 
 ```json
 {
@@ -350,33 +432,57 @@ Por que cada permissão:
   `404`. Sem ela, o S3 responde `403`, e o backend não distingue "não existe" de
   "sem permissão".
 
+> [!NOTE]
+> Política **`auth-service-storage-avatars`**, ARN
+> `arn:aws:iam::961868442569:policy/auth-service-storage-avatars`, versão `v1`.
+> O documento é idêntico ao JSON acima. A descrição gravada foi
+> `assinar uploads, conferir, copiar e apagar avatares`.
+
+> [!IMPORTANT]
+> Decisão em aberto: manter esta política restrita aos prefixos de avatar ou
+> abrir as operações de objeto para o bucket inteiro
+> (`arn:aws:s3:::vanin-auth-service-storage/*`, sem condição no `ListBucket`),
+> para que um tipo de conteúdo novo não exija editar o IAM. A chave e o usuário
+> são os mesmos nos dois casos.
+
 ### 5.2 Criar o usuário
 
 *IAM* → **Users** → *Create user*.
 
-- [ ] **User name:** `auth-service-backend`.
-- [ ] **Provide user access to the AWS Management Console:** **desmarcado**. É um
+- [x] **User name:** `auth-service-backend`.
+- [x] **Provide user access to the AWS Management Console:** **desmarcado**. É um
       serviço, não uma pessoa → *Next*.
-- [ ] **Permissions options:** *Attach policies directly*.
-- [ ] No campo de busca, digite `auth-service-storage-avatars` e marque a política
+- [x] **Permissions options:** *Attach policies directly*.
+- [x] No campo de busca, digite `auth-service-storage-avatars` e marque a política
       criada no 5.1. Nenhuma outra → *Next*.
-- [ ] Confira o resumo → *Create user*.
+- [x] Confira o resumo → *Create user*.
+
+> [!NOTE]
+> Usuário **`auth-service-backend`**, ARN
+> `arn:aws:iam::961868442569:user/auth-service-backend`, criado em 2026-11-15. Sem
+> perfil de login no console, sem grupos, sem políticas inline, só a
+> `auth-service-storage-avatars` anexada.
 
 ### 5.3 Gerar a chave de acesso
 
-- [ ] Clique no usuário `auth-service-backend` → aba **Security credentials** →
+- [x] Clique no usuário `auth-service-backend` → aba **Security credentials** →
       seção **Access keys** → *Create access key*.
-- [ ] **Use case:** *Application running outside AWS* → *Next*.
-- [ ] **Description tag value:** `raspberry-pi` → *Create access key*.
-- [ ] Clique em **Download .csv file** e anote o **Access key ID** e o **Secret
+- [x] **Use case:** *Application running outside AWS* → *Next*.
+- [x] **Description tag value:** `raspberry-pi` → *Create access key*.
+- [x] Clique em **Download .csv file** e anote o **Access key ID** e o **Secret
       access key** na tabela do topo. **O segredo só aparece nesta tela.** Se
       perder, apague a chave e gere outra.
-- [ ] *Done*.
+- [x] *Done*.
 
 Essa chave vai **só** para o arquivo de configuração do serviço, que está no
 `.gitignore` (`.env.development.yaml`, `.env.prod.yaml`). Nunca para o
 repositório, nunca para uma mensagem. Guarde o `.csv` num lugar seguro ou apague-o
 depois de configurar.
+
+> [!NOTE]
+> Uma chave **ativa**, criada em 2026-11-15, terminando em **`…3MI7`**, com a tag
+> `raspberry-pi`. A chave configurada no `.env.development.yaml` termina com o
+> mesmo sufixo. O id completo e o segredo não são registrados neste documento.
 
 ---
 
@@ -387,31 +493,53 @@ qualquer do seu computador, chamada aqui de `teste.png`.
 
 ### 6.1 Leitura pública pela CDN
 
-- [ ] *S3* → `vanin-auth-service-storage` → *Create folder* → `avatar` →
+- [x] *S3* → `vanin-auth-service-storage` → *Create folder* → `avatar` →
       entre na pasta → *Upload* → `teste.png` → *Upload*.
-- [ ] No navegador, abra `https://<dominio-da-distribuicao>/avatar/teste.png`.
+- [x] No navegador, abra `https://<dominio-da-distribuicao>/avatar/teste.png`.
       **Esperado:** a imagem aparece.
-- [ ] Abra as ferramentas de desenvolvedor do navegador (F12) → aba **Network**
+- [x] Abra as ferramentas de desenvolvedor do navegador (F12) → aba **Network**
       → recarregue → clique na requisição. **Esperado:** nos cabeçalhos da
       resposta aparecem `x-content-type-options: nosniff` e `x-cache` (`Miss from
       cloudfront` na primeira vez, `Hit from cloudfront` ao recarregar).
 
+> [!NOTE]
+> `https://d1xtj308k1n7yp.cloudfront.net/avatar/teste.png` respondeu `200`, com
+> `content-type: image/png`, `x-content-type-options: nosniff` e `x-cache` (`Miss`
+> e depois `Hit`). `http://` respondeu `301` para `https://`. A imagem de teste não
+> tem `cache-control` porque foi enviada pelo console; nos avatares reais quem o
+> fixa é o formulário assinado pelo backend.
+
 ### 6.2 `pending/` não sai pela CDN
 
-- [ ] Crie a pasta `pending` na raiz do bucket e suba `teste.png` nela.
-- [ ] Abra `https://<dominio-da-distribuicao>/pending/teste.png`.
+- [x] Crie a pasta `pending` na raiz do bucket e suba `teste.png` nela.
+- [x] Abra `https://<dominio-da-distribuicao>/pending/teste.png`.
       **Esperado:** erro `403` / `AccessDenied`.
+
+> [!NOTE]
+> Com `pending/teste.png` existindo no bucket,
+> `https://d1xtj308k1n7yp.cloudfront.net/pending/teste.png` respondeu `403`. A
+> primeira tentativa deu `403` sem o arquivo existir, o que não provava nada; o
+> teste foi refeito depois do passo 4.
 
 ### 6.3 O bucket continua privado
 
-- [ ] Abra
+- [x] Abra
       `https://vanin-auth-service-storage.s3.us-east-1.amazonaws.com/avatar/teste.png`.
       **Esperado:** erro `403` / `AccessDenied`.
+
+> [!NOTE]
+> Acesso direto ao S3 respondeu `403` para `avatar/teste.png` e para
+> `pending/teste.png`.
 
 ### 6.4 Limpar
 
 - [ ] Apague os dois `teste.png` e as pastas `avatar/` e `pending/`. O backend
       recria os caminhos quando precisar; no S3 uma "pasta" é só um prefixo.
+
+> [!WARNING]
+> Pendente. Na última conferência o bucket tinha `avatar/`, `avatar/teste.png`,
+> `pending/` e `pending/teste.png`. A regra do passo 1.6 apaga os de `pending/`
+> sozinha; os de `avatar/` só saem à mão.
 
 Se algum resultado for diferente do esperado, não siga para o código: o problema
 está em um dos passos acima e é mais barato achar agora.
@@ -454,6 +582,12 @@ avatar:
 ```
 
 ou as variáveis `AVATAR_MAX_BYTES` e `AVATAR_GRANT_TTL_SECONDS`.
+
+> [!NOTE]
+> O `.env.development.yaml` local já tem o bloco `storage` completo:
+> `provider: AWS-S3`, `public_base_url: https://d1xtj308k1n7yp.cloudfront.net`,
+> bucket, região e as duas credenciais preenchidas. O arquivo está no
+> `.gitignore`. O bloco `avatar` não foi acrescentado, então valem os padrões.
 
 ---
 

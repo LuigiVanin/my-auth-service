@@ -360,6 +360,19 @@ Pedido explícito do autor (2026-10-13). Nenhum depende de credencial nem de red
   porque o `.env` local ainda não tem as credenciais do S3.
 - Lint (`staticcheck`, `errcheck`, `govet`, `ineffassign`, `unused`) limpo nas
   linhas alteradas, fora o `ST1006` do receptor `this`.
-- **Não verificado:** o fluxo contra o bucket de verdade (depende do passo 6 do
-  [aws-console-setup.md](aws-console-setup.md) e das credenciais no `.env`) e o
-  frontend.
+- Ponta a ponta contra o bucket e a CDN reais, em 2026-11-15, com a chave do
+  `auth-service-backend` no `.env` e o cliente descartável
+  `cmd/sandbox/avatar_e2e/` (fora do git), logado como o admin do seed:
+  - autorizar `201`, envio ao S3 `204`, confirmar `200` com `avatar_url` na CDN;
+    a CDN serve `200 image/png` com `nosniff` e
+    `Cache-Control: public, max-age=31536000, immutable`;
+  - trocar gera uma URL nova e apaga o objeto anterior do bucket;
+  - confirmar uma chave bem formada que nunca foi enviada responde `404` — a
+    condição `s3:prefix` do `ListBucket` basta para o `HeadObject` distinguir
+    "não existe" de "sem permissão";
+  - o S3 recusa arquivo acima de 2 MiB (`400 EntityTooLarge`) e tipo diferente do
+    assinado (`403 AccessDenied`);
+  - remover responde `200` com `avatar_url: null` e apaga o objeto; remover de
+    novo responde `200`;
+  - `pending/` pela CDN responde `403`.
+- **Não verificado:** o frontend.

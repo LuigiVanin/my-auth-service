@@ -202,7 +202,9 @@ shared/
 docs/
 ├── features/                # Feature history — one folder per feature of real
 │                            # size, plus pendencias.md. See the section below
-└── handoff/                 # Contracts handed to another team (the frontend)
+├── handoff/                 # Contracts handed to another team (the frontend)
+└── playbooks/               # Stack-agnostic implementation guides meant to be copied
+                             # into other repositories (command-palette/)
 steering/                    # Normative conventions, one per layer
 tests/
 ├── bootstrap/               # Web server behaviour

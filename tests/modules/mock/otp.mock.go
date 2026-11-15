@@ -1,6 +1,8 @@
 package mock
 
 import (
+	"time"
+
 	dto "auth_service/app/modules/core/otp/models"
 	orep "auth_service/app/modules/core/otp/repository"
 	os "auth_service/app/modules/core/otp/services"
@@ -16,12 +18,22 @@ type MockOtpService struct {
 	mock.Mock
 }
 
+var _ os.IOtpService = &MockOtpService{}
+
 func (this *MockOtpService) GenerateConsumable(action constants.AuthAction, app *entity.App, payload dto.ConsumableOtpPayload, ip string) (*dto.GenerateConsumableOtpResponse, error) {
 	args := this.Called(action, app, payload, ip)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*dto.GenerateConsumableOtpResponse), args.Error(1)
+}
+
+func (this *MockOtpService) Issue(action constants.AuthAction, app *entity.App, contact string, ttl time.Duration) (*os.IssuedOtp, error) {
+	args := this.Called(action, app, contact, ttl)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*os.IssuedOtp), args.Error(1)
 }
 
 func (this *MockOtpService) ValidateConsumable(payload dto.PayloadOtpData, appId string, action constants.AuthAction) (*entity.Otp, error) {

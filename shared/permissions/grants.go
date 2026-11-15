@@ -93,6 +93,15 @@ var catalog = map[string]map[string]Rule{
 	"as::organizations::participants::UPDATE": {
 		"/core/organizations/:id/participants/:participant_id": {Methods: []string{"PUT"}},
 	},
+	"as::organizations::invites::CREATE": {
+		"/core/organizations/:id/invites": {Methods: []string{"POST"}},
+	},
+	"as::organizations::invites::READ": {
+		"/core/organizations/:id/invites": {Methods: []string{"GET"}},
+	},
+	"as::organizations::invites::DELETE": {
+		"/core/organizations/:id/invites/:invite_id": {Methods: []string{"DELETE"}},
+	},
 
 	"as::profiles::CREATE": {
 		"/core/profiles": {Methods: []string{"POST"}},
@@ -132,6 +141,12 @@ var catalog = map[string]map[string]Rule{
 	},
 	"as::revoke::CREATE": {
 		"/auth/revoke": {Methods: []string{"POST"}},
+	},
+	"as::invite::READ": {
+		"/auth/invite": {Methods: []string{"GET"}},
+	},
+	"as::invite::accept::CREATE": {
+		"/auth/invite/accept": {Methods: []string{"POST"}},
 	},
 
 	"as::otp::CREATE": {

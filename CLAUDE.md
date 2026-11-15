@@ -167,8 +167,8 @@ app/
 │   └── validators/          # Body validators that switch on a query parameter
 └── modules/
     ├── {api}/               # authorize, avatar, login, register, healthcheck
-    ├── core/                # app, organization, otp, participant, profile,
-    │                        # session, user, user_pool
+    ├── core/                # app, invite, organization, otp, participant,
+    │                        # profile, session, user, user_pool
     └── utils/               # cipher, hash, jwt
 
 cmd/

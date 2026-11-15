@@ -40,6 +40,10 @@ type UpdateOrganization struct {
 	Name        *string          `json:"name" validate:"omitnil,min=1"`
 	Description *string          `json:"description"`
 	Metadata    *json.RawMessage `json:"metadata"`
+
+	// The default validity of the invites this organization issues: 1 hour to 30
+	// days, the same bounds as CreateInvite.TtlSeconds.
+	InviteTtlSeconds *int64 `json:"invite_ttl_seconds" validate:"omitnil,min=3600,max=2592000"`
 }
 
 type SwitchOrganizationPayload struct {

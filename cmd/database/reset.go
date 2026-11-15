@@ -14,6 +14,7 @@ import (
 // dependent one to the least, so the truncate reads top-down like the seed does
 // bottom-up. `CASCADE` covers any table added later that references them.
 var seededTables = []any{
+	&entity.Invite{},
 	&entity.Otp{},
 	&entity.Session{},
 	&entity.Participant{},

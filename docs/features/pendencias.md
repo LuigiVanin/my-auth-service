@@ -252,6 +252,68 @@ produção — passo 1.5 de `docs/features/2026-10-11-avatars/aws-console-setup.
 
 ---
 
+## Convites
+
+Abertos pela feature `docs/features/2026-10-13-organization-invites/`. Os códigos
+`G-*`, `RC-*` citam o `requirements.md` de lá.
+
+### 37. Nada limita quantos convites um participante envia
+
+Cada `POST /core/organizations/{id}/invites` manda um e-mail. Quem tem
+`as::organizations::invites::CREATE` dispara quantos quiser, para quantos endereços
+quiser. É o mesmo buraco do item 4 e do 26, atrás de autenticação e de permissão
+(G-1).
+
+### 38. O endereço de aceite é do serviço, não da aplicação
+
+`INVITE_ACCEPT_URL` é um só. Num serviço com várias aplicações e vários frontends, o
+link de todo convite aponta para a mesma página, embora o convite só seja aceito
+pela aplicação que o emitiu (G-2). **Correção**: uma coluna na aplicação, com o
+config como padrão.
+
+### 39. O remetente é literal em dois serviços
+
+`No Reply <contact@vanin.dev>` está escrito em `OtpService.GenerateConsumable` e em
+`invite.service.go` (`inviteSender`). Trocar de domínio é caçar os dois (G-3).
+**Correção**: `email.from` no config, lido pelos dois.
+
+### 40. Dois `POST` simultâneos deixam dois convites pendentes
+
+Os dois revogam os pendentes do endereço e inserem o seu. O último e-mail é o que
+vale para quem recebe, e os dois aparecem na listagem como pendentes (G-6). Um
+índice único parcial em `(organization_id, email) WHERE` pendente fecharia, mas a
+violação subiria como `500` — item 25.
+
+### 41. O cadastro por convite são duas transações
+
+`ProvisionUser` fecha a dele, e `AcceptFor` abre outra. Se a segunda falha, o usuário
+existe sem a participação e o convite continua pendente; aceitar o mesmo link
+resolve (RC-12, G-7). **Correção**: `ProvisionUser` aceitar um `repo.Option`
+externo.
+
+### 42. Os geradores de `shared/utils/random.go` usam `math/rand`
+
+`GenerateRandomDigits`, que gera o código de seis dígitos de todo OTP, e
+`GenerateRandomCharacters` não são criptograficamente seguros (G-8). O segredo do
+convite não sai deles — sai de `GenerateSecureToken`, no mesmo arquivo, que usa
+`crypto/rand`. **Correção**: trocar a fonte dos dois por `crypto/rand`.
+
+### 43. `invite_ttl_seconds` não volta a "nenhum"
+
+No dao, `nil` é "não mexa", então um padrão escrito na organização só é trocado por
+outro, nunca removido para cair no padrão do serviço (G-11). Mesmo limite do
+`metadata` inteiro, registrado em `steering/models-layer.md`.
+
+### 44. Quem conhece o `otp_id` de um convite consegue invalidá-lo
+
+`PUT /otp/verify/:otp_id` não confere a ação do OTP e invalida qualquer um depois de
+cinco códigos errados. O `otp_id` só viaja dentro do link do convite, então é
+preciso ter o link — mas quem tem o link sem querer aceitar pode queimá-lo, e o
+convite segue `pending` na listagem enquanto o token responde `404` (G-12).
+**Correção**: `VerifyConsumable` recusar as ações que não são de seis dígitos.
+
+---
+
 ## Infraestrutura e testes
 
 ### 33. Um erro de boot do FX sai como `exit status 1`, sem mensagem

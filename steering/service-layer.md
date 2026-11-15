@@ -125,7 +125,15 @@ in one transaction, and holds `IOrganizationRepository`, `IUserRepository` and
 `IParticipantRepository` for exactly those three writes. It still depends on
 `IParticipantService` for the *read* that resolves permissions, because that read
 carries a rule that must not be duplicated. `OrganizationService.CreateForUser`
-does the same with the participant repository.
+does the same with the participant repository, and `InviteService.AcceptFor` with the
+participant and user repositories — participation, invite and `verify_email` in one
+transaction, with the OTP invalidated after the commit.
+
+The signup by invite is the case that crosses an api module into a core one:
+`RegisterService.RegisterWithInvite` provisions through `ProvisionUser` and then
+calls `IInviteService.AcceptFor`. Two transactions, because `ProvisionUser` closes
+its own; a failure in the second leaves a user and a pending invite, and accepting
+the same link resolves it.
 
 The service methods those writes bypass (`IOrganizationService.Create`,
 `SetOwner`, `IParticipantService.Create`) are kept, uncalled, for the routes that

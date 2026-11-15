@@ -10,6 +10,7 @@ const (
 	ActionForgotPassword    AuthAction = "FORGOT_PASSWORD"
 	ActionChangeEmail       AuthAction = "CHANGE_EMAIL"
 	ActionRegenAppSecretKey AuthAction = "REGEN_APP_SECRET_KEY"
+	ActionInvite            AuthAction = "INVITE"
 )
 
 var AuthActions = []string{
@@ -20,4 +21,5 @@ var AuthActions = []string{
 	string(ActionForgotPassword),
 	string(ActionChangeEmail),
 	string(ActionRegenAppSecretKey),
+	string(ActionInvite),
 }

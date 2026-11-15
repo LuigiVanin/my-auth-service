@@ -52,6 +52,7 @@ type RegisterWithPasswordServiceTestSuite struct {
 	mockParticipantSvc   *mock.MockParticipantService
 	mockHashService      *mock.MockHashService
 	mockOtpService       *mock.MockOtpService
+	mockInviteService    *mock.MockInviteService
 	mockSessionService   *mock.MockSessionService
 	mockAuthService      *mock.MockAuthorizeService
 	mockTxManager        *mock.MockTransactionManager
@@ -73,6 +74,7 @@ func (this *RegisterWithPasswordServiceTestSuite) SetupTest() {
 	this.mockParticipantSvc = new(mock.MockParticipantService)
 	this.mockHashService = new(mock.MockHashService)
 	this.mockOtpService = new(mock.MockOtpService)
+	this.mockInviteService = new(mock.MockInviteService)
 	this.mockSessionService = new(mock.MockSessionService)
 	this.mockAuthService = new(mock.MockAuthorizeService)
 	this.mockTxManager = new(mock.MockTransactionManager)
@@ -94,6 +96,7 @@ func (this *RegisterWithPasswordServiceTestSuite) SetupTest() {
 		zap.NewNop(),
 		this.mockHashService,
 		this.mockOtpService,
+		this.mockInviteService,
 		this.mockSessionService,
 		this.mockAuthService,
 		this.mockTxManager,
@@ -392,6 +395,115 @@ func (this *RegisterWithPasswordServiceTestSuite) TestRegisterTracksTheLoginToo(
 	case <-time.After(2 * time.Second):
 		this.T().Fatal("the login was never tracked")
 	}
+}
+
+const inviteToken = "otp-id.secret"
+
+func invitePayload(password string) dto.RegisterPayloadWithInvite {
+	return dto.RegisterPayloadWithInvite{Token: inviteToken, Name: "Invited User", Password: password}
+}
+
+func (this *RegisterWithPasswordServiceTestSuite) inviteResolves() *entity.Invite {
+	invite := &entity.Invite{
+		ID:             "invite-id",
+		OrganizationId: "inviting-organization",
+		Email:          userEmail,
+		Organization:   &entity.Organization{ID: "inviting-organization", UsersPoolId: poolId},
+	}
+
+	this.mockInviteService.On("Resolve", inviteToken, testifymock.Anything).Return(invite, nil)
+
+	return invite
+}
+
+func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithInvite_ForwardsTheRefusalOfTheToken() {
+	this.mockInviteService.On("Resolve", inviteToken, testifymock.Anything).Return(nil, e.ThrowNotFound("Invite not found"))
+
+	response, err := this.registerService.RegisterWithInvite(passwordApp(), invitePayload(userPassword), sharedDto.RequestInfo{})
+
+	assert.Nil(this.T(), response)
+	assert.Equal(this.T(), e.NotFoundErrorCode.First, err.(*e.AppError).Code.First)
+}
+
+// RC-11: the token replaces the OTP as proof of the email, not the password.
+func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithInvite_RequiresAPasswordWhenTheAppSignsInWithOne() {
+	this.inviteResolves()
+
+	response, err := this.registerService.RegisterWithInvite(passwordApp(), invitePayload(""), sharedDto.RequestInfo{})
+
+	assert.Nil(this.T(), response)
+	assert.Equal(this.T(), e.UnprocessableEntityErrorCode.First, err.(*e.AppError).Code.First)
+}
+
+// D-2: an address that already has an account is never signed up again - it is
+// pointed at the accept, and nothing is provisioned.
+func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithInvite_NeverSignsUpAnExistingAccount() {
+	app := passwordApp()
+	this.inviteResolves()
+	this.mockUserService.On("IsAlreadyCreated", userEmail, app).Return(true, nil)
+
+	response, err := this.registerService.RegisterWithInvite(app, invitePayload(userPassword), sharedDto.RequestInfo{})
+
+	assert.Nil(this.T(), response)
+	assert.Equal(this.T(), e.UserAlreadyExistsCode.First, err.(*e.AppError).Code.First)
+	this.mockTxManager.AssertNotCalled(this.T(), "Tx")
+	this.mockInviteService.AssertNotCalled(this.T(), "AcceptFor", testifymock.Anything, testifymock.Anything)
+}
+
+func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithInvite_SignsUpTheInvitedAddressAndAcceptsForIt() {
+	app := passwordApp()
+	invite := this.inviteResolves()
+	createdUser := &entity.User{ID: 1, Email: userEmail, UsersPoolId: poolId, CurrentOrganizationId: orgId, VerifyEmail: true}
+
+	this.mockUserService.On("IsAlreadyCreated", userEmail, app).Return(false, nil)
+	this.mockHashService.On("HashText", userPassword, testifymock.Anything).Return("hashed_password", nil)
+	this.arrangeProvisioning(createdUser)
+
+	this.mockUserRepo.ExpectedCalls = nil
+	this.mockUserRepo.
+		On("Create", testifymock.MatchedBy(func(user entity.User) bool {
+			return user.Email == userEmail && user.VerifyEmail && user.PasswordHash == "hashed_password"
+		}), this.option).
+		Return(createdUser, nil)
+	this.mockUserRepo.
+		On("FindOne", entity.User{ID: createdUser.ID}, []repo.Option{{
+			With: []string{"CurrentOrganization", "CurrentOrganization.Profile"},
+		}}).
+		Return(createdUser, nil)
+
+	this.mockInviteService.On("AcceptFor", invite, createdUser).Return(nil, nil)
+	this.mockSessionService.
+		On("CreateNew", app, createdUser, sharedDto.RequestInfo{}, "WITH_PASSWORD").
+		Return(&entity.Session{ID: "session-id"}, nil)
+	this.mockAuthService.
+		On("CreateAuthorizationCredentials", app, testifymock.Anything).
+		Return(&services.AuthorizationCredentials{AccessToken: "access-token"}, nil)
+
+	response, err := this.registerService.RegisterWithInvite(app, invitePayload(userPassword), sharedDto.RequestInfo{})
+
+	assert.NoError(this.T(), err)
+	assert.Equal(this.T(), "session-id", response.SessionId)
+	this.mockUserRepo.AssertExpectations(this.T())
+	this.mockInviteService.AssertExpectations(this.T())
+}
+
+// RC-12: the accept failing after the provisioning committed opens no session -
+// the user exists, the invite is still pending, and accepting it resolves it.
+func (this *RegisterWithPasswordServiceTestSuite) TestRegisterWithInvite_OpensNoSessionWhenTheAcceptFails() {
+	app := passwordApp()
+	invite := this.inviteResolves()
+	createdUser := &entity.User{ID: 1, Email: userEmail, UsersPoolId: poolId, CurrentOrganizationId: orgId}
+
+	this.mockUserService.On("IsAlreadyCreated", userEmail, app).Return(false, nil)
+	this.mockHashService.On("HashText", userPassword, testifymock.Anything).Return("hashed_password", nil)
+	this.arrangeProvisioning(createdUser)
+	this.mockInviteService.On("AcceptFor", invite, createdUser).Return(nil, e.ThrowBadRequest("This invite was already used"))
+
+	response, err := this.registerService.RegisterWithInvite(app, invitePayload(userPassword), sharedDto.RequestInfo{})
+
+	assert.Nil(this.T(), response)
+	assert.Error(this.T(), err)
+	this.mockSessionService.AssertNotCalled(this.T(), "CreateNew", testifymock.Anything, testifymock.Anything, testifymock.Anything, testifymock.Anything)
 }
 
 func TestRegisterServiceSuite(t *testing.T) {

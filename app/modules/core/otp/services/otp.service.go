@@ -28,6 +28,7 @@ const (
 	OtpExpirationDuration = 5 * time.Minute
 	OtpRateLimitDuration  = time.Minute / 3
 	OtpLength             = 6
+	LinkSecretBytes       = 32
 
 	MaxOtpVerificationAttempts = 5
 )
@@ -255,6 +256,45 @@ func (this *OtpService) GenerateConsumable(action constants.AuthAction, app *ent
 
 		Payload: payload.Payload,
 	}, nil
+}
+
+func (this *OtpService) Issue(action constants.AuthAction, app *entity.App, contact string, ttl time.Duration) (*IssuedOtp, error) {
+	if app == nil || contact == "" || ttl <= 0 {
+		return nil, e.ThrowInternalServerError("An OTP needs an app, a contact and a positive validity")
+	}
+
+	secret, err := utils.GenerateSecureToken(LinkSecretBytes)
+
+	if err != nil {
+		this.logger.Error("Failed to generate a link secret", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to generate the OTP")
+	}
+
+	code := secret
+
+	if this.cfg.App.Env != "development" {
+		code, err = this.hashService.HashText(secret, uuid.New().String())
+
+		if err != nil {
+			return nil, e.ThrowInternalServerError("Failed to hash the OTP")
+		}
+	}
+
+	otp, err := this.otpRepository.Create(entity.Otp{
+		Action:    string(action),
+		AppId:     app.ID,
+		Contact:   strings.ToLower(contact),
+		Code:      code,
+		Metadata:  json.RawMessage(`{}`),
+		ExpiresAt: time.Now().Add(ttl),
+	})
+
+	if err != nil {
+		this.logger.Error("Failed to create an OTP", zap.String("action", string(action)), zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to create the OTP")
+	}
+
+	return &IssuedOtp{Otp: otp, Secret: secret}, nil
 }
 
 func (this *OtpService) ValidateConsumable(payload dto.PayloadOtpData, appId string, action constants.AuthAction) (*entity.Otp, error) {

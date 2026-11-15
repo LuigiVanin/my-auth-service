@@ -8,6 +8,7 @@ import (
 	"time"
 
 	as "auth_service/app/modules/authorize/services"
+	is "auth_service/app/modules/core/invite/services"
 	odto "auth_service/app/modules/core/organization/models"
 	orep "auth_service/app/modules/core/organization/repository"
 	otpdto "auth_service/app/modules/core/otp/models"
@@ -57,6 +58,7 @@ type RegisterService struct {
 	logger                 *zap.Logger
 	hashService            hs.IHashService
 	otpService             os.IOtpService
+	inviteService          is.IInviteService
 	sessionService         ss.ISessionService
 	authorizeService       as.IAuthorizeService
 	txManager              repo.ITransactionManager
@@ -75,6 +77,7 @@ func NewRegisterService(
 	logger *zap.Logger,
 	hashService hs.IHashService,
 	otpService os.IOtpService,
+	inviteService is.IInviteService,
 	sessionService ss.ISessionService,
 	authorizeService as.IAuthorizeService,
 	txManager repo.ITransactionManager,
@@ -93,6 +96,7 @@ func NewRegisterService(
 		logger:                 logger,
 		hashService:            hashService,
 		otpService:             otpService,
+		inviteService:          inviteService,
 		sessionService:         sessionService,
 		authorizeService:       authorizeService,
 		txManager:              txManager,
@@ -287,8 +291,18 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return nil, err
 	}
 
-	// Create session for the newly registered user
-	session, err := this.sessionService.CreateNew(app, provisioned.User, request, "WITH_PASSWORD")
+	return this.openSession(app, provisioned, request, "WITH_PASSWORD")
+}
+
+// openSession is the end every signup shares: the first session of the new user,
+// its credentials, and the response that carries them.
+func (this *RegisterService) openSession(
+	app *entity.App,
+	provisioned *ProvisionedUser,
+	request sharedDto.RequestInfo,
+	loginType string,
+) (*dto.RegisterResponse, error) {
+	session, err := this.sessionService.CreateNew(app, provisioned.User, request, loginType)
 	if err != nil {
 		this.logger.Error("Failed to create session", zap.Error(err))
 		return nil, err
@@ -305,10 +319,8 @@ func (this *RegisterService) RegisterWithPassword(app *entity.App, userData dto.
 		return this.userService.Track(tracking.TagLogin, login)
 	})
 
-	// Populate User field in session for CreateAuthorizationCredentials
 	session.User = *provisioned.User
 
-	// Generate authorization credentials
 	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
 	if err != nil {
 		this.logger.Error("Failed to create authorization credentials", zap.Error(err))
@@ -402,48 +414,79 @@ func (this *RegisterService) RegisterWithOtp(app *entity.App, userData dto.Regis
 		return nil, err
 	}
 
-	// Create session for the newly registered user
-	session, err := this.sessionService.CreateNew(app, provisioned.User, request, "WITH_OTP")
+	return this.openSession(app, provisioned, request, "WITH_OTP")
+}
+
+// RegisterWithInvite is a signup whose email is proved by the invite instead of a
+// code. It never turns into an accept: an address that already has an account in
+// the pool is refused and pointed at POST /auth/invite/accept.
+func (this *RegisterService) RegisterWithInvite(
+	app *entity.App,
+	payload dto.RegisterPayloadWithInvite,
+	request sharedDto.RequestInfo,
+) (*dto.RegisterResponse, error) {
+	invite, err := this.inviteService.Resolve(payload.Token, app)
+
 	if err != nil {
-		this.logger.Error("Failed to create session", zap.Error(err))
 		return nil, err
 	}
 
-	this.logger.Info("Session created successfully", zap.String("session_id", session.ID))
+	withPassword := slices.Contains(app.LoginTypes, "WITH_PASSWORD")
 
-	// The value is built here and not inside the goroutine: `session.User` is
-	// assigned right below, and reading the struct while this goroutine writes it
-	// would be a race. LoginFrom copies the scalars out.
-	login := us.LoginFrom(session)
+	if withPassword && payload.Password == "" {
+		return nil, e.ThrowUnprocessableEntity("Password is required to register in this app",
+			utils.JSON{"errors": utils.JSON{"field": "Password", "tag": "password", "param": "", "value": "-"}},
+		)
+	}
 
-	utils.Detach(this.logger, "track user login", func() error {
-		return this.userService.Track(tracking.TagLogin, login)
+	exists, err := this.userService.IsAlreadyCreated(invite.Email, app)
+
+	if err != nil {
+		this.logger.Error("Failed to check if user exists", zap.Error(err))
+		return nil, e.ThrowInternalServerError("Failed to check user existence")
+	}
+
+	if exists {
+		return nil, e.ThrowUserAlreadyExists("An account of this pool already uses the invited email - accept with `POST /auth/invite/accept`")
+	}
+
+	loginType := "WITH_OTP"
+	hashedPassword := ""
+
+	if withPassword && payload.Password != "" {
+		loginType = "WITH_PASSWORD"
+
+		if hashedPassword, err = this.hashService.HashText(payload.Password, uuid.New().String()); err != nil {
+			return nil, e.ThrowInternalServerError("Failed to hash password")
+		}
+	}
+
+	var phone string
+
+	if payload.Phone != nil {
+		phone = *payload.Phone
+	}
+
+	provisioned, err := this.ProvisionUser(app, entity.User{
+		Email:        invite.Email,
+		Name:         payload.Name,
+		Phone:        phone,
+		VerifyEmail:  true,
+		PasswordHash: hashedPassword,
+		Metadata:     payload.Metadata,
 	})
 
-	// Populate User field in session for CreateAuthorizationCredentials
-	session.User = *provisioned.User
-
-	// Generate authorization credentials
-	credentials, err := this.authorizeService.CreateAuthorizationCredentials(app, session)
 	if err != nil {
-		this.logger.Error("Failed to create authorization credentials", zap.Error(err))
 		return nil, err
 	}
 
-	return &dto.RegisterResponse{
-		SessionId:        session.ID,
-		AccessToken:      credentials.AccessToken,
-		RefreshToken:     credentials.RefreshToken,
-		ExpiresAt:        session.ExpiresAt,
-		RefreshExpiresAt: session.RefreshExpiresAt,
-		User: udto.UserResponse{
-			UserView: *sharedDto.NewUserView(provisioned.User, this.urls),
-			Profile: &udto.ProfileResponse{
-				Profile:     *provisioned.Participant.Profile,
-				Permissions: provisioned.Permissions,
-			},
-		},
-	}, nil
+	// A second transaction, because ProvisionUser closes its own. If it fails the
+	// user exists and the invite is still pending, so accepting it resolves it.
+	if _, err := this.inviteService.AcceptFor(invite, provisioned.User); err != nil {
+		return nil, err
+	}
+
+	return this.openSession(app, provisioned, request, loginType)
 }
 
 func (this *RegisterService) CompareOtpMetadataWithPayload(otp *entity.Otp, userData dto.RegisterPayloadWithOtp) (*otpdto.OtpRegisterActionMetadata, error) {

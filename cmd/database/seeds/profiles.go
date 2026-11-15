@@ -34,11 +34,14 @@ var (
 		"as::organizations::CREATE", "as::organizations::READ", "as::organizations::UPDATE",
 		"as::organizations::switch::UPDATE", "as::organizations::participants::READ",
 		"as::organizations::participants::UPDATE",
+		"as::organizations::invites::CREATE", "as::organizations::invites::READ",
+		"as::organizations::invites::DELETE",
 		"as::profiles::CREATE", "as::profiles::READ", "as::profiles::UPDATE",
 		"as::grants::READ",
 		"as::login::CREATE", "as::register::CREATE", "as::authorize::CREATE",
 		"as::refresh::CREATE", "as::forgot_password::UPDATE", "as::otp::CREATE",
-		"as::verify_email::UPDATE", "as::change_email::UPDATE", "as::revoke::CREATE"
+		"as::verify_email::UPDATE", "as::change_email::UPDATE", "as::revoke::CREATE",
+		"as::invite::READ", "as::invite::accept::CREATE"
 	]}`)
 
 	// NOTE: nothing enforces /auth and /otp yet, so those grants are expressive
@@ -51,12 +54,16 @@ var (
 	// The account self service set travels together: verifying and changing your
 	// own email, closing your own session, and the otp grant without which none of
 	// the three could be started.
+	//
+	// Reading and accepting an invite belong to the pool, like signing up; issuing,
+	// listing and revoking them do not - see the organization-invites feature, D-3.
 	LoginPermissions = json.RawMessage(`{"grants": [
 		"as::login::CREATE", "as::register::CREATE",
 		"as::users::me::UPDATE",
 		"as::organizations::READ", "as::organizations::switch::UPDATE",
 		"as::otp::CREATE",
-		"as::verify_email::UPDATE", "as::change_email::UPDATE", "as::revoke::CREATE"
+		"as::verify_email::UPDATE", "as::change_email::UPDATE", "as::revoke::CREATE",
+		"as::invite::READ", "as::invite::accept::CREATE"
 	]}`)
 )
 

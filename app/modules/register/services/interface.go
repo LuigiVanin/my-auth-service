@@ -31,6 +31,14 @@ type IRegisterService interface {
 		request sharedDto.RequestInfo,
 	) (*dto.RegisterResponse, error)
 
+	// RegisterWithInvite signs up the address of an invite into its pool and adds
+	// it to the inviting organization. The current organization stays its own.
+	RegisterWithInvite(
+		app *entity.App,
+		payload dto.RegisterPayloadWithInvite,
+		request sharedDto.RequestInfo,
+	) (*dto.RegisterResponse, error)
+
 	// ProvisionUser writes a user together with the organization it owns and its
 	// participation in it. Exposed because creating a user is not only something
 	// registration does - an operator flow will need the same unit of work.

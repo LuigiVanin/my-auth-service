@@ -54,6 +54,14 @@ type AvatarConfig struct {
 	GrantTtlSeconds int64 `yaml:"grant_ttl_seconds"`
 }
 
+// An empty AcceptUrl means invites cannot be issued: the service boots and
+// creating one answers 501. It is a template with `{token}` and, optionally,
+// `{organization_id}`.
+type InviteConfig struct {
+	AcceptUrl  string `yaml:"accept_url"`
+	TtlSeconds int64  `yaml:"ttl_seconds"`
+}
+
 type Config struct {
 	Env string
 
@@ -63,6 +71,7 @@ type Config struct {
 	Email    EmailConfig
 	Storage  StorageConfig
 	Avatar   AvatarConfig
+	Invite   InviteConfig
 }
 
 func LoadEnv(envFileName string) error {
@@ -199,6 +208,11 @@ func NewConfigFromSysEnv(envMode string) (*Config, error) {
 		Avatar: AvatarConfig{
 			MaxBytes:        readInt64(os.Getenv("AVATAR_MAX_BYTES")),
 			GrantTtlSeconds: readInt64(os.Getenv("AVATAR_GRANT_TTL_SECONDS")),
+		},
+
+		Invite: InviteConfig{
+			AcceptUrl:  os.Getenv("INVITE_ACCEPT_URL"),
+			TtlSeconds: readInt64(os.Getenv("INVITE_TTL_SECONDS")),
 		},
 	}, nil
 }

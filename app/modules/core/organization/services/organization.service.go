@@ -300,8 +300,9 @@ func (this *OrganizationService) UpdateForCaller(
 	}
 
 	dao := dto.OrganizationUpdateDao{
-		Name:        payload.Name,
-		Description: payload.Description,
+		Name:             payload.Name,
+		Description:      payload.Description,
+		InviteTtlSeconds: payload.InviteTtlSeconds,
 	}
 
 	if payload.Metadata != nil {

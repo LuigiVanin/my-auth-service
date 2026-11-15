@@ -13,6 +13,20 @@ type MockRegisterService struct {
 	mock.Mock
 }
 
+var _ rs.IRegisterService = &MockRegisterService{}
+
+func (this *MockRegisterService) RegisterWithInvite(
+	app *entity.App,
+	payload dto.RegisterPayloadWithInvite,
+	request sharedDto.RequestInfo,
+) (*dto.RegisterResponse, error) {
+	args := this.Called(app, payload, request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*dto.RegisterResponse), args.Error(1)
+}
+
 func (this *MockRegisterService) ProvisionUser(app *entity.App, user entity.User) (*rs.ProvisionedUser, error) {
 	args := this.Called(app, user)
 	if args.Get(0) == nil {

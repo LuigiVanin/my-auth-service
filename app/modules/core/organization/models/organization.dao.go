@@ -13,4 +13,6 @@ type OrganizationUpdateDao struct {
 	ProfileId   *string
 	OwnerUserId *uint
 	Metadata    *json.RawMessage
+
+	InviteTtlSeconds *int64
 }

@@ -29,6 +29,16 @@ type RegisterPayloadWithOtp struct {
 	Otp otpDto.PayloadOtpData `json:"otp" validate:"required"`
 }
 
+// No email: it comes from the invite, which is what proves it. The password is
+// required when the app accepts WITH_PASSWORD, like the OTP signup.
+type RegisterPayloadWithInvite struct {
+	Token    string          `json:"token" validate:"required"`
+	Name     string          `json:"name" validate:"required"`
+	Phone    *string         `json:"phone"`
+	Password string          `json:"password,omitempty" validate:"omitempty,min=8"`
+	Metadata json.RawMessage `json:"metadata"`
+}
+
 type RegisterResponse struct {
 	SessionId        string    `json:"session_id"`
 	AccessToken      string    `json:"access_token"`

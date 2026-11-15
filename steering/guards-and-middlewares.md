@@ -274,7 +274,7 @@ When the body shape depends on a query parameter, the route uses a wrapper from
 | Validator | Switches on | Between |
 | --- | --- | --- |
 | `LoginValidator` | `?method=` | `LoginPayloadWithPassoword`, `LoginPayloadWithOtp` |
-| `RegisterValidator` | `?method=` | `RegisterPayloadWithPassoword`, `RegisterPayloadWithOtp` |
+| `RegisterValidator` | `?method=` | `RegisterPayloadWithPassoword`, `RegisterPayloadWithOtp`, `RegisterPayloadWithInvite` |
 | `OtpValidator` | `?action=` | `OtpRegisterPayload`, `OtpLoginPayload` |
 | `MethodValidator[P, O]()` | `?method=` | its two type parameters |
 

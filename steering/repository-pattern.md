@@ -360,6 +360,30 @@ logout.
 would make a session already superseded by a login on another device impossible to
 revoke, which is the ordinary case and not the exception.
 
+### A transition that only moves a row in a given state
+
+`InviteRepository.Accept` and `Revoke` stamp `accepted_at` or `revoked_at`, and both
+match **only a pending row** — `accepted_at IS NULL AND revoked_at IS NULL AND
+expires_at > now()`, as raw SQL next to the id:
+
+```go
+result := this.Query(options...).
+	Where("id = ?", id).
+	Where(pendingPredicate).
+	Update("accepted_at", at)
+```
+
+The predicate is the lock. Two accepts racing on the same invite both pass the read,
+and the second `UPDATE` affects `0` rows, so the service rolls its transaction back
+and the second participation is never kept. It also stops an accept from reviving a
+row revoked a moment before. The service reads `0` as "no longer pending", never as
+"not found" — the row was read a line earlier.
+
+`invites` has no update dao at all (`repo.NoUpdate`): every column after the insert
+belongs to the service. The same predicate filters the listing by status, kept in one
+map in the repository so the filter and `services.StatusOf` cannot drift. Pinned by
+`TestInviteTransitionsOnlyMoveAPendingRow` and `TestInviteListingFiltersTheStatusInSql`.
+
 ### Several mutations in one unit of work
 
 ```go
@@ -581,7 +605,8 @@ fields being skipped, `updated_at` being written, counting ignoring pagination,
 
 `dedicated_queries_test.go` covers the per module queries: the session
 `invalidated = false` predicate, the two columns a revocation writes together, the
-app search scopes, and the profile lookup staying unpaginated.
+app search scopes, the profile lookup staying unpaginated, and the pending predicate
+of the invite transitions and listing.
 
 `cmd/main_test.go` runs `fx.ValidateApp` over the whole container, so a
 constructor signature change that breaks the wiring fails in tests instead of

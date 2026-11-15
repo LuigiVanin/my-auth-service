@@ -187,6 +187,14 @@ could not begin. `as::verify_email::UPDATE` also closes a gap — `/auth/verify_
 had been registered with no catalog key at all, which left it reachable by no profile
 but the platform admin.
 
+The invites added five keys. `as::organizations::invites::CREATE`, `…::READ` and
+`…::DELETE` issue, list and revoke, and only `MANAGER_PROFILE` holds them: an
+organization under a `LOGIN_PROFILE` ceiling brings nobody in. They sit under
+`organizations`, so `as::organizations::*` reaches them too. `as::invite::READ` and
+`as::invite::accept::CREATE` are the two `/auth` routes, held by both seeded
+profiles, because reading and accepting an invite belong to the pool, like signing
+up. The signup by invite needs no key of its own: it is `POST /auth/register`.
+
 ## Reading: `permissions.Resolve`
 
 `shared/permissions.Resolve(documents ...json.RawMessage) (*Resolved, error)`
@@ -282,7 +290,7 @@ the safety net for a row written under a ceiling that has since narrowed.
 
 ### Picking an existing profile as a ceiling
 
-Three routes take a profile chosen by name, and the request is **refused** with
+Four routes take a profile chosen by name, and the request is **refused** with
 `PERMISSION_DENIED` when the chosen profile grants more than whoever is choosing may
 hand out:
 
@@ -290,6 +298,7 @@ hand out:
 | --- | --- | --- |
 | `POST /core/users_pool` | `default_profile_id` | what the **caller** holds in its organization — `Resolve(ceiling, participation)`, then `IsWithin` |
 | `PUT /core/organizations/:id/participants/:participant_id` | `profile_id` | the same |
+| `POST /core/organizations/:id/invites` | `profile_id` | the same, at issue — the invitee never chooses |
 | `POST /core/organizations` | `profile_id` | the **ceiling of the organization**, with `IsSubsetOf` |
 
 The last one is the odd one out, and knowingly: closing it the same way would mean a
@@ -389,10 +398,12 @@ only at the document:
 | Nobody moves its own participation | `OrganizationService.UpdateParticipant` |
 | The participation of the owner is frozen | `OrganizationService.UpdateParticipant` |
 | Nobody hands another a profile wider than it holds | `OrganizationService.UpdateParticipant` |
+| Nobody invites with a profile wider than it holds | `InviteService.handableProfile` |
 
-The last one is the least obvious and the reason the previous six are not enough:
-without it, two narrow participants who may both change participants promote each
-other and end up holding everything their organization holds.
+The last two are the least obvious and the reason the previous six are not enough:
+without them, two narrow participants who may both change participants promote each
+other and end up holding everything their organization holds — and an invite is the
+same hand-out, only to an account that is not in the organization yet.
 
 Freezing the owner's participation has a side effect that is a guarantee rather than
 an accident — every organization keeps at least one full administrator who cannot be
@@ -446,8 +457,8 @@ contract.
 | Key | Written in | Grants |
 | --- | --- | --- |
 | `ADMIN` | both | `{"api": {"*": …}, "grants": ["as::*::*"]}` - the platform administrator's organization only, and **scoped** to it: the last step of the seed sets its `organization_id` to `admin_organization`. The two keys are deliberate: see the Wildcards section |
-| `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants and profiles, read and write - an organization that builds the platform out. **Scoped** to `admin_organization` in the same step as `ADMIN`. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
-| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), the account self service set (`otp`, `verify_email`, `change_email`, `revoke`), plus login and signup; **the only global profile**, and the default of every pool - the seeded one included - so a new pool is born closed |
+| `MANAGER_PROFILE` | grants | apps, users pools, organizations, participants, invites and profiles, read and write - an organization that builds the platform out. **Scoped** to `admin_organization` in the same step as `ADMIN`. Carries the whole `/auth` and `/otp` set because it is the ceiling of `LOGIN_PROFILE`, and `IsSubsetOf` refuses a child naming a route the parent does not |
+| `LOGIN_PROFILE` | grants | list your organizations and switch between them, edit yourself (`as::users::me::UPDATE`), the account self service set (`otp`, `verify_email`, `change_email`, `revoke`), plus login, signup, and reading and accepting an invite - never issuing one; **the only global profile**, and the default of every pool - the seeded one included - so a new pool is born closed |
 
 Only `LOGIN_PROFILE` stays global, and it has to: `resolveDefaultProfile` looks it up
 **by key** from any organization, and it is the ceiling every organization registering
@@ -518,5 +529,6 @@ somebody.
 
 **The invariant this closes:** `participants.profile_id` always points at a profile
 visible to that organization - scoped to it, or global. `FindByIdVisibleTo` closes the
-ids that arrive in a payload; this closes the ones the code writes itself. An invite
-endpoint will be the next place to have to respect it.
+ids that arrive in a payload; this closes the ones the code writes itself. The invite
+respects it twice: when it is issued, and again in `InviteService.AcceptFor`, because
+the profile can stop being visible between the email and the click.

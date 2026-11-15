@@ -86,6 +86,22 @@ func (this *RegisterController) RegisterUser(ctx fiber.Ctx) error {
 		return ctx.Status(fiber.StatusCreated).JSON(response)
 	}
 
+	if method == "invite" {
+		var payload dto.RegisterPayloadWithInvite
+
+		if err := ctx.Bind().Body(&payload); err != nil {
+			return err
+		}
+
+		response, err := this.service.RegisterWithInvite(app, payload, requestInfo)
+
+		if err != nil {
+			return err
+		}
+
+		return ctx.Status(fiber.StatusCreated).JSON(response)
+	}
+
 	return e.ThrowUnprocessableEntity("Invalid register method")
 }
 
@@ -96,7 +112,8 @@ func (this *RegisterController) Register(server *fiber.App) {
 
 	// The body of the route depends on `method`: the documented schema is the
 	// one of the default `otp` method, `password` expects
-	// RegisterPayloadWithPassoword (a `password` instead of the `otp` pair).
+	// RegisterPayloadWithPassoword (a `password` instead of the `otp` pair), and
+	// `invite` expects RegisterPayloadWithInvite (a `token` instead of the email).
 	this.swagger.Add(
 		docs.Validated(
 			docs.AppRoute(this.swagger, "POST", "/auth/register", openapi.Options{
@@ -106,7 +123,7 @@ func (this *RegisterController) Register(server *fiber.App) {
 			}),
 		).
 			AddQueryParam("method", openapi.String, openapi.Options{
-				Description: "`otp` (default) requires an OTP generated through /otp/generate_consumable, `password` registers straight with a password",
+				Description: "`otp` (default) requires an OTP generated through /otp/generate_consumable, `password` registers straight with a password, `invite` registers the address of an invite with its `token` - no `email` - and adds the user to the inviting organization; the current organization stays the user's own, and an address that already has an account answers `409` and is accepted with `POST /auth/invite/accept` instead",
 			}).
 			AddBody(dto.RegisterPayloadWithOtp{}, openapi.Options{
 				Required:    true,

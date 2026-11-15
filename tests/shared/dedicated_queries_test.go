@@ -2,8 +2,11 @@ package repository_test
 
 import (
 	"testing"
+	"time"
 
 	arep "auth_service/app/modules/core/app/repository"
+	idto "auth_service/app/modules/core/invite/models"
+	irep "auth_service/app/modules/core/invite/repository"
 	orep "auth_service/app/modules/core/organization/repository"
 	prep "auth_service/app/modules/core/profile/repository"
 	srep "auth_service/app/modules/core/session/repository"
@@ -281,4 +284,78 @@ func TestAvatarKeyWritesOnlyItsColumn(t *testing.T) {
 		assert.Contains(t, sql, "WHERE id = $3", name)
 		assert.NotContains(t, sql, "metadata", name)
 	}
+}
+
+const invitePending = "accepted_at IS NULL AND revoked_at IS NULL AND expires_at > now()"
+
+// Both transitions match a pending row only: two accepts at once end with one
+// participation, and an accept never revives a revoked invite. Written as raw SQL
+// because a struct condition would drop the nil pointers in silence.
+func TestInviteTransitionsOnlyMoveAPendingRow(t *testing.T) {
+	client, _ := newClient(t)
+	repository := irep.NewInviteRepository(client)
+
+	for column, write := range map[string]func(){
+		"accepted_at": func() { _, _ = repository.Accept("invite-1", time.Now()) },
+		"revoked_at":  func() { _, _ = repository.Revoke("invite-1", time.Now()) },
+	} {
+		sql := captureUpdate(t, client, write)
+
+		assert.Contains(t, sql, `UPDATE "invites" SET "`+column+`"=$1`, column)
+		assert.Contains(t, sql, `"updated_at"=$2`, column)
+		assert.Contains(t, sql, "id = $3", column)
+		assert.Contains(t, sql, invitePending, column)
+	}
+}
+
+func TestInviteListingFiltersTheStatusInSql(t *testing.T) {
+	client, _ := newClient(t)
+	repository := irep.NewInviteRepository(client)
+
+	for status, predicate := range map[idto.InviteStatus]string{
+		idto.InviteStatusPending:  invitePending,
+		idto.InviteStatusAccepted: "accepted_at IS NOT NULL",
+		idto.InviteStatusRevoked:  "revoked_at IS NOT NULL",
+		idto.InviteStatusExpired:  "expires_at <= now()",
+	} {
+		listing := captureQuery(t, client, func() {
+			_, _ = repository.FindForOrganization("org-1", status)
+		})
+
+		assert.Contains(t, listing, "organization_id = $", status)
+		assert.Contains(t, listing, predicate, status)
+		assert.Contains(t, listing, `ORDER BY "created_at" DESC`, status)
+		assert.Contains(t, listing, "LIMIT", status)
+
+		count := captureQuery(t, client, func() {
+			_, _ = repository.FindForOrganizationCount("org-1", status)
+		})
+
+		assert.Contains(t, count, predicate, status)
+		assert.NotContains(t, count, "LIMIT", status)
+	}
+
+	everything := captureQuery(t, client, func() {
+		_, _ = repository.FindForOrganization("org-1", "")
+	})
+
+	assert.NotContains(t, everything, "accepted_at")
+
+	_, err := repository.FindForOrganization("org-1", "lost")
+	assert.Error(t, err)
+}
+
+// Every pending invite for the address is revoked when a new one replaces them,
+// so the lookup is not paginated - a page would leave the rest alive.
+func TestInvitePendingForAnAddressIsUnpaginated(t *testing.T) {
+	client, _ := newClient(t)
+	repository := irep.NewInviteRepository(client)
+
+	sql := captureQuery(t, client, func() {
+		_, _ = repository.FindPendingFor("org-1", "guest@example.com")
+	})
+
+	assert.Contains(t, sql, "organization_id = $1 AND email = $2")
+	assert.Contains(t, sql, invitePending)
+	assert.NotContains(t, sql, "LIMIT")
 }

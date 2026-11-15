@@ -33,6 +33,7 @@ func main() {
 	// 2. Create Enums
 	createEnum(db, "auth_method", "WITH_OTP", "WITH_PASSWORD")
 	createEnum(db, "auth_action", constants.AuthActions...)
+	addEnumValues(db, "auth_action", constants.AuthActions...)
 	createEnum(db, "token_type", "JWT", "FAST_JWT", "SESSION_UUID")
 	createEnum(db, "app_role", "ADMIN", "USER")
 	// Postgres types are case-insensitive usually, but typically lowercase in pg_type.
@@ -77,6 +78,7 @@ func main() {
 		&entity.App{},
 		&entity.Session{},
 		&entity.Otp{},
+		&entity.Invite{},
 	)
 	if err != nil {
 		log.Fatal("Migration failed during table creation:", err)
@@ -93,6 +95,7 @@ func main() {
 		&entity.App{},
 		&entity.Session{},
 		&entity.Otp{},
+		&entity.Invite{},
 	)
 	if err != nil {
 		log.Fatal("Migration failed during constraint creation:", err)
@@ -111,20 +114,37 @@ func dropRemoved(db *gorm.DB, statements ...string) {
 	}
 }
 
+// Quotes into a copy: the variadic slice is the caller's, and rewriting it in place
+// handed addEnumValues the values already wrapped in quotes.
 func createEnum(db *gorm.DB, name string, enums ...string) {
 	var exists bool
 
+	quoted := make([]string, len(enums))
+
 	for idx, e := range enums {
-		enums[idx] = fmt.Sprintf("'%s'", e)
+		quoted[idx] = fmt.Sprintf("'%s'", e)
 	}
 
-	values := strings.Join(enums, ", ")
+	values := strings.Join(quoted, ", ")
 
 	// Check for lower case version of name as Postgres normalizes unquoted identifiers
 	db.Raw("SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = lower(?))", name).Scan(&exists)
 	if !exists {
 		if err := db.Exec(fmt.Sprintf("CREATE TYPE %s AS ENUM (%s);", name, values)).Error; err != nil {
 			log.Printf("Failed to create enum %s: %v", name, err)
+		}
+	}
+}
+
+// createEnum only creates a type that does not exist yet, so a value added to the
+// constants later never reached a database migrated before it. Idempotent, and
+// fatal like dropRemoved: an OTP of a missing action fails every insert.
+func addEnumValues(db *gorm.DB, name string, enums ...string) {
+	for _, value := range enums {
+		statement := fmt.Sprintf("ALTER TYPE %s ADD VALUE IF NOT EXISTS '%s'", name, value)
+
+		if err := db.Exec(statement).Error; err != nil {
+			log.Fatalf("Failed to run `%s`: %v", statement, err)
 		}
 	}
 }

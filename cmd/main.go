@@ -10,6 +10,7 @@ import (
 	"auth_service/app/modules/authorize"
 	"auth_service/app/modules/avatar"
 	"auth_service/app/modules/core/app"
+	"auth_service/app/modules/core/invite"
 	"auth_service/app/modules/core/organization"
 	"auth_service/app/modules/core/otp"
 	"auth_service/app/modules/core/participant"
@@ -83,6 +84,7 @@ func AppBootstrap() fx.Option {
 		organization.Module,
 		participant.Module,
 		otp.Module,
+		invite.Module,
 
 		// API
 		register.Module,

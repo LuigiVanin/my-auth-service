@@ -167,6 +167,15 @@ for a plain value: absent from the three daos, `json:"-"`, written only by
 `WriteAvatarKey`. A nil pointer there means `NULL`, which a dao field cannot say —
 in a dao nil is "do not touch" — and removing an avatar needs exactly that.
 
+`invites` is the rule taken to the whole entity: no column is writable by payload
+after the insert, so the repository is `repo.NoUpdate` and its two transitions are
+named methods — see [repository-pattern.md](repository-pattern.md). Its `otp_id` is
+`json:"-"`: the id is half of the link, and the response never carries it.
+
+The same nil limit has a visible cost on `organizations.invite_ttl_seconds`: an
+organization can change its default validity of invites but never clear it back to
+the service default, because `null` in the payload is "not sent".
+
 ### Views: a value derived at the response
 
 Some values are not stored but derived when the entity leaves the service.

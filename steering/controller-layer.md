@@ -17,6 +17,10 @@ about HTTP belongs in a service.
   editor comes looking. `/core/grants` is registered before `/core/profiles/:id`
   and deliberately not under it: fiber matches in registration order, and
   `/core/profiles/grants` would be swallowed by the parameter route.
+- `invite` has one that registers under two prefixes: create, list and revoke under
+  `/core/organizations/:id/invites`, with the full guard chain, and describe and
+  accept under `/auth/invite`, behind the `AppGuard` alone — the bearer of the token
+  has no session. One module, one controller, two groups.
 - Never for a **utils module**.
 
 One controller per module. A controller registers every route of its module,

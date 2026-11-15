@@ -17,6 +17,9 @@ type Organization struct {
 	Name        string `gorm:"not null" json:"name"`
 	Description string `gorm:"not null;default:''" json:"description"`
 
+	// Null falls back to the service default (INVITE_TTL_SECONDS).
+	InviteTtlSeconds *int64 `gorm:"default:null" json:"invite_ttl_seconds"`
+
 	// Written only by WriteAvatarKey. The response carries avatar_url, built from
 	// this key - see docs/features/2026-10-11-avatars/.
 	AvatarKey *string `gorm:"column:avatar_key;default:null" json:"-"`

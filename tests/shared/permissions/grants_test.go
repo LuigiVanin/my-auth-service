@@ -116,6 +116,8 @@ func TestActionWildcardReachesTheSubfeaturesOfItsFeature(t *testing.T) {
 		"/core/organizations/:id/participants/:participant_id",
 		"/core/organizations/:id/avatar/upload",
 		"/core/organizations/:id/avatar",
+		"/core/organizations/:id/invites",
+		"/core/organizations/:id/invites/:invite_id",
 	}, paths(resolved))
 }
 

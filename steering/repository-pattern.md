@@ -561,6 +561,21 @@ This applies to listings only. `FindCount` goes through `Query`, so the total is
 never capped, and `FindOne` ends up at `LIMIT 1` because gorm's `First`
 overrides the default.
 
+### A jsonb `?` is a placeholder to gorm
+
+Postgres spells "has key" as `permissions ? 'api'`, and gorm reads every `?` in a raw
+condition as a bind parameter — the statement shifts every argument after it, or
+fails to build. In a dedicated query, test a jsonb key with `->` and
+`jsonb_typeof`, as `broadProfile` in the `user_pool` repository does, never with
+`?`, `?|` or `?&`.
+
+### Ordering a listing is total, or pages overlap
+
+A listing ordered by `updated_at` alone can swap two rows with the same timestamp
+between page 1 and page 2, and the user sees one of them twice and the other never.
+Every listing sort ends on the primary key — `poolListOrder` and `appListOrder` are
+the reference. `FindSearchCount` ignores `Sort`: it never reaches `Option.Apply`.
+
 ### Preloads and counting
 
 `FindCount` uses `Query`, not `ListQuery`, so it never applies preloads or

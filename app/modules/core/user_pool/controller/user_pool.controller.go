@@ -95,6 +95,10 @@ func (this *UserPoolController) List(ctx fiber.Ctx) error {
 		return err
 	}
 
+	if err := middleware.Validate(query); err != nil {
+		return err
+	}
+
 	pools, err := this.userPoolService.List(currentOrganization, &query)
 
 	if err != nil {
@@ -182,6 +186,18 @@ func (this *UserPoolController) Register(server *fiber.App) {
 			}).
 			AddQueryParam("name", openapi.String, openapi.Options{
 				Description: "Filters by pool name, case insensitive",
+			}).
+			AddQueryParam("sort", openapi.String, openapi.Options{
+				Description: "`updated` (default, most recent first), `name` (A-Z), `signups` (most first) or `created` (oldest first). Ties break on the id, so pages never overlap",
+			}).
+			AddQueryParam("ceiling", openapi.String, openapi.Options{
+				Description: "Permission ceiling of the default profile: `closed` (LOGIN_PROFILE), `broad` (an `api` half or a wildcard grant) or `scoped` (the rest)",
+			}).
+			AddQueryParam("scope", openapi.String, openapi.Options{
+				Description: "Where the default profile lives: `system` (global) or `organization` (the current one)",
+			}).
+			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{
+				Description: "A filter or the sort has an invalid value",
 			}).
 			AddResponse(fiber.StatusOK, dto.GetUserPoolsResponse{}, openapi.Options{
 				Description: "Page of users pools",

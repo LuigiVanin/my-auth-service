@@ -140,8 +140,12 @@ func (this *UserPoolService) List(
 
 	if query != nil {
 		search.Name = query.Name
+		search.Ceiling = query.Ceiling
+		search.Scope = query.Scope
 		option = option.Paginate(query.Skip, query.Limit)
 	}
+
+	option.Sort = poolListOrder(query)
 
 	pools, err := this.userPoolRepository.FindSearch(search, option)
 
@@ -349,4 +353,23 @@ func (this *UserPoolService) resolveDefaultProfile(
 	}
 
 	return profile, nil
+}
+
+// poolListOrder always ends on the id: without a total order, two pools with the same
+// updated_at could swap between pages and one of them would be listed twice.
+func poolListOrder(query *dto.UserPoolListQuery) []repo.Sort {
+	first := repo.Sort{Column: "updated_at", Direction: repo.Desc}
+
+	if query != nil {
+		switch query.Sort {
+		case "name":
+			first = repo.Sort{Column: "name", Direction: repo.Asc}
+		case "signups":
+			first = repo.Sort{Column: "users_count", Direction: repo.Desc}
+		case "created":
+			first = repo.Sort{Column: "created_at", Direction: repo.Asc}
+		}
+	}
+
+	return []repo.Sort{first, {Column: "id", Direction: repo.Asc}}
 }

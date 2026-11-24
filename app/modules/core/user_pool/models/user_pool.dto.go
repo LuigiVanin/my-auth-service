@@ -32,6 +32,11 @@ type UserPoolListQuery struct {
 	Skip  int    `query:"skip"`
 	Limit int    `query:"limit"`
 	Name  string `query:"name"`
+
+	Sort string `query:"sort" validate:"omitempty,oneof=updated name signups created"`
+	// The permission ceiling of the pool's default profile - see steering/modules/profiles.md.
+	Ceiling string `query:"ceiling" validate:"omitempty,oneof=closed scoped broad"`
+	Scope   string `query:"scope" validate:"omitempty,oneof=system organization"`
 }
 
 type GetUserPoolsResponse struct {

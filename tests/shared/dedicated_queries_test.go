@@ -12,6 +12,7 @@ import (
 	srep "auth_service/app/modules/core/session/repository"
 	urep "auth_service/app/modules/core/user/repository"
 	uprep "auth_service/app/modules/core/user_pool/repository"
+	repo "auth_service/shared/repository"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -410,4 +411,87 @@ func TestInvitePendingForAnAddressIsUnpaginated(t *testing.T) {
 	assert.Contains(t, sql, "organization_id = $1 AND email = $2")
 	assert.Contains(t, sql, invitePending)
 	assert.NotContains(t, sql, "LIMIT")
+}
+
+func TestUserPoolSearchFiltersByCeilingAndScope(t *testing.T) {
+	client, _ := newClient(t)
+	repository := uprep.NewUserPoolRepository(client)
+
+	closed := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1", Ceiling: "closed"})
+	})
+	assert.Contains(t, closed, "users_pool.organization_id = $1")
+	assert.Contains(t, closed, "users_pool.default_profile_id IN (SELECT profiles.id FROM profiles WHERE profiles.key = $2)")
+
+	// scoped is "not closed and not broad": the NOT must wrap the whole COALESCE.
+	scoped := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1", Ceiling: "scoped"})
+	})
+	assert.Contains(t, scoped, "profiles.key <> $2 AND NOT COALESCE(")
+	assert.Contains(t, scoped, "grant_key LIKE '%*%'")
+
+	broad := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1", Ceiling: "broad"})
+	})
+	assert.Contains(t, broad, "profiles.key <> $2 AND COALESCE(")
+
+	system := captureQuery(t, client, func() {
+		_, _ = repository.FindSearchCount(uprep.UserPoolSearch{OrganizationId: "org-1", Scope: "system"})
+	})
+	assert.Contains(t, system, "profiles.organization_id IS NULL")
+
+	organization := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1", Scope: "organization"})
+	})
+	assert.Contains(t, organization, "profiles.organization_id = $2")
+
+	// An unknown value never compiles into a predicate - and never widens the scope.
+	unknown := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1", Ceiling: "everything"})
+	})
+	assert.NotContains(t, unknown, "default_profile_id")
+	assert.Contains(t, unknown, "users_pool.organization_id = $1")
+}
+
+func TestAppSearchFiltersByLoginTypeAndVisibility(t *testing.T) {
+	client, _ := newClient(t)
+	repository := arep.NewAppRepository(client)
+
+	public := false
+	sql := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(arep.AppSearch{
+			OrganizationId: "org-1",
+			LoginType:      "WITH_LOGIN",
+			Private:        &public,
+		})
+	})
+	assert.Contains(t, sql, "apps.organization_id = $1")
+	// Text, not the enum: auth_method has no WITH_LOGIN.
+	assert.Contains(t, sql, "$2 = ANY(apps.login_types::text[])")
+	assert.Contains(t, sql, "apps.private = $3")
+
+	bare := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(arep.AppSearch{OrganizationId: "org-1"})
+	})
+	assert.NotContains(t, bare, "login_types")
+	assert.NotContains(t, bare, "apps.private")
+}
+
+func TestListOrderIsTotal(t *testing.T) {
+	client, _ := newClient(t)
+	pools := uprep.NewUserPoolRepository(client)
+
+	sql := captureQuery(t, client, func() {
+		_, _ = pools.FindSearch(uprep.UserPoolSearch{OrganizationId: "org-1"}, repo.Option{
+			Sort: []repo.Sort{{Column: "users_count", Direction: repo.Desc}, {Column: "id", Direction: repo.Asc}},
+		})
+	})
+	assert.Contains(t, sql, `ORDER BY "users_count" DESC,"id"`)
+
+	counting := captureQuery(t, client, func() {
+		_, _ = pools.FindSearchCount(uprep.UserPoolSearch{OrganizationId: "org-1"}, repo.Option{
+			Sort: []repo.Sort{{Column: "users_count", Direction: repo.Desc}},
+		})
+	})
+	assert.NotContains(t, counting, "ORDER BY")
 }

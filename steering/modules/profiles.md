@@ -29,6 +29,22 @@ without a key conflict that is not one, and it is why `unique(key)` could stay g
 `Name` is editable and `Key` is not, so after a rename the key still reflects the name
 it was born with - it is a handle, not a label.
 
+### Ceiling tones
+
+A pool's default profile is labelled with one of three tones, on screen and in
+`GET /core/users_pool?ceiling=`:
+
+| Tone | Rule |
+| --- | --- |
+| `closed` | key `LOGIN_PROFILE` |
+| `broad` | anything else with a non empty `api` half or a grant containing `*` |
+| `scoped` | the rest |
+
+It is a reading aid, not permission algebra: a wildcard is not expanded and `api` is
+not compared, only detected. Two definitions exist and must move together —
+`broadProfile` in the `user_pool` repository (SQL) and `pool-ceiling.ts` in the
+frontend.
+
 ## The hierarchy
 
 ```

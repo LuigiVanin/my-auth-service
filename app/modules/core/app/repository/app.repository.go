@@ -34,6 +34,16 @@ func searchScope(search AppSearch) func(*gorm.DB) *gorm.DB {
 			query = query.Where("apps.name ILIKE ?", "%"+search.Name+"%")
 		}
 
+		// Compared as text: the auth_method enum has no WITH_LOGIN, and a cast to it would
+		// answer 500 for a value the dto accepts.
+		if search.LoginType != "" {
+			query = query.Where("? = ANY(apps.login_types::text[])", search.LoginType)
+		}
+
+		if search.Private != nil {
+			query = query.Where("apps.private = ?", *search.Private)
+		}
+
 		return query
 	}
 }

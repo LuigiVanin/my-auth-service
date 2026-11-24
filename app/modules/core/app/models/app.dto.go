@@ -58,6 +58,11 @@ type GetAppsQuery struct {
 
 	// Narrows the listing to one pool of the current organization.
 	PoolId string `query:"pool_id"`
+
+	Sort string `query:"sort" validate:"omitempty,oneof=updated name created"`
+	// Matches the apps whose login_types contain this method.
+	LoginType string `query:"login_type" validate:"omitempty,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
+	Private   string `query:"private" validate:"omitempty,oneof=true false"`
 }
 
 type GetAppsResponse struct {

@@ -33,8 +33,44 @@ func searchScope(search UserPoolSearch) func(*gorm.DB) *gorm.DB {
 			query = query.Where("users_pool.name ILIKE ?", "%"+search.Name+"%")
 		}
 
+		switch search.Ceiling {
+		case "closed":
+			query = query.Where(defaultProfileWhere("profiles.key = ?"), loginProfileKey)
+		case "broad":
+			query = query.Where(defaultProfileWhere("profiles.key <> ? AND "+broadProfile), loginProfileKey)
+		case "scoped":
+			query = query.Where(defaultProfileWhere("profiles.key <> ? AND NOT "+broadProfile), loginProfileKey)
+		}
+
+		switch search.Scope {
+		case "system":
+			query = query.Where(defaultProfileWhere("profiles.organization_id IS NULL"))
+		case "organization":
+			query = query.Where(defaultProfileWhere("profiles.organization_id = ?"), search.OrganizationId)
+		}
+
 		return query
 	}
+}
+
+const loginProfileKey = "LOGIN_PROFILE"
+
+// broadProfile is the ceiling classification of the frontend's pool-ceiling.ts, kept
+// in one place: a non empty `api` half, or any grant with a wildcard. COALESCE because
+// a missing `api` makes the comparison NULL, and NOT NULL would drop the row from
+// `scoped` too. Never use the jsonb `?` operator here: gorm reads it as a placeholder.
+const broadProfile = `COALESCE(
+	(jsonb_typeof(profiles.permissions->'api') = 'object' AND profiles.permissions->'api' <> '{}'::jsonb)
+	OR EXISTS (
+		SELECT 1 FROM jsonb_array_elements_text(
+			CASE WHEN jsonb_typeof(profiles.permissions->'grants') = 'array'
+				THEN profiles.permissions->'grants' ELSE '[]'::jsonb END
+		) AS grant_key
+		WHERE grant_key LIKE '%*%'
+	), false)`
+
+func defaultProfileWhere(condition string) string {
+	return "users_pool.default_profile_id IN (SELECT profiles.id FROM profiles WHERE " + condition + ")"
 }
 
 func (this *UserPoolRepository) FindSearch(search UserPoolSearch, options ...repo.Option) ([]entity.UsersPool, error) {

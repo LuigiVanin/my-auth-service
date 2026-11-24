@@ -144,6 +144,11 @@ func (this *AppService) FindAll(
 
 	if query != nil {
 		search.Name = query.Name
+		search.LoginType = query.LoginType
+		if query.Private != "" {
+			private := query.Private == "true"
+			search.Private = &private
+		}
 		option = option.Paginate(query.Skip, query.Limit)
 
 		if query.PoolId != "" {
@@ -163,6 +168,8 @@ func (this *AppService) FindAll(
 			search.UsersPoolId = pool.ID
 		}
 	}
+
+	option.Sort = appListOrder(query)
 
 	apps, err := this.appRepository.FindSearch(search, option)
 
@@ -291,4 +298,21 @@ func (this *AppService) SetAvatarKey(id string, key *string) error {
 	}
 
 	return nil
+}
+
+// appListOrder always ends on the id, for the same reason as the pool listing: a
+// total order is what keeps two pages from sharing a row.
+func appListOrder(query *dto.GetAppsQuery) []repo.Sort {
+	first := repo.Sort{Column: "updated_at", Direction: repo.Desc}
+
+	if query != nil {
+		switch query.Sort {
+		case "name":
+			first = repo.Sort{Column: "name", Direction: repo.Asc}
+		case "created":
+			first = repo.Sort{Column: "created_at", Direction: repo.Asc}
+		}
+	}
+
+	return []repo.Sort{first, {Column: "id", Direction: repo.Asc}}
 }

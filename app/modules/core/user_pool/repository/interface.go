@@ -17,6 +17,11 @@ type UserPoolSearch struct {
 
 	// Optional case insensitive partial match.
 	Name string
+
+	// Optional, both about the default profile: `closed`, `scoped` or `broad`, and
+	// `system` or `organization`. Validated by the query dto; any other value is ignored.
+	Ceiling string
+	Scope   string
 }
 
 type IUserPoolRepository interface {

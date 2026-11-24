@@ -85,6 +85,10 @@ func (this *AppController) GetApps(ctx fiber.Ctx) error {
 		return e.ThrowBadRequest("Invalid query parameters")
 	}
 
+	if err := middleware.Validate(query); err != nil {
+		return err
+	}
+
 	apps, err := this.appService.FindAll(currentUser, currentApp, currentOrganization, &query)
 
 	if err != nil {
@@ -171,6 +175,18 @@ func (this *AppController) Register(server *fiber.App) {
 			}).
 			AddQueryParam("pool_id", openapi.String, openapi.Options{
 				Description: "Lists every application attached to this users pool of the current organization",
+			}).
+			AddQueryParam("sort", openapi.String, openapi.Options{
+				Description: "`updated` (default, most recent first), `name` (A-Z) or `created` (oldest first). Ties break on the id, so pages never overlap",
+			}).
+			AddQueryParam("login_type", openapi.String, openapi.Options{
+				Description: "`WITH_PASSWORD`, `WITH_OTP` or `WITH_LOGIN` - applications whose login methods include it",
+			}).
+			AddQueryParam("private", openapi.String, openapi.Options{
+				Description: "`true` or `false` - filters by visibility",
+			}).
+			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{
+				Description: "A filter or the sort has an invalid value",
 			}).
 			AddResponse(fiber.StatusOK, dto.GetAppsResponse{}, openapi.Options{
 				Description: "Page of applications - the keys of each application are omitted from the listing",

@@ -21,6 +21,11 @@ type AppSearch struct {
 
 	// Optional case insensitive partial match.
 	Name string
+
+	// Optional: the apps whose login_types contain this method.
+	LoginType string
+	// nil is "any": a false has to reach the SQL, so it is never a struct condition.
+	Private *bool
 }
 
 type IAppRepository interface {

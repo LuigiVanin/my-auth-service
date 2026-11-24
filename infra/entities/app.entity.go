@@ -27,10 +27,12 @@ type App struct {
 	// descriptive metadata rather than dropped.
 	Role string `gorm:"type:APP_ROLE;default:'USER';not null" json:"role"`
 
-	LoginTypes                 pq.StringArray `gorm:"type:AUTH_METHOD[];not null" json:"login_types"`
-	TokenType                  string         `gorm:"type:TOKEN_TYPE;not null" json:"token_type"`
-	TokenExpirationTime        int64          `gorm:"not null" json:"token_expiration_time"`
-	RefreshTokenExpirationTime int64          `gorm:"not null;default:1296000" json:"refresh_token_expiration_time"` // 15 days
+	LoginTypes pq.StringArray `gorm:"type:AUTH_METHOD[];not null" json:"login_types"`
+	// Only JWT is written. FAST_JWT and SESSION_UUID are legacy values kept for
+	// the rows that already carry them - see steering/models-layer.md.
+	TokenType                  string `gorm:"type:TOKEN_TYPE;not null" json:"token_type"`
+	TokenExpirationTime        int64  `gorm:"not null" json:"token_expiration_time"`
+	RefreshTokenExpirationTime int64  `gorm:"not null;default:1296000" json:"refresh_token_expiration_time"` // 15 days
 
 	Private bool `gorm:"default:false;not null" json:"private"`
 

@@ -100,6 +100,7 @@ func (this *AuthorizeService) FindSessionByToken(token string, tokenType string,
 		sessionId = payload.SessionId
 		sessionToken = payload.Token
 
+	// Legacy: kept for apps created before only JWT was accepted.
 	case "SESSION_UUID":
 		var err error
 		sessionId, sessionToken, err = this.sessionService.DecryptSessionToken(token, secretKey)
@@ -265,6 +266,7 @@ func (this *AuthorizeService) CreateAuthorizationCredentials(app *entity.App, se
 			},
 			app.SecretKey,
 		)
+	// Legacy: kept for apps created before only JWT was accepted.
 	case "SESSION_UUID":
 		accessToken, err = this.sessionService.EncryptSessionToken(
 			session.ID,

@@ -415,3 +415,12 @@ e tem dois preços conhecidos:
 **Correção**: uma coluna própria, `revoked_at`, com o `Refresh` recusando
 `revoked_at != nil` e continuando a aceitar `invalidated`. Aí o epoch sai e os dois
 significados ficam separados de verdade.
+
+### 23. `FAST_JWT` não tem `case` no `authorize`
+
+`AuthorizeService` trata `JWT` e `SESSION_UUID` na emissão e na validação; `FAST_JWT` cai
+no `default` e responde `Invalid token type`. Desde 2026-11-23 o tipo é legado e não é mais
+aceito em `POST`/`PUT /core/apps`, então nenhum app novo chega lá — mas um app já gravado com
+ele não consegue gerar token. **Correção**: migrar esses apps para `JWT` (um `UPDATE` no
+banco, depois de confirmar quantos existem) ou removê-los. Contexto em
+`docs/handoff/2026-11-23-legacy-token-types.md`.

@@ -146,6 +146,58 @@ func TestUserSearchAlwaysScopesToAPool(t *testing.T) {
 	assert.NotContains(t, counting, "LIMIT")
 }
 
+// The OR has to stay inside parentheses, or it would match users of other pools.
+func TestUserSearchMatchesNameOrEmailInsideThePool(t *testing.T) {
+	client, _ := newClient(t)
+	repository := urep.NewUserRepository(client)
+
+	sql := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(urep.UserSearch{UsersPoolId: "pool-1", Search: "ana"})
+	})
+
+	assert.Contains(t, sql, "users.users_pool_id = $1")
+	assert.Contains(t, sql, "(users.name ILIKE $2 OR users.email ILIKE $3)")
+	assert.NotContains(t, sql, "JOIN")
+}
+
+func TestUserSearchFiltersByProfileFlagsAndSignupWindow(t *testing.T) {
+	client, _ := newClient(t)
+	repository := urep.NewUserRepository(client)
+
+	no := false
+	from := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	before := time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)
+
+	sql := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(urep.UserSearch{
+			UsersPoolId:      "pool-1",
+			ProfileId:        "profile-1",
+			EmailVerified:    &no,
+			TwoFactorEnabled: &no,
+			SignedUpAfter:    &from,
+			SignedUpBefore:   &before,
+		})
+	})
+
+	assert.Contains(t, sql, "users.current_organization_id IN (SELECT organizations.id FROM organizations WHERE organizations.profile_id = $2)")
+	// false has to reach the statement: a struct condition would have dropped it.
+	assert.Contains(t, sql, "users.verify_email = $3")
+	assert.Contains(t, sql, "users.two_factor_enabled = $4")
+	assert.Contains(t, sql, "users.created_at >= $5")
+	assert.Contains(t, sql, "users.created_at < $6")
+
+	counting := captureQuery(t, client, func() {
+		_, _ = repository.FindSearchCount(urep.UserSearch{UsersPoolId: "pool-1", EmailVerified: &no})
+	})
+	assert.Contains(t, counting, "users.verify_email = $2")
+
+	bare := captureQuery(t, client, func() {
+		_, _ = repository.FindSearch(urep.UserSearch{UsersPoolId: "pool-1"})
+	})
+	assert.NotContains(t, bare, "verify_email")
+	assert.NotContains(t, bare, "organizations.profile_id")
+}
+
 // The organization predicate is unconditional: a zero valued search must not
 // compile into an empty WHERE over every pool in the database.
 func TestUserPoolSearchAlwaysScopesToAnOrganization(t *testing.T) {

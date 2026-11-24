@@ -37,6 +37,37 @@ func searchScope(search UserSearch) func(*gorm.DB) *gorm.DB {
 			query = query.Where("users.email ILIKE ?", "%"+search.Email+"%")
 		}
 
+		// Parenthesized by hand: chained with the AND predicates above, an unwrapped
+		// OR would escape the pool scope.
+		if search.Search != "" {
+			pattern := "%" + search.Search + "%"
+			query = query.Where("(users.name ILIKE ? OR users.email ILIKE ?)", pattern, pattern)
+		}
+
+		if search.ProfileId != "" {
+			query = query.Where(
+				"users.current_organization_id IN (SELECT organizations.id FROM organizations WHERE organizations.profile_id = ?)",
+				search.ProfileId,
+			)
+		}
+
+		// Raw predicates, not a struct condition: gorm would drop a false bool.
+		if search.EmailVerified != nil {
+			query = query.Where("users.verify_email = ?", *search.EmailVerified)
+		}
+
+		if search.TwoFactorEnabled != nil {
+			query = query.Where("users.two_factor_enabled = ?", *search.TwoFactorEnabled)
+		}
+
+		if search.SignedUpAfter != nil {
+			query = query.Where("users.created_at >= ?", *search.SignedUpAfter)
+		}
+
+		if search.SignedUpBefore != nil {
+			query = query.Where("users.created_at < ?", *search.SignedUpBefore)
+		}
+
 		return query
 	}
 }

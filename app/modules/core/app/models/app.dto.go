@@ -16,7 +16,8 @@ type CreateAppPayloadUserPool struct {
 type CreateAppPayload struct {
 	Name       string   `json:"name" validate:"required"`
 	LoginTypes []string `json:"login_types" validate:"required,dive,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
-	TokenType  string   `json:"token_type" validate:"required,oneof=JWT FAST_JWT SESSION_UUID"`
+	// FAST_JWT and SESSION_UUID are legacy: still stored on old apps, refused on write.
+	TokenType string `json:"token_type" validate:"required,oneof=JWT"`
 
 	TokenExpirationTime        int64 `json:"token_expiration_time" validate:"required,numeric,gt=0"`
 	RefreshTokenExpirationTime int64 `json:"refresh_token_expiration_time" validate:"required,numeric,gt=0"`
@@ -37,7 +38,7 @@ type CreateAppPayload struct {
 type UpdateApp struct {
 	Name       *string   `json:"name" validate:"omitnil,min=1"`
 	LoginTypes *[]string `json:"login_types" validate:"omitnil,min=1,dive,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
-	TokenType  *string   `json:"token_type" validate:"omitnil,oneof=JWT FAST_JWT SESSION_UUID"`
+	TokenType  *string   `json:"token_type" validate:"omitnil,oneof=JWT"`
 
 	TokenExpirationTime        *int64 `json:"token_expiration_time" validate:"omitnil,gt=0"`
 	RefreshTokenExpirationTime *int64 `json:"refresh_token_expiration_time" validate:"omitnil,gt=0"`

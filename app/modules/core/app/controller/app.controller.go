@@ -132,7 +132,7 @@ func (this *AppController) Register(server *fiber.App) {
 		docs.Validated(
 			docs.PermissionedRoute(this.swagger, "POST", "/core/apps", openapi.Options{
 				Summary:     "Create an application",
-				Description: "Creates an application owned by the authenticated user, as a child of the application the request is made with. The users pool is either an existing one, by id, or a new one, by name.",
+				Description: "Creates an application owned by the authenticated user, as a child of the application the request is made with. The users pool is either an existing one, by id, or a new one, by name. `token_type` only accepts `JWT`: `FAST_JWT` and `SESSION_UUID` are legacy and answer 400.",
 				Tags:        []string{docs.TagApps},
 			}),
 		).
@@ -201,7 +201,7 @@ func (this *AppController) Register(server *fiber.App) {
 		docs.Validated(
 			docs.PermissionedRoute(this.swagger, "PUT", "/core/apps/{id}", openapi.Options{
 				Summary:     "Update an application",
-				Description: "Edits an application of the current organization. Only the fields present in the body are written, so an absent field and a zero one are not the same request - `{\"private\": false}` writes false, an absent `private` writes nothing. `metadata` is merged into what is stored instead of replacing it: the request wins on the keys it names, and the only way to remove a key is to send it as `null`. `users_pool_id`, `public_key` and `secret_key` are never writable. Two changes bite the caller: a new `token_type` invalidates the format of every token already issued by this application, and `private` set to true starts requiring `X-Secret-Key` on it.",
+				Description: "Edits an application of the current organization. Only the fields present in the body are written, so an absent field and a zero one are not the same request - `{\"private\": false}` writes false, an absent `private` writes nothing. `metadata` is merged into what is stored instead of replacing it: the request wins on the keys it names, and the only way to remove a key is to send it as `null`. `users_pool_id`, `public_key` and `secret_key` are never writable. `token_type` only accepts `JWT` - `FAST_JWT` and `SESSION_UUID` are legacy, kept on the applications that already carry them and refused on write. Two changes bite the caller: a new `token_type` invalidates the format of every token already issued by this application, and `private` set to true starts requiring `X-Secret-Key` on it.",
 				Tags:        []string{docs.TagApps},
 			}),
 		).

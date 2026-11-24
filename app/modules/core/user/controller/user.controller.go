@@ -145,6 +145,10 @@ func (this *UserController) List(ctx fiber.Ctx) error {
 		return err
 	}
 
+	if err := middleware.Validate(query); err != nil {
+		return err
+	}
+
 	list, err := this.userService.List(currentUser, currentOrganization, &query)
 
 	if err != nil {
@@ -180,6 +184,27 @@ func (this *UserController) Register(server *fiber.App) {
 			}).
 			AddQueryParam("email", openapi.String, openapi.Options{
 				Description: "Filters by user email, case insensitive",
+			}).
+			AddQueryParam("search", openapi.String, openapi.Options{
+				Description: "Filters by name OR email, case insensitive - each user comes back once",
+			}).
+			AddQueryParam("profile_id", openapi.String, openapi.Options{
+				Description: "Filters by the profile of the user's current organization - a user holds no permission of its own",
+			}).
+			AddQueryParam("email_verified", openapi.String, openapi.Options{
+				Description: "`true` or `false` - filters by whether the email was verified",
+			}).
+			AddQueryParam("two_factor", openapi.String, openapi.Options{
+				Description: "`true` or `false` - filters by whether two-factor authentication is enabled",
+			}).
+			AddQueryParam("signed_up_after", openapi.String, openapi.Options{
+				Description: "RFC 3339 instant, inclusive - users created at or after it. An instant and not a date, so the caller picks the timezone of a day",
+			}).
+			AddQueryParam("signed_up_before", openapi.String, openapi.Options{
+				Description: "RFC 3339 instant, exclusive - users created before it",
+			}).
+			AddResponse(fiber.StatusBadRequest, e.ProblemDetail{}, openapi.Options{
+				Description: "A filter has an invalid value",
 			}).
 			AddResponse(fiber.StatusOK, dto.GetUsersResponse{}, openapi.Options{
 				Description: "Page of users",

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
@@ -380,9 +381,15 @@ func (this *UserService) List(
 	}
 
 	search := ur.UserSearch{
-		UsersPoolId: usersPoolId,
-		Name:        query.Name,
-		Email:       query.Email,
+		UsersPoolId:      usersPoolId,
+		Name:             query.Name,
+		Email:            query.Email,
+		Search:           query.Search,
+		ProfileId:        query.ProfileId,
+		EmailVerified:    optionalBool(query.EmailVerified),
+		TwoFactorEnabled: optionalBool(query.TwoFactor),
+		SignedUpAfter:    optionalInstant(query.SignedUpAfter),
+		SignedUpBefore:   optionalInstant(query.SignedUpBefore),
 	}
 
 	option := repo.Option{
@@ -457,4 +464,22 @@ func (this *UserService) SetAvatarKey(id uint, key *string) error {
 	}
 
 	return nil
+}
+
+// optionalBool reads a filter already validated as "true", "false" or empty.
+func optionalBool(value string) *bool {
+	if value == "" {
+		return nil
+	}
+	parsed := value == "true"
+	return &parsed
+}
+
+// optionalInstant reads a filter already validated as RFC 3339.
+func optionalInstant(value string) *time.Time {
+	instant, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil
+	}
+	return &instant
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"encoding/json"
+	"time"
 
 	dto "auth_service/app/modules/core/user/models"
 	entity "auth_service/infra/entities"
@@ -16,9 +17,20 @@ import (
 type UserSearch struct {
 	UsersPoolId string
 
-	// Name and Email are optional case insensitive partial matches.
-	Name  string
-	Email string
+	// Name and Email are optional case insensitive partial matches; Search
+	// matches either of the two.
+	Name   string
+	Email  string
+	Search string
+
+	// Matches the profile of the user's current organization.
+	ProfileId        string
+	EmailVerified    *bool
+	TwoFactorEnabled *bool
+
+	// SignedUpAfter is inclusive, SignedUpBefore exclusive.
+	SignedUpAfter  *time.Time
+	SignedUpBefore *time.Time
 }
 
 type IUserRepository interface {

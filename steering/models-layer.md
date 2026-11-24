@@ -38,7 +38,7 @@ answers a 400 with a `fields` array before the handler is reached.
 type CreateAppPayload struct {
     Name       string   `json:"name" validate:"required"`
     LoginTypes []string `json:"login_types" validate:"required,dive,oneof=WITH_LOGIN WITH_OTP WITH_PASSWORD"`
-    TokenType  string   `json:"token_type" validate:"required,oneof=JWT FAST_JWT SESSION_UUID"`
+    TokenType  string   `json:"token_type" validate:"required,oneof=JWT"`
 
     TokenExpirationTime int64 `json:"token_expiration_time" validate:"required,numeric,gt=0"`
 
@@ -48,6 +48,10 @@ type CreateAppPayload struct {
 
 - `json` names are `snake_case`, matching the API.
 - Enumerations are enforced with `oneof`, not checked in the service.
+- A value retired from an enumeration leaves the `oneof` and stays in the Postgres
+  enum: the rows that carry it keep reading. `token_type` is the case — `FAST_JWT`
+  and `SESSION_UUID` are legacy, refused on create and update, still served for
+  the applications that have them.
 - A conditional pair uses `required_without` (see `CreateAppPayloadUserPool`).
 - `validate:"required"` on a `bool` means "must be true", not "must be present".
   It is used that way on `VerifyEmail` today; prefer `*bool` when the field is

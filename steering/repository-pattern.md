@@ -463,6 +463,12 @@ func (this *UserRepository) FindUnverified(usersPoolId string, options ...repo.O
 }
 ```
 
+An **optional** boolean filter has the same trap one level up: the search struct
+carries a `*bool` (nil = no filter), and the scope writes it as a raw predicate
+whenever it is not nil — `UserSearch.EmailVerified` and `TwoFactorEnabled` in
+`searchScope` are the reference. Never fold it into the entity `where`, or
+`false` disappears. The DryRun test asserts that `false` reaches the statement.
+
 ### `Updates(dao)` silently skips `updated_at`
 
 Verified against gorm v1.31.1 (`callbacks/update.go`, `ConvertToAssignments`):

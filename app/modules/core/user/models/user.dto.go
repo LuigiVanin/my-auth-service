@@ -18,6 +18,19 @@ type UserListQuery struct {
 	Limit int    `query:"limit"`
 	Name  string `query:"name"`
 	Email string `query:"email"`
+	// Matches name OR email - the search box of the console.
+	Search string `query:"search"`
+
+	// The profile of the user's current organization - a user holds no permission
+	// of its own, see steering/modules/profiles.md.
+	ProfileId     string `query:"profile_id" validate:"omitempty,uuid"`
+	EmailVerified string `query:"email_verified" validate:"omitempty,oneof=true false"`
+	TwoFactor     string `query:"two_factor" validate:"omitempty,oneof=true false"`
+
+	// RFC 3339 instants, so the caller decides which timezone a "day" is in.
+	// After is inclusive, Before is exclusive.
+	SignedUpAfter  string `query:"signed_up_after" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
+	SignedUpBefore string `query:"signed_up_before" validate:"omitempty,datetime=2006-01-02T15:04:05Z07:00"`
 }
 
 // UpdateUser is PUT /core/users/{id}, the administration route: whoever owns the

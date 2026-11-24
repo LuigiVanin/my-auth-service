@@ -34,6 +34,8 @@ func main() {
 	createEnum(db, "auth_method", "WITH_OTP", "WITH_PASSWORD")
 	createEnum(db, "auth_action", constants.AuthActions...)
 	addEnumValues(db, "auth_action", constants.AuthActions...)
+	// FAST_JWT and SESSION_UUID are legacy: the API no longer writes them, the
+	// values stay so existing rows remain readable.
 	createEnum(db, "token_type", "JWT", "FAST_JWT", "SESSION_UUID")
 	createEnum(db, "app_role", "ADMIN", "USER")
 	// Postgres types are case-insensitive usually, but typically lowercase in pg_type.
